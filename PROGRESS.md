@@ -47,6 +47,8 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 
 | B | Retention (24 hours or session end) and log redaction allowlist | Implemented (unit) | Temporary-item sweep and redaction tests with synthetic secrets. Saved-item deletion and export not built |
 
+| C | Provider gateway: disclosure gate, spend cap per attempt, timeout, bounded retries, circuit breaker | Implemented (unit, mocks) | 12 tests with a scripted mock provider. No real provider and no broker yet (BLOCKER-006) |
+| C | Dependency audit gate | Blocked (BLOCKER-010) | Scheduled workflow reports 2 high advisories with no published fix. Not yet a blocking gate, pending owner waiver decision |
 | D to G | Voice, vision, translation, memory | NOT STARTED | Stage D to G |
 | H | Feature switch framework | NOT STARTED | Stage H |
 | I | P-1 measurement harness and procedures | NOT STARTED | Stage I; owner runs (BLOCKER-005) |
