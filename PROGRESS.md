@@ -4,7 +4,7 @@
 
 Completed and verified on main: monorepo, strict typing, lint, format, knip, Jest gates, secret scan, protocol schema v1 with drift check, GlassesLink, capture indicator rule, virtual glasses simulator, Expo app skeleton (development-build config, not built), spend cap decision logic, and the matrices. Last CI run on main: 39334527081 (success).
 
-Stopped here, not blocked: the remaining Stage B (session and gesture state machines, Locked-feature absence tests), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001, 002, 004, 006, 007, 009. Due: BLOCKER-003 after 2026-10-20 14:40 UTC.
+Stage B (gesture precedence, listening sessions, Locked-feature absence) is integrated in 927ab18. Stopped here, not blocked: the rest of Stage B (retention and log hygiene), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001, 002, 004, 006, 007, 009. Due: BLOCKER-003 after 2026-10-20 14:40 UTC.
 
 Owner approval: OWNER-APPROVAL-001 in `blocker.txt` (RESOLVED, 2026-10-20, on main). The smart glasses goal is ACTIVE. Direct commits to `main` are allowed under the four conditions in that entry.
 
@@ -24,26 +24,28 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 
 ## Stage status
 
-| Stage  | Item                                                                 | Status                | Evidence level                                                             |
-| ------ | -------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------- |
-| A      | Monorepo skeleton (pnpm 12.5.1, strict TypeScript)                   | Integrated            | Static checks, CI                                                          |
-| A      | Lint (ESLint strict), Prettier, knip                                 | Integrated            | Static checks, CI                                                          |
-| A      | Jest with coverage thresholds (80 lines, 70 branches)                | Integrated            | Root: 96.9 percent lines, 94.3 percent branches                            |
-| A      | Protocol schema v1 (`packages/protocol`) with codec and bundled JSON | Integrated            | Unit tests (9 tests) and a drift check in CI                               |
-| A      | GlassesLink interface (`packages/core`)                              | Integrated            | Interface, used by the simulator and the app                               |
-| A      | Virtual glasses simulator (`tools/simulator`)                        | Integrated            | Simulator evidence (8 tests)                                               |
-| A      | Expo app skeleton (`apps/mobile`, SDK 58.0.14)                       | Integrated (no build) | Mobile unit and UI tests (4 tests); config check. No development build yet |
-| A      | Secret scan (gitleaks), CI                                           | Integrated            | CI runs above                                                              |
-| B      | Capture indicator rule (G6)                                          | Implemented           | Unit and simulator tests. Simulator evidence only                          |
-| B      | Session and gesture state machines (v9 5.0, 21)                      | NOT STARTED           | Stage B                                                                    |
-| B      | Locked-feature absence tests                                         | NOT STARTED           | Stage B                                                                    |
-| B      | Retention and log hygiene                                            | NOT STARTED           | Stage B                                                                    |
-| C      | Provider gateway, spend cap, disclosure gate                         | NOT STARTED           | Stage C; real provider calls are blocked (BLOCKER-006)                     |
-| D to G | Voice, vision, translation, memory                                   | NOT STARTED           | Stage D to G                                                               |
-| H      | Feature switch framework                                             | NOT STARTED           | Stage H                                                                    |
-| I      | P-1 measurement harness and procedures                               | NOT STARTED           | Stage I; owner runs (BLOCKER-005)                                          |
-| J      | Firmware host-testable abstractions                                  | NOT STARTED           | Stage J; no firmware code yet                                              |
-| K      | P-1 report template                                                  | NOT STARTED           | Stage K                                                                    |
+| Stage | Item                                                                 | Status                | Evidence level                                                                                              |
+| ----- | -------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| A     | Monorepo skeleton (pnpm 12.5.1, strict TypeScript)                   | Integrated            | Static checks, CI                                                                                           |
+| A     | Lint (ESLint strict), Prettier, knip                                 | Integrated            | Static checks, CI                                                                                           |
+| A     | Jest with coverage thresholds (80 lines, 70 branches)                | Integrated            | Root: 96.9 percent lines, 94.3 percent branches                                                             |
+| A     | Protocol schema v1 (`packages/protocol`) with codec and bundled JSON | Integrated            | Unit tests (9 tests) and a drift check in CI                                                                |
+| A     | GlassesLink interface (`packages/core`)                              | Integrated            | Interface, used by the simulator and the app                                                                |
+| A     | Virtual glasses simulator (`tools/simulator`)                        | Integrated            | Simulator evidence (8 tests)                                                                                |
+| A     | Expo app skeleton (`apps/mobile`, SDK 58.0.14)                       | Integrated (no build) | Mobile unit and UI tests (4 tests); config check. No development build yet                                  |
+| A     | Secret scan (gitleaks), CI                                           | Integrated            | CI runs above                                                                                               |
+| B     | Capture indicator rule (G6)                                          | Implemented           | Unit and simulator tests. Simulator evidence only                                                           |
+| B     | Gesture precedence and listening-session state machine (v9 5.0, 21)  | Implemented (logic)   | Unit tests over a 30-row precedence table; 100 percent coverage of the file. Not yet wired to the simulator |
+
+| B | Locked-feature absence tests | Implemented (static) | Searches all source for Locked feature names; protocol checked for out-of-scope session types |
+
+| B | Retention and log hygiene | NOT STARTED | Stage B |
+| C | Provider gateway, spend cap, disclosure gate | NOT STARTED | Stage C; real provider calls are blocked (BLOCKER-006) |
+| D to G | Voice, vision, translation, memory | NOT STARTED | Stage D to G |
+| H | Feature switch framework | NOT STARTED | Stage H |
+| I | P-1 measurement harness and procedures | NOT STARTED | Stage I; owner runs (BLOCKER-005) |
+| J | Firmware host-testable abstractions | NOT STARTED | Stage J; no firmware code yet |
+| K | P-1 report template | NOT STARTED | Stage K |
 
 ## Decisions recorded
 
@@ -75,4 +77,4 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 3. Check the GitHub Actions plan and minutes (BLOCKER-009) before emulator tests are added.
 4. Decide the provider, the monthly cap and the broker hosting (BLOCKER-006) before any real-provider measurement.
 
-The next agent steps, which need no owner action: the spend-cap logic and its mocked tests (Stage C), the session and gesture state machines (Stage B), and the dependency audit gate in CI.
+The next agent steps, which need no owner action: the spend-cap logic and its mocked tests (Stage C), retention and log hygiene (Stage B), and the dependency audit gate in CI.
