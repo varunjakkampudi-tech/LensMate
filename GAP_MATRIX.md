@@ -1,3 +1,7 @@
+| 33 | Gesture precedence, each state claims gestures in order | P-1 (software) | Implemented (unit) | 33-row precedence table over every state and gesture; 100 percent lines and branches for glasses-state.ts. Simulator wiring not yet done |
+| 17 | Privacy tests (no identification, no voice identification, no hidden capture) | P-1 (software) | Partial | Locked-feature absence test over all source (no matches) and protocol has no out-of-scope session types. Capture rules in logic only |
+| 2 | Capture only by the canonical capture rule; translation starts only from phone app or in-session voice | P-1 | Implemented (logic, unit) | Gesture precedence state machine: capture effects only from idle; translation and caption start only from the phone app or voice. No camera or microphone driver yet |
+
 # GAP_MATRIX
 
 Status vocabulary (Goal section 6): Specified, Unverified, Implemented, Tested, Measured, READY_FOR_OWNER, Hardware-pending, Blocked, Integrated, NOT_DUE.
