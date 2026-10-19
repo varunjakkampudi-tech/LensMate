@@ -1,11 +1,26 @@
 import { PROTOCOL_VERSION, ProtocolCodec, type EnvelopeMessage } from "@smartglass/protocol";
 import {
   CaptureIndicator,
+  IDLE_STATE,
+  onGesture,
+  startListeningSession,
+  stopListeningSession,
   type CaptureSessionType,
   type EnvelopeHandler,
+  type Gesture,
+  type GlassesEffect,
   type GlassesLink,
+  type GlassesState,
   type LinkStatus,
 } from "@smartglass/core";
+
+const GESTURE_BY_ACTION: Readonly<Record<string, Gesture>> = {
+  BUTTON_ACTION_SINGLE_TAP: "SINGLE_TAP",
+  BUTTON_ACTION_DOUBLE_TAP: "DOUBLE_TAP",
+  BUTTON_ACTION_HOLD: "HOLD",
+  BUTTON_ACTION_RELEASE: "RELEASE",
+  BUTTON_ACTION_PRESS: "PRESS",
+};
 
 const SESSION_TYPES: Readonly<Record<string, CaptureSessionType>> = {
   SESSION_TYPE_PUSH_TO_TALK: "PUSH_TO_TALK",
@@ -36,8 +51,15 @@ export class VirtualGlasses implements GlassesLink {
   private readonly appMessages: EnvelopeMessage[] = [];
   private lastReason = "INDICATOR_REASON_IDLE";
   private sequence = 0;
+  private gestureState: GlassesState = IDLE_STATE;
+  private readonly effects: GlassesEffect[] = [];
 
   constructor(private readonly codec: ProtocolCodec) {}
+
+  /** Effects the gesture state machine produced, in order (for example photo captures). */
+  get gestureEffects(): readonly GlassesEffect[] {
+    return this.effects;
+  }
 
   get status(): LinkStatus {
     return this.connection;
@@ -89,6 +111,29 @@ export class VirtualGlasses implements GlassesLink {
       sequence: this.nextSequence(),
       button: { action, pressMs },
     });
+    const gesture = GESTURE_BY_ACTION[action];
+    if (gesture === undefined) {
+      return;
+    }
+    const transition = onGesture(this.gestureState, gesture);
+    this.gestureState = transition.state;
+    this.applyEffect(transition.effect);
+  }
+
+  /** Effects that change what the glasses show or record. Capture effects are recorded only. */
+  private applyEffect(effect: GlassesEffect): void {
+    if (effect === "NONE") {
+      return;
+    }
+    this.effects.push(effect);
+    if (effect === "START_PUSH_TO_TALK") {
+      this.indicator.startSession("PUSH_TO_TALK");
+      this.lastReason = INDICATOR_REASONS.PUSH_TO_TALK;
+      this.emitIndicator();
+    } else if (effect === "SEND_QUESTION" || effect === "CANCEL_QUESTION") {
+      this.indicator.endSession("PUSH_TO_TALK");
+      this.emitIndicator();
+    }
   }
 
   private handleFromApp(message: EnvelopeMessage): void {
@@ -116,12 +161,23 @@ export class VirtualGlasses implements GlassesLink {
     }
     const phase = session.phase ?? "";
     if (SESSION_START_PHASES.has(phase)) {
+      if (type === "TRANSLATION" || type === "CAPTION") {
+        const started = startListeningSession(this.gestureState, type);
+        if (!started.accepted) {
+          this.emitAck(message.sequence, "ERROR_CODE_CAPTURE_ACTIVE");
+          return;
+        }
+        this.gestureState = started.state;
+      }
       this.indicator.startSession(type);
       this.lastReason = INDICATOR_REASONS[type];
       this.emitIndicator();
       return;
     }
     if (SESSION_END_PHASES.has(phase)) {
+      if (type === "TRANSLATION" || type === "CAPTION") {
+        this.gestureState = stopListeningSession(this.gestureState);
+      }
       this.indicator.endSession(type);
       this.emitIndicator();
       return;

@@ -30,18 +30,18 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 
 ## Stage status
 
-| Stage | Item                                                                 | Status                | Evidence level                                                                                              |
-| ----- | -------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| A     | Monorepo skeleton (pnpm 12.5.1, strict TypeScript)                   | Integrated            | Static checks, CI                                                                                           |
-| A     | Lint (ESLint strict), Prettier, knip                                 | Integrated            | Static checks, CI                                                                                           |
-| A     | Jest with coverage thresholds (80 lines, 70 branches)                | Integrated            | Root: 96.9 percent lines, 94.3 percent branches                                                             |
-| A     | Protocol schema v1 (`packages/protocol`) with codec and bundled JSON | Integrated            | Unit tests (9 tests) and a drift check in CI                                                                |
-| A     | GlassesLink interface (`packages/core`)                              | Integrated            | Interface, used by the simulator and the app                                                                |
-| A     | Virtual glasses simulator (`tools/simulator`)                        | Integrated            | Simulator evidence (8 tests)                                                                                |
-| A     | Expo app skeleton (`apps/mobile`, SDK 58.0.14)                       | Integrated (no build) | Mobile unit and UI tests (4 tests); config check. No development build yet                                  |
-| A     | Secret scan (gitleaks), CI                                           | Integrated            | CI runs above                                                                                               |
-| B     | Capture indicator rule (G6)                                          | Implemented           | Unit and simulator tests. Simulator evidence only                                                           |
-| B     | Gesture precedence and listening-session state machine (v9 5.0, 21)  | Implemented (logic)   | Unit tests over a 30-row precedence table; 100 percent coverage of the file. Not yet wired to the simulator |
+| Stage | Item                                                                 | Status                | Evidence level                                                                                                                                      |
+| ----- | -------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A     | Monorepo skeleton (pnpm 12.5.1, strict TypeScript)                   | Integrated            | Static checks, CI                                                                                                                                   |
+| A     | Lint (ESLint strict), Prettier, knip                                 | Integrated            | Static checks, CI                                                                                                                                   |
+| A     | Jest with coverage thresholds (80 lines, 70 branches)                | Integrated            | Root: 96.9 percent lines, 94.3 percent branches                                                                                                     |
+| A     | Protocol schema v1 (`packages/protocol`) with codec and bundled JSON | Integrated            | Unit tests (9 tests) and a drift check in CI                                                                                                        |
+| A     | GlassesLink interface (`packages/core`)                              | Integrated            | Interface, used by the simulator and the app                                                                                                        |
+| A     | Virtual glasses simulator (`tools/simulator`)                        | Integrated            | Simulator evidence (8 tests)                                                                                                                        |
+| A     | Expo app skeleton (`apps/mobile`, SDK 58.0.14)                       | Integrated (no build) | Mobile unit and UI tests (4 tests); config check. No development build yet                                                                          |
+| A     | Secret scan (gitleaks), CI                                           | Integrated            | CI runs above                                                                                                                                       |
+| B     | Capture indicator rule (G6)                                          | Implemented           | Unit and simulator tests. Simulator evidence only                                                                                                   |
+| B     | Gesture precedence and listening-session state machine (v9 5.0, 21)  | Implemented (logic)   | Unit tests over a 30-row precedence table; 100 percent coverage of the file. Wired into the virtual glasses (7 gesture and listening-session tests) |
 
 | B | Locked-feature absence tests | Implemented (static) | Searches all source for Locked feature names; protocol checked for out-of-scope session types |
 

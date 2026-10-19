@@ -41,13 +41,12 @@ describe("VirtualGlasses", () => {
     const { glasses, fromGlasses } = setup();
     await glasses.connect();
     glasses.pressButton("BUTTON_ACTION_HOLD", 900);
-    expect(fromGlasses).toEqual([
-      {
-        protocolVersion: PROTOCOL_VERSION,
-        sequence: 1,
-        button: { action: "BUTTON_ACTION_HOLD", pressMs: 900 },
-      },
-    ]);
+    // The first envelope is the button event. A hold then turns the indicator on (gesture state machine).
+    expect(fromGlasses[0]).toEqual({
+      protocolVersion: PROTOCOL_VERSION,
+      sequence: 1,
+      button: { action: "BUTTON_ACTION_HOLD", pressMs: 900 },
+    });
   });
 
   it("turns the indicator on for a capture session and off after it ends", async () => {
