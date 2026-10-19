@@ -7,7 +7,13 @@
             "Envelope": {
               "oneofs": {
                 "body": {
-                  "oneof": ["hello", "button", "indicator", "session", "ack"]
+                  "oneof": [
+                    "hello",
+                    "button",
+                    "indicator",
+                    "session",
+                    "ack"
+                  ]
                 }
               },
               "fields": {
