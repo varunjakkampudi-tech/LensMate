@@ -18,7 +18,8 @@
     "test": "jest --coverage && pnpm -F @smartglass/mobile test",
     "knip": "knip",
     "check:schema": "pnpm -F @smartglass/protocol check:schema",
-    "check:expo": "pnpm -F @smartglass/mobile exec expo config --type public"
+    "check:expo": "pnpm -F @smartglass/mobile exec expo config --type public",
+    "audit:high": "pnpm audit --audit-level=high"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

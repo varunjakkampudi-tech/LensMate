@@ -84,3 +84,14 @@ Nothing is ever committed that should not be public, because history stays publi
 - Status: READY_FOR_OWNER. Owner check of the Actions plan and minutes.
 - Why: Maestro flows on the Android emulator and the iOS Simulator (macOS runner) use many minutes. The current CI runs only lint, types, tests, the secret scan and the schema check (about a few minutes per push).
 - Exact owner action: confirm the GitHub Actions plan and the monthly minute allowance on the owner account. Tell the agent the limit so the nightly and emulator jobs can be scheduled within it.
+
+## BLOCKER-010 — Two high-severity advisories with no published fix (owner waiver decision)
+- Priority: high. Module: dependency tree (dev and build tooling only). Requirement: Standards 5 (high or critical blocks integration unless the owner waives in writing with a date); Global 22.
+- Status: READY_FOR_OWNER. The agent cannot grant a waiver.
+- Findings (pnpm audit, run on the Stage B/C tree):
+  1. node-forge 1.4.0 (vulnerable <=1.4.0): RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements. Path: @expo/cli, used by the Expo command-line tool. No patched version is published on the registry.
+  2. braces 3.0.3 (vulnerable <=3.0.3): stack exhaustion through deeply nested patterns. Path: micromatch, used by Jest and Metro tooling. No patched version is published on the registry.
+- Exposure analysis (agent, verified from the lockfile paths): both packages are used by build and test tooling. Neither is bundled into the app runtime or the broker. Not verified: whether an attacker can reach these code paths in the owner's build machine or CI runner.
+- Impact: the scheduled audit workflow (.github/workflows/audit.yml) reports them. The blocking CI job does not run the audit yet, so pushes are not blocked by them.
+- Owner options: (a) waive in writing with an expiry date and a re-check date, recorded in RISK_EXCEPTIONS.md, or (b) ask the agent to replace the Expo CLI and Jest toolchain paths (large change, may need a new SDK), or (c) accept the risk until patches exist and re-check at the audit schedule.
+- Exact owner action: choose (a), (b) or (c) and write the decision in this file with date and approver. Only then move the audit into the blocking quality job.

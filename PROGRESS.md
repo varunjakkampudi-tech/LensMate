@@ -1,5 +1,11 @@
 # PROGRESS
 
+## Checkpoint 3 (after the Stage B and C slice)
+
+Added: gesture precedence (Stage B), Locked-feature absence test (Stage B), log redaction allowlist and temporary retention (Stage B, partial), provider gateway with mocks and disclosure gate (Stage C, partial), and a scheduled dependency audit that is blocked on the owner waiver decision (BLOCKER-010). Local gates pass: typecheck, lint, format, knip, 102 root tests, 4 mobile tests.
+
+Still open: the Stage C broker (needs owner hosting and keys), Stages D to G (voice, vision, translation, memory), the Stage H switch framework, Stage I harness, Stage J firmware, Stage K report, Maestro flows, and saved-item deletion and export.
+
 ## Summary at this stop
 
 Completed and verified on main: monorepo, strict typing, lint, format, knip, Jest gates, secret scan, protocol schema v1 with drift check, GlassesLink, capture indicator rule, virtual glasses simulator, Expo app skeleton (development-build config, not built), spend cap decision logic, and the matrices. Last CI run on main: 39334527081 (success).
@@ -39,8 +45,8 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 
 | B | Locked-feature absence tests | Implemented (static) | Searches all source for Locked feature names; protocol checked for out-of-scope session types |
 
-| B | Retention and log hygiene | NOT STARTED | Stage B |
-| C | Provider gateway, spend cap, disclosure gate | NOT STARTED | Stage C; real provider calls are blocked (BLOCKER-006) |
+| B | Retention (24 hours or session end) and log redaction allowlist | Implemented (unit) | Temporary-item sweep and redaction tests with synthetic secrets. Saved-item deletion and export not built |
+
 | D to G | Voice, vision, translation, memory | NOT STARTED | Stage D to G |
 | H | Feature switch framework | NOT STARTED | Stage H |
 | I | P-1 measurement harness and procedures | NOT STARTED | Stage I; owner runs (BLOCKER-005) |

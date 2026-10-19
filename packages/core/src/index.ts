@@ -26,3 +26,18 @@ export type {
   GlassesTransition,
   ListeningSessionType,
 } from "./glasses-state.js";
+export { ProviderGateway, ProviderTimeout } from "./provider-gateway.js";
+export type {
+  GatewayErrorCode,
+  GatewayOptions,
+  GatewayResult,
+  ProviderRun,
+} from "./provider-gateway.js";
+export { ALLOWED_LOG_FIELDS, REDACTED, redactText, toSafeLogEntry } from "./log-redaction.js";
+export type { LogEntry, LogValue } from "./log-redaction.js";
+export {
+  TEMPORARY_RETENTION_MS,
+  isTemporaryItemExpired,
+  sweepTemporaryItems,
+} from "./retention.js";
+export type { TemporaryItem } from "./retention.js";
