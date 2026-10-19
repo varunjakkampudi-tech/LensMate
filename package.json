@@ -1,0 +1,17 @@
+{
+  "name": "smartglass",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI smart glasses software track (app, protocol, core, broker, simulator, firmware, e2e)",
+  "packageManager": "pnpm@12.5.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "build": "pnpm -r --if-present run build"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

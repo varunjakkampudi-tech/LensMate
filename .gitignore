@@ -1,0 +1,48 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Secrets and local environment (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+local.properties
+google-services.json
+GoogleService-Info.plist
+
+# Recordings, photos and sample sets (test samples stay outside the repository)
+samples/
+recordings/
+*.wav
+*.m4a
+*.mp4
+*.mov
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+
+# AI-tool and agent material (keep out of the repository and artifacts)
+.claude/
+.codex/
+.cursor/
+.windsurf/
+.gemini/
+.aider*
+scratch/
+scratchpad/
+*.transcript.md
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
