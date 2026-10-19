@@ -23,3 +23,64 @@ Nothing is ever committed that should not be public, because history stays publi
 - no personal details (address, phone, location data)
 - no proprietary hardware design files (custom PCB, enclosure); generic firmware and app code are fine
 - no repository names or links in documents or commit messages
+
+## BLOCKER-001 — Apple Developer Program membership (iPhone builds and TestFlight)
+- Priority: high. Module: apps/mobile (iOS). Requirement: G46; Engineering Standards 1 and 6; Goal 14.2.
+- Status: READY_FOR_OWNER. Owner action only (paid account, legal terms).
+- Problem: iPhone 15 testing needs a development or TestFlight build. Without the membership no iOS build can be installed on the owner's phone.
+- Verified cause: not an agent failure. The membership is an owner purchase and an owner acceptance of Apple terms.
+- Current state: no iOS build exists. The app config is ready (bundle identifier com.viswatra.smartglass, set in apps/mobile/app.config.ts).
+- Impact: real-phone measurements (Goal 14.2) and iOS-specific checks cannot start.
+- Exact owner action: enrol at the Apple Developer Program (about USD 99 a year). Record the enrolment date in this file.
+- Expected result: an Apple team identifier exists. Store the value in the EAS credentials only; never in the repository.
+- Environment variable names only: EXPO_APPLE_TEAM_ID (not committed).
+
+## BLOCKER-002 — Expo account and EAS Build project
+- Priority: high. Module: apps/mobile (build). Requirement: G46; Standards 1 and 6.
+- Status: READY_FOR_OWNER. Owner action only (account creation).
+- Problem: EAS builds for iOS and Android need an Expo account and an EAS project. The agent cannot create accounts.
+- Exact owner action: 1) create a free Expo account. 2) Run `npx eas-cli login` on the owner machine. 3) Run `npx eas-cli init` inside apps/mobile and commit only the project ID it writes to app.config.ts, if the owner chooses to store it there (it is not a secret).
+- Do not store: EXPO_TOKEN or any access token in the repository or in CI logs. If CI needs a token later, the owner adds it as a GitHub secret named EXPO_TOKEN.
+- Expected result: `npx eas-cli build --platform ios --profile development` queues a build under the owner's account. The agent does not run it.
+
+## BLOCKER-003 — Expo SDK alignment after the release-age cooldown (agent task, dated)
+- Priority: medium. Module: apps/mobile. Requirement: Standards 1 and 6; ADR-0001.
+- Status: OPEN (agent task, not owner). Due: after 2026-10-20 14:40 UTC.
+- Problem: expo@58.0.14 is pinned because the newer SDK 58 patches are inside the 24-hour cooldown. `npx expo install --check` reports expected versions newer than the pins.
+- Verified cause: release age policy in pnpm workspace. Not a code defect.
+- Work the agent does: re-run `npx expo install --check` after the due time, move the pins, run the full suite, record the result in PROGRESS.md. The agent does not add cooldown exemptions.
+- Owner action: none.
+
+## BLOCKER-004 — GitHub settings for the default branch (owner-only)
+- Priority: medium. Module: repository settings. Requirement: Standards 6; Global 2.4 and 29.2.
+- Status: READY_FOR_OWNER. Owner action only (repository settings are never changed by an agent).
+- Recommended settings (owner chooses): 1) require the status checks `quality` and `secret-scan` before merging to main. 2) Enable secret scanning and push protection. 3) Enable Dependabot security updates. 4) Keep force pushes disabled on main.
+- Note: the owner exception in the approval record allows direct pushes to main under its four conditions. Required checks would still apply to any pull request later.
+
+## BLOCKER-005 — Owner-run iPhone 15 measurement procedures (agent builds, owner runs)
+- Priority: high. Module: docs/measurements. Requirement: Goal 14.2 and 21; checklist 7, 8, 9, 10.
+- Status: OPEN (agent task). Procedures are not yet written; owner runs will follow once BLOCKER-001 and BLOCKER-002 are done.
+- Agent work: write the procedures and the import template, with provenance fields, before any real-phone run. Nothing is measured yet.
+
+## BLOCKER-006 — Provider broker hosting, provider keys and spend cap (owner-only)
+- Priority: high for P-1 real-provider measurements; no effect on current simulator work. Module: services/broker. Requirement: Goal 10A.3, Standards 4 and 5; checklist 19, 20.
+- Status: READY_FOR_OWNER. Owner decisions: provider choice (G22), monthly spend cap (G10, proposed start INR 500), hosting infrastructure (not AWS, CR-02) and domain.
+- Environment variable names (never values): BROKER_DATABASE_URL, BROKER_SPEND_CAP_MONTHLY, PROVIDER_SPEECH_KEY, PROVIDER_TRANSLATE_KEY, PROVIDER_AI_KEY. Keys go only into the broker's server environment.
+- Exact owner action: 1) choose the providers and confirm their no-training terms (G21). 2) Set the cap. 3) Choose hosting. 4) Provide keys to the hosting environment only, never to the repository, CI logs or the app.
+
+## BLOCKER-007 — Open v9 decisions and proposed items (owner-only)
+- Priority: high. Requirement: v9 section 17 questions; decisions G1 to G45 are PROPOSED.
+- Status: READY_FOR_OWNER. Owner decisions only. The agent records a recommendation and does not treat any PROPOSED item as approved.
+- Work the agent continues on: only items that do not depend on a PROPOSED decision.
+
+## BLOCKER-008 — Independent review for sensitive changes (owner exception condition 3)
+- Priority: medium. Requirement: approval record, owner exception 3; Goal 16.
+- Status: OPEN. Required before pushing changes to the provider broker, authentication, pairing, permissions or firmware update code.
+- Current state: no such code has been written yet, so no review is due.
+- Work the agent does: start a fresh review session that sees only the requirements, the diff, the surrounding code and the test results. The author session cannot count as the review.
+
+## BLOCKER-009 — GitHub Actions capacity for emulator and macOS jobs (owner check)
+- Priority: medium. Requirement: Goal 16B.7 and 16B.9.
+- Status: READY_FOR_OWNER. Owner check of the Actions plan and minutes.
+- Why: Maestro flows on the Android emulator and the iOS Simulator (macOS runner) use many minutes. The current CI runs only lint, types, tests, the secret scan and the schema check (about a few minutes per push).
+- Exact owner action: confirm the GitHub Actions plan and the monthly minute allowance on the owner account. Tell the agent the limit so the nightly and emulator jobs can be scheduled within it.
