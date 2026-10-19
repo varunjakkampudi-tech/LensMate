@@ -1,0 +1,25 @@
+# blocker.txt
+
+## OWNER-APPROVAL-001 — Owner approvals — AI Smart Glasses (status: RESOLVED, owner-written; agents must not edit or remove this entry)
+
+## 2026-10-20 — Approval of v9 and repository workflow
+- Approver: Varun (owner, Viswatra)
+- Stack decision G46 approved: Expo cross-platform app (iOS and Android) with native modules, per the 2026-10-20 amendment.
+- Approved as the baseline for P-1 software development (not every later phase; G1–G45 keep their marked status, hardware purchase stays conditional on the P-1 go decision): SmartGlass-v9.md, SmartGlass-Engineering-Standards.md, SmartGlass-Goal.md, Viswatra-Global-Engineering-Quality-Standard-v1.1.md (including CR-01 and CR-02), Viswatra-Global-Engineering-Completion-Program-v1.1.md
+- Schedule change: phase P-1 starts 20 October 2026 instead of 1 November 2026.
+- Effect: the smart glasses autonomous goal is ACTIVE from this commit.
+
+### Owner exception — direct work on main
+This is a new repository with nothing deployed. The agent may commit and push directly to main, provided that:
+1. Each commit is small, single-purpose and passes the full definition of done before it is pushed; CI is checked after each push.
+2. A failing commit is fixed immediately or reverted with git revert. Never force-push or rewrite history.
+3. Independent review in a fresh session before pushing changes to the provider broker, authentication, pairing, permissions or firmware update code.
+4. The agent never flashes physical hardware, buys anything, uses real provider keys or makes paid API calls without the approved spend cap, and never changes GitHub settings.
+
+### Public repository rules (until the owner makes it private)
+Nothing is ever committed that should not be public, because history stays public even after the repository becomes private:
+- no API keys, .env files, certificates or tokens
+- no recordings, photos or video of the owner, the owner's home or any other person; test samples stay outside the repository
+- no personal details (address, phone, location data)
+- no proprietary hardware design files (custom PCB, enclosure); generic firmware and app code are fine
+- no repository names or links in documents or commit messages
