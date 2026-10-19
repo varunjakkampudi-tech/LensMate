@@ -1,19 +1,26 @@
 # PROGRESS
 
+## Summary at this stop
+
+Completed and verified on main: monorepo, strict typing, lint, format, knip, Jest gates, secret scan, protocol schema v1 with drift check, GlassesLink, capture indicator rule, virtual glasses simulator, Expo app skeleton (development-build config, not built), spend cap decision logic, and the matrices. Last CI run on main: 39334527081 (success).
+
+Stopped here, not blocked: the remaining Stage B (session and gesture state machines, Locked-feature absence tests), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001, 002, 004, 006, 007, 009. Due: BLOCKER-003 after 2026-10-20 14:40 UTC.
+
 Owner approval: OWNER-APPROVAL-001 in `blocker.txt` (RESOLVED, 2026-10-20, on main). The smart glasses goal is ACTIVE. Direct commits to `main` are allowed under the four conditions in that entry.
 
 Status is reported per item with its evidence level. Nothing is marked complete without evidence. No real-phone, hardware, or provider result exists yet.
 
 ## Current checkpoint (commits since approval: 6)
 
-| Commit (on main) | Scope                                                                                                                     | CI run                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| 649854c          | Monorepo skeleton, strict TypeScript base, `.gitignore`, typecheck and secret-scan CI                                     | 39326661524 (typecheck and secret-scan: success)           |
-| 1de1967          | Lint, format, knip and Jest gates; protocol schema v1 and codec; ADR 0001 (Expo SDK)                                      | 39328464427 (success)                                      |
-| a7dc5b6          | GlassesLink interface; capture indicator rule; virtual glasses simulator                                                  | 39330526836 (success)                                      |
-| e42f28d          | Expo app skeleton on the virtual glasses link; bundled protocol schema                                                    | 39332927646 (failure: schema drift check; cause in QA-002) |
-| fdb0b8a          | Fix the schema drift check by excluding the generated file from Prettier                                                  | 39333315890 (success)                                      |
-| (this commit)    | Gap, test and quality matrices; blocker register entries for owner actions; ADR 0001 revised for the release-age cooldown | pending                                                    |
+| Commit (on main) | Scope                                                                                    | CI run                                                     |
+| ---------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 649854c          | Monorepo skeleton, strict TypeScript base, `.gitignore`, typecheck and secret-scan CI    | 39326661524 (typecheck and secret-scan: success)           |
+| 1de1967          | Lint, format, knip and Jest gates; protocol schema v1 and codec; ADR 0001 (Expo SDK)     | 39328464427 (success)                                      |
+| a7dc5b6          | GlassesLink interface; capture indicator rule; virtual glasses simulator                 | 39330526836 (success)                                      |
+| e42f28d          | Expo app skeleton on the virtual glasses link; bundled protocol schema                   | 39332927646 (failure: schema drift check; cause in QA-002) |
+| fdb0b8a          | Fix the schema drift check by excluding the generated file from Prettier                 | 39333315890 (success)                                      |
+| 765f968          | Gap, test and quality matrices; owner blocker entries; ADR 0001 revised for the cooldown | 39333936882 (success)                                      |
+| 900c289          | Monthly spend cap decision logic with unit tests (G10)                                   | 39334527081 (success)                                      |
 
 ## Stage status
 
