@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "gen:schema": "pbjs -t json -o src/schema.json proto/smartglass/v1/link.proto",
+    "check:schema": "pnpm run gen:schema && git diff --exit-code -- src/schema.json"
   },
   "dependencies": {
     "protobufjs": "8.8.1"

@@ -6,6 +6,9 @@
     },
     "packages/core": {
       "project": ["src/**/*.ts"]
+    },
+    "apps/mobile": {
+      "entry": ["app/**/*.tsx"]
     }
   }
 }

@@ -15,8 +15,10 @@
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "test": "jest --coverage",
-    "knip": "knip"
+    "test": "jest --coverage && pnpm -F @smartglass/mobile test",
+    "knip": "knip",
+    "check:schema": "pnpm -F @smartglass/protocol check:schema",
+    "check:expo": "pnpm -F @smartglass/mobile exec expo config --type public"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -26,6 +28,7 @@
     "jest": "30.5.2",
     "knip": "6.42.0",
     "prettier": "3.9.10",
+    "protobufjs-cli": "2.7.1",
     "ts-jest": "^29.4.15",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.71.2"

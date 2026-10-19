@@ -4,7 +4,16 @@
     "noEmit": true,
     "module": "commonjs",
     "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "jsx": "react-native",
     "types": ["jest", "node"]
   },
-  "include": ["packages/*/src/**/*.ts", "tools/*/src/**/*.ts"]
+  "include": [
+    "packages/*/src/**/*.ts",
+    "tools/*/src/**/*.ts",
+    "apps/mobile/app/**/*.tsx",
+    "apps/mobile/src/**/*.ts",
+    "apps/mobile/src/**/*.tsx",
+    "apps/mobile/app.config.ts"
+  ]
 }

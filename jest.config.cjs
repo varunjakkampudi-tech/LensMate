@@ -12,6 +12,7 @@ module.exports = {
           module: "commonjs",
           moduleResolution: "node",
           esModuleInterop: true,
+          resolveJsonModule: true,
           verbatimModuleSyntax: false,
           strict: true,
           noUnusedLocals: true,

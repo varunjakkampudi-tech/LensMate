@@ -1,0 +1,169 @@
+{
+  "nested": {
+    "smartglass": {
+      "nested": {
+        "v1": {
+          "nested": {
+            "Envelope": {
+              "oneofs": {
+                "body": {
+                  "oneof": ["hello", "button", "indicator", "session", "ack"]
+                }
+              },
+              "fields": {
+                "protocolVersion": {
+                  "type": "uint32",
+                  "id": 1,
+                  "protoName": "protocol_version"
+                },
+                "sequence": {
+                  "type": "uint64",
+                  "id": 2
+                },
+                "hello": {
+                  "type": "Hello",
+                  "id": 10
+                },
+                "button": {
+                  "type": "ButtonEvent",
+                  "id": 11
+                },
+                "indicator": {
+                  "type": "IndicatorState",
+                  "id": 12
+                },
+                "session": {
+                  "type": "SessionState",
+                  "id": 13
+                },
+                "ack": {
+                  "type": "Ack",
+                  "id": 14
+                }
+              }
+            },
+            "Hello": {
+              "fields": {
+                "role": {
+                  "type": "DeviceRole",
+                  "id": 1
+                },
+                "appBuild": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "app_build"
+                }
+              }
+            },
+            "DeviceRole": {
+              "values": {
+                "DEVICE_ROLE_UNSPECIFIED": 0,
+                "DEVICE_ROLE_APP": 1,
+                "DEVICE_ROLE_SIMULATOR": 2,
+                "DEVICE_ROLE_GLASSES": 3
+              }
+            },
+            "ButtonEvent": {
+              "fields": {
+                "action": {
+                  "type": "ButtonAction",
+                  "id": 1
+                },
+                "pressMs": {
+                  "type": "uint32",
+                  "id": 2,
+                  "protoName": "press_ms"
+                }
+              }
+            },
+            "ButtonAction": {
+              "values": {
+                "BUTTON_ACTION_UNSPECIFIED": 0,
+                "BUTTON_ACTION_PRESS": 1,
+                "BUTTON_ACTION_RELEASE": 2,
+                "BUTTON_ACTION_HOLD": 3,
+                "BUTTON_ACTION_SINGLE_TAP": 4,
+                "BUTTON_ACTION_DOUBLE_TAP": 5
+              }
+            },
+            "IndicatorState": {
+              "fields": {
+                "on": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "reason": {
+                  "type": "IndicatorReason",
+                  "id": 2
+                }
+              }
+            },
+            "IndicatorReason": {
+              "values": {
+                "INDICATOR_REASON_UNSPECIFIED": 0,
+                "INDICATOR_REASON_IDLE": 1,
+                "INDICATOR_REASON_PUSH_TO_TALK": 2,
+                "INDICATOR_REASON_PHOTO_QUESTION": 3,
+                "INDICATOR_REASON_TRANSLATION": 4,
+                "INDICATOR_REASON_CAPTION": 5
+              }
+            },
+            "SessionState": {
+              "fields": {
+                "type": {
+                  "type": "SessionType",
+                  "id": 1
+                },
+                "phase": {
+                  "type": "SessionPhase",
+                  "id": 2
+                }
+              }
+            },
+            "SessionType": {
+              "values": {
+                "SESSION_TYPE_UNSPECIFIED": 0,
+                "SESSION_TYPE_PUSH_TO_TALK": 1,
+                "SESSION_TYPE_PHOTO_QUESTION": 2,
+                "SESSION_TYPE_TRANSLATION": 3,
+                "SESSION_TYPE_CAPTION": 4
+              }
+            },
+            "SessionPhase": {
+              "values": {
+                "SESSION_PHASE_UNSPECIFIED": 0,
+                "SESSION_PHASE_STARTING": 1,
+                "SESSION_PHASE_ACTIVE": 2,
+                "SESSION_PHASE_ENDING": 3,
+                "SESSION_PHASE_ENDED": 4
+              }
+            },
+            "Ack": {
+              "fields": {
+                "ackedSequence": {
+                  "type": "uint64",
+                  "id": 1,
+                  "protoName": "acked_sequence"
+                },
+                "error": {
+                  "type": "ErrorCode",
+                  "id": 2
+                }
+              }
+            },
+            "ErrorCode": {
+              "values": {
+                "ERROR_CODE_NONE": 0,
+                "ERROR_CODE_UNSUPPORTED_VERSION": 1,
+                "ERROR_CODE_MALFORMED": 2,
+                "ERROR_CODE_NOT_AUTHENTICATED": 3,
+                "ERROR_CODE_REPLAYED": 4,
+                "ERROR_CODE_CAPTURE_ACTIVE": 5
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
