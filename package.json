@@ -9,7 +9,9 @@
   },
   "scripts": {
     "typecheck": "pnpm -r --if-present run typecheck",
+    "pretypecheck": "pnpm build",
     "build": "pnpm -r --if-present run build",
+    "pretest": "pnpm build",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "format": "prettier --write .",

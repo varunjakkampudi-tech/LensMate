@@ -21,11 +21,12 @@ export class ProtocolError extends Error {
 export interface EnvelopeMessage {
   protocolVersion: number;
   sequence: number;
-  hello?: { role: string; appBuild: string };
-  button?: { action: string; pressMs: number };
-  indicator?: { on: boolean; reason: string };
-  session?: { type: string; phase: string };
-  ack?: { ackedSequence: number; error: string };
+  // proto3 omits default values on the wire, so decoded fields may be absent.
+  hello?: { role?: string; appBuild?: string };
+  button?: { action?: string; pressMs?: number };
+  indicator?: { on?: boolean; reason?: string };
+  session?: { type?: string; phase?: string };
+  ack?: { ackedSequence?: number; error?: string };
 }
 
 /** Loads the schema from a .proto file. Callers pass the path, so the package has no path assumptions. */

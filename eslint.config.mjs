@@ -16,7 +16,7 @@ export default tseslint.config(
   {
     files: ["**/*.ts"],
     languageOptions: {
-      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+      parserOptions: { project: "./tsconfig.eslint.json", tsconfigRootDir: import.meta.dirname },
     },
     rules: {
       "@typescript-eslint/no-explicit-any": "error",

@@ -197,13 +197,26 @@ importers:
         specifier: ^8.71.2
         version: 8.71.2(eslint@10.13.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@5.9.3)
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      '@smartglass/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/protocol:
     dependencies:
       protobufjs:
         specifier: 8.8.1
         version: 8.8.1
+
+  tools/simulator:
+    dependencies:
+      '@smartglass/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@smartglass/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
 
 packages:
 

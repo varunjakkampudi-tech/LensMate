@@ -2,7 +2,6 @@
   "name": "@smartglass/core",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -11,5 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@smartglass/protocol": "workspace:*"
   }
 }
