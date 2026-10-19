@@ -3,3 +3,6 @@ packages:
   - "packages/*"
   - "services/*"
   - "tools/*"
+allowBuilds:
+  "@parcel/watcher": false
+  unrs-resolver: false

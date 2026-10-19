@@ -1,0 +1,96 @@
+// Device link protocol, version 1.
+// One schema shared by the app, the simulator, the broker (TypeScript) and firmware (C, nanopb).
+// Field numbers are never reused. Breaking changes need a new package version (for example v2).
+syntax = "proto3";
+
+package smartglass.v1;
+
+// Every message on the link is wrapped in an Envelope that carries the protocol version.
+message Envelope {
+  uint32 protocol_version = 1;
+  uint64 sequence = 2;
+  oneof body {
+    Hello hello = 10;
+    ButtonEvent button = 11;
+    IndicatorState indicator = 12;
+    SessionState session = 13;
+    Ack ack = 14;
+  }
+}
+
+message Hello {
+  DeviceRole role = 1;
+  string app_build = 2;
+}
+
+enum DeviceRole {
+  DEVICE_ROLE_UNSPECIFIED = 0;
+  DEVICE_ROLE_APP = 1;
+  DEVICE_ROLE_SIMULATOR = 2;
+  DEVICE_ROLE_GLASSES = 3;
+}
+
+message ButtonEvent {
+  ButtonAction action = 1;
+  uint32 press_ms = 2;
+}
+
+enum ButtonAction {
+  BUTTON_ACTION_UNSPECIFIED = 0;
+  BUTTON_ACTION_PRESS = 1;
+  BUTTON_ACTION_RELEASE = 2;
+  BUTTON_ACTION_HOLD = 3;
+  BUTTON_ACTION_SINGLE_TAP = 4;
+  BUTTON_ACTION_DOUBLE_TAP = 5;
+}
+
+// The recording indicator. It is on for every session that uses the camera or microphone (v9 section 21).
+message IndicatorState {
+  bool on = 1;
+  IndicatorReason reason = 2;
+}
+
+enum IndicatorReason {
+  INDICATOR_REASON_UNSPECIFIED = 0;
+  INDICATOR_REASON_IDLE = 1;
+  INDICATOR_REASON_PUSH_TO_TALK = 2;
+  INDICATOR_REASON_PHOTO_QUESTION = 3;
+  INDICATOR_REASON_TRANSLATION = 4;
+  INDICATOR_REASON_CAPTION = 5;
+}
+
+// Session types from v9 section 21 that are in the P-1 scope.
+// Companion, walk, sound alert and helper call are not part of this version.
+message SessionState {
+  SessionType type = 1;
+  SessionPhase phase = 2;
+}
+
+enum SessionType {
+  SESSION_TYPE_UNSPECIFIED = 0;
+  SESSION_TYPE_PUSH_TO_TALK = 1;
+  SESSION_TYPE_PHOTO_QUESTION = 2;
+  SESSION_TYPE_TRANSLATION = 3;
+  SESSION_TYPE_CAPTION = 4;
+}
+
+enum SessionPhase {
+  SESSION_PHASE_UNSPECIFIED = 0;
+  SESSION_PHASE_STARTING = 1;
+  SESSION_PHASE_ACTIVE = 2;
+  SESSION_PHASE_ENDING = 3;
+  SESSION_PHASE_ENDED = 4;
+}
+
+message Ack {
+  uint64 acked_sequence = 1;
+  ErrorCode error = 2;
+}
+
+enum ErrorCode {
+  ERROR_CODE_NONE = 0;
+  ERROR_CODE_UNSUPPORTED_VERSION = 1;
+  ERROR_CODE_MALFORMED = 2;
+  ERROR_CODE_NOT_AUTHENTICATED = 3;
+  ERROR_CODE_REPLAYED = 4;
+}

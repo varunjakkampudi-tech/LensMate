@@ -4,16 +4,16 @@ Monorepo for the smart glasses software: Expo companion app, protocol schema, co
 
 ## Layout
 
-| Path | Purpose |
-|---|---|
-| `apps/mobile` | Expo app (iOS and Android) |
-| `packages/core` | Pure TypeScript domain logic |
-| `packages/protocol` | Versioned Protocol Buffers schema (planned) |
-| `services/broker` | Server-side provider broker (planned) |
-| `tools/simulator` | Virtual glasses (planned) |
-| `firmware` | ESP-IDF firmware (planned, host-testable parts only) |
-| `e2e` | Maestro flows (planned) |
-| `docs` | Architecture, decisions, runbooks |
+| Path                | Purpose                                              |
+| ------------------- | ---------------------------------------------------- |
+| `apps/mobile`       | Expo app (iOS and Android)                           |
+| `packages/core`     | Pure TypeScript domain logic                         |
+| `packages/protocol` | Versioned Protocol Buffers schema (planned)          |
+| `services/broker`   | Server-side provider broker (planned)                |
+| `tools/simulator`   | Virtual glasses (planned)                            |
+| `firmware`          | ESP-IDF firmware (planned, host-testable parts only) |
+| `e2e`               | Maestro flows (planned)                              |
+| `docs`              | Architecture, decisions, runbooks                    |
 
 ## Commands
 

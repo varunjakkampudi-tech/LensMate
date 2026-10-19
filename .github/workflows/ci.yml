@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typecheck:
+  quality:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -28,7 +28,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm knip
       - run: pnpm build
+      - run: pnpm test
 
   secret-scan:
     runs-on: ubuntu-24.04
