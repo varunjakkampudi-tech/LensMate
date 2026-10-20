@@ -67,7 +67,7 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 
 - GitHub Actions are pinned to commit SHAs resolved from the release tags on the day of the change.
 - `pnpm` is pinned to 12.5.1 in `package.json`, matching the lockfile.
-- Mobile tests run with `pnpm -F @smartglass/mobile test`, and root `pnpm test` includes them. Mobile coverage is not measured in the root gate yet.
+- Mobile tests run with `pnpm -F @lensmate/mobile test`, and root `pnpm test` includes them. Mobile coverage is not measured in the root gate yet.
 - The Expo SDK alignment is still open. See BLOCKER-003 (agent task due after 2026-10-20 14:40 UTC).
 - Not yet in CI: Maestro end-to-end flows, a dependency audit step, and an accessibility check on screens (QA-004 and the Stage A test list in `TEST_MATRIX.md`).
 

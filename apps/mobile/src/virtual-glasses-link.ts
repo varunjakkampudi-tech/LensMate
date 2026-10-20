@@ -1,5 +1,5 @@
-import { ProtocolCodec, loadBundledProtocolRoot } from "@smartglass/protocol";
-import { VirtualGlasses } from "@smartglass/simulator";
+import { ProtocolCodec, loadBundledProtocolRoot } from "@lensmate/protocol";
+import { VirtualGlasses } from "@lensmate/simulator";
 
 /** The Stage A link: virtual glasses through the same GlassesLink interface the real link will use. */
 export function createVirtualGlasses(): VirtualGlasses {

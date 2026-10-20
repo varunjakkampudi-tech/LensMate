@@ -2,7 +2,7 @@ import path from "node:path";
 import { PROTOCOL_VERSION, ProtocolCodec, ProtocolError, loadProtocolRoot } from "./codec.js";
 import type { EnvelopeMessage } from "./codec.js";
 
-const schemaPath = path.resolve(__dirname, "../proto/smartglass/v1/link.proto");
+const schemaPath = path.resolve(__dirname, "../proto/lensmate/v1/link.proto");
 
 function codec(): ProtocolCodec {
   return new ProtocolCodec(loadProtocolRoot(schemaPath));

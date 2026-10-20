@@ -29,7 +29,7 @@ Nothing is ever committed that should not be public, because history stays publi
 - Status: READY_FOR_OWNER. Owner action only (paid account, legal terms).
 - Problem: iPhone 15 testing needs a development or TestFlight build. Without the membership no iOS build can be installed on the owner's phone.
 - Verified cause: not an agent failure. The membership is an owner purchase and an owner acceptance of Apple terms.
-- Current state: no iOS build exists. The app config is ready (bundle identifier com.viswatra.smartglass, set in apps/mobile/app.config.ts).
+- Current state: no iOS build exists. The app config is ready (bundle identifier com.viswatra.lensmate, set in apps/mobile/app.config.ts).
 - Impact: real-phone measurements (Goal 14.2) and iOS-specific checks cannot start.
 - Exact owner action: enrol at the Apple Developer Program (about USD 99 a year). Record the enrolment date in this file.
 - Expected result: an Apple team identifier exists. Store the value in the EAS credentials only; never in the repository.

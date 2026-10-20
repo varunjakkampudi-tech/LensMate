@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, ProtocolCodec, type EnvelopeMessage } from "@smartglass/protocol";
+import { PROTOCOL_VERSION, ProtocolCodec, type EnvelopeMessage } from "@lensmate/protocol";
 import {
   CaptureIndicator,
   IDLE_STATE,
@@ -12,7 +12,7 @@ import {
   type GlassesLink,
   type GlassesState,
   type LinkStatus,
-} from "@smartglass/core";
+} from "@lensmate/core";
 
 const GESTURE_BY_ACTION: Readonly<Record<string, Gesture>> = {
   BUTTON_ACTION_SINGLE_TAP: "SINGLE_TAP",

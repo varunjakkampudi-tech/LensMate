@@ -3,7 +3,7 @@ import protobuf from "protobufjs";
 /** Protocol version carried in every Envelope. Peers reject any other version (Standards 9). */
 export const PROTOCOL_VERSION = 1;
 
-const ENVELOPE_TYPE = "smartglass.v1.Envelope";
+const ENVELOPE_TYPE = "lensmate.v1.Envelope";
 
 export type ProtocolErrorCode = "UNSUPPORTED_VERSION" | "MALFORMED";
 

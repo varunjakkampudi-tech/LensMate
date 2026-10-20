@@ -4,12 +4,12 @@ import {
   ProtocolCodec,
   loadProtocolRoot,
   type EnvelopeMessage,
-} from "@smartglass/protocol";
+} from "@lensmate/protocol";
 import { VirtualGlasses } from "./virtual-glasses.js";
 
 const schemaPath = path.resolve(
   __dirname,
-  "../../../packages/protocol/proto/smartglass/v1/link.proto",
+  "../../../packages/protocol/proto/lensmate/v1/link.proto",
 );
 
 function setup(): { glasses: VirtualGlasses; fromGlasses: EnvelopeMessage[] } {

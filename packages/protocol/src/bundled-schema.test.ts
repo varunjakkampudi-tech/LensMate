@@ -8,7 +8,7 @@ import {
 
 describe("bundled schema", () => {
   it("encodes exactly the same bytes as the .proto source", () => {
-    const schemaPath = path.resolve(__dirname, "../proto/smartglass/v1/link.proto");
+    const schemaPath = path.resolve(__dirname, "../proto/lensmate/v1/link.proto");
     const fromSource = new ProtocolCodec(loadProtocolRoot(schemaPath));
     const bundled = new ProtocolCodec(loadBundledProtocolRoot());
     const message = {

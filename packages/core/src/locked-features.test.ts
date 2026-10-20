@@ -58,7 +58,7 @@ describe("locked features are absent", () => {
   });
 
   it("the protocol has no session type for an out-of-scope session", () => {
-    const protoFile = path.join(REPO_ROOT, "packages/protocol/proto/smartglass/v1/link.proto");
+    const protoFile = path.join(REPO_ROOT, "packages/protocol/proto/lensmate/v1/link.proto");
     expect(OUT_OF_SCOPE_SESSION_PATTERN.test(readFileSync(protoFile, "utf8"))).toBe(false);
   });
 });

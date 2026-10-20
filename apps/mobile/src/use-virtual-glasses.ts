@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { LinkStatus } from "@smartglass/core";
+import type { LinkStatus } from "@lensmate/core";
 import { STRINGS } from "./strings";
 import { createVirtualGlasses } from "./virtual-glasses-link";
 

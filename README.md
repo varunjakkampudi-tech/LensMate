@@ -1,6 +1,6 @@
-# AI Smart Glasses — software track
+# LensMate — software track
 
-Monorepo for the smart glasses software: Expo companion app, protocol schema, core domain logic, provider broker, virtual glasses simulator, ESP-IDF firmware, end-to-end tests and documentation.
+Monorepo for the LensMate software: Expo companion app, protocol schema, core domain logic, provider broker, virtual glasses simulator, ESP-IDF firmware, end-to-end tests and documentation.
 
 ## Layout
 

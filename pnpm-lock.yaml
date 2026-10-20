@@ -202,13 +202,13 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@smartglass/core':
+      '@lensmate/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@smartglass/protocol':
+      '@lensmate/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@smartglass/simulator':
+      '@lensmate/simulator':
         specifier: workspace:*
         version: link:../../tools/simulator
       expo:
@@ -257,7 +257,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@smartglass/protocol':
+      '@lensmate/protocol':
         specifier: workspace:*
         version: link:../protocol
 
@@ -269,10 +269,10 @@ importers:
 
   tools/simulator:
     dependencies:
-      '@smartglass/core':
+      '@lensmate/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@smartglass/protocol':
+      '@lensmate/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
 

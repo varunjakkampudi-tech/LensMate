@@ -3,7 +3,7 @@
 // Field numbers are never reused. Breaking changes need a new package version (for example v2).
 syntax = "proto3";
 
-package smartglass.v1;
+package lensmate.v1;
 
 // Every message on the link is wrapped in an Envelope that carries the protocol version.
 message Envelope {

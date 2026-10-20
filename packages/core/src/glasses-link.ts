@@ -1,4 +1,4 @@
-import type { EnvelopeMessage } from "@smartglass/protocol";
+import type { EnvelopeMessage } from "@lensmate/protocol";
 
 /**
  * The only way the app talks to glasses (Goal 10A.1; decision G46).

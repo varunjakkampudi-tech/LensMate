@@ -1,5 +1,5 @@
 {
-  "name": "@smartglass/core",
+  "name": "@lensmate/core",
   "version": "0.0.0",
   "private": true,
   "main": "dist/index.js",
@@ -12,6 +12,6 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@smartglass/protocol": "workspace:*"
+    "@lensmate/protocol": "workspace:*"
   }
 }
