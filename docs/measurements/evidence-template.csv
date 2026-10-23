@@ -1,0 +1,1 @@
+run_id,date_utc,operator_role,device_model,ios_version,app_commit,eas_build_id,language,measure,trial,t_start_ms,t_end_ms,value_ms,latency_budget_ms,result,battery_start_pct,temperature_note,raw_location,notes

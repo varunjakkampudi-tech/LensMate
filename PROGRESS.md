@@ -26,6 +26,13 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Local branches now: `main` (checked out in the root checkout) and `dev` (checked out in the session worktree). Git allows a branch to be checked out in one worktree at a time, so the root checkout stays on `main`.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
+## BLOCKER-005 agent work (2026-10-24)
+
+- Written in `docs/measurements/`: the index (`README.md`), the owner-run iPhone 15 procedures (`iphone15-procedures.md`) and the evidence template (`evidence-template.csv`, one row per try with provenance fields).
+- Targets used, from GAP_MATRIX items 7 and 8: interruption within 0.5 s in at least 95 percent of tries; latency budget met in at least 90 percent of tries per language. The latency budget value in milliseconds is not in this repository and is an owner input (`latency_budget_ms`, from Goal 14.2).
+- Nothing was measured. No device test was run, no Apple membership was purchased, and no build was queued. Owner runs need BLOCKER-001.
+- Status: READY_FOR_OWNER (agent part complete). Same policy rules as the repository: no recordings or personal data in the repository, and no credentials.
+
 ## BLOCKER-004 verification (2026-10-24, final, read-only)
 
 - Ruleset `Protect Production Main`, id 25755233: `enforcement: active`, `target: branch`, `conditions.ref_name.include: ["~DEFAULT_BRANCH"]` (resolves to `main` only). Only ruleset in the repository.

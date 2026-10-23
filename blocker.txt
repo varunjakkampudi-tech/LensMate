@@ -72,8 +72,9 @@ Nothing is ever committed that should not be public, because history stays publi
 
 ## BLOCKER-005 — Owner-run iPhone 15 measurement procedures (agent builds, owner runs)
 - Priority: high. Module: docs/measurements. Requirement: Goal 14.2 and 21; checklist 7, 8, 9, 10.
-- Status: OPEN (agent task). Procedures are not yet written; owner runs will follow once BLOCKER-001 and BLOCKER-002 are done.
-- Agent work: write the procedures and the import template, with provenance fields, before any real-phone run. Nothing is measured yet.
+- Status: READY_FOR_OWNER (2026-10-24). Agent part complete: procedures and the evidence template are in `docs/measurements/` (README.md, iphone15-procedures.md, evidence-template.csv). Owner runs are pending BLOCKER-001 (Apple membership, needed for an iPhone build). BLOCKER-002 is resolved. Nothing has been measured yet.
+- Agent work (done): procedures and the import template, with provenance fields, before any real-phone run.
+- Owner action: 1) Enrol in the Apple Developer Program (BLOCKER-001). 2) Supply `latency_budget_ms` from Goal 14.2 (the value is not in the repository). 3) Run the procedures on the iPhone 15 and send the completed CSV with the commit it measured.
 
 ## BLOCKER-006 — Provider broker hosting, provider keys and spend cap (owner-only)
 - Priority: high for P-1 real-provider measurements; no effect on current simulator work. Module: services/broker. Requirement: Goal 10A.3, Standards 4 and 5; checklist 19, 20.
