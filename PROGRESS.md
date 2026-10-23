@@ -22,7 +22,8 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Backup before any change: `C:/Users/Admin/LensMate-git-backup/2026-10-24/lensmate-all-refs.bundle`, all refs, verified with `git bundle verify`. Ref list saved as `refs-before.txt` in the same folder.
 - Baseline: `main` and `origin/main` were both at `6f9903a` before the migration. No commit was pushed to `main`. The EAS link commit is carried onto `dev` and is waiting for owner approval to promote.
 - Created `dev` from `origin/main` and pushed it to `origin/dev` with upstream tracking.
-- Branch `claude/lensmate-blocker-002-eas-a26e60` was created earlier for the EAS work. Its commit now lives on `dev`. Its remote copy is kept until the owner authorizes its deletion.
+- Branch `claude/lensmate-blocker-002-eas-a26e60` was created earlier for the EAS work. Its commit was re-applied on `dev` with identical file content, so the local branch was deleted after verification. The remote branch `origin/claude/lensmate-blocker-002-eas-a26e60` is kept until the owner authorizes its deletion.
+- Local branches now: `main` (checked out in the root checkout) and `dev` (checked out in the session worktree). Git allows a branch to be checked out in one worktree at a time, so the root checkout stays on `main`.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
 ## BLOCKER-003 result (2026-10-24)
