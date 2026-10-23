@@ -56,8 +56,8 @@ Nothing is ever committed that should not be public, because history stays publi
 
 ## BLOCKER-003 — Expo SDK alignment after the release-age cooldown (agent task, dated)
 - Priority: medium. Module: apps/mobile. Requirement: Standards 1 and 6; ADR-0001.
-- Status: OPEN (agent task, not owner). Due: after 2026-10-20 14:40 UTC.
-- Problem: expo@58.0.14 is pinned because the newer SDK 58 patches are inside the 24-hour cooldown. `npx expo install --check` reports expected versions newer than the pins.
+- Status: RESOLVED (2026-10-24). The pins were moved after the cooldown and `npx expo install --check` reports "Dependencies are up to date". Evidence is in PROGRESS.md under "BLOCKER-003 result". Procedure, no exemptions: the cooldown was not relaxed.
+- Problem (as recorded 2026-10-20): expo@58.0.14 was pinned because the newer SDK 58 patches were inside the 24-hour cooldown. `npx expo install --check` reported expected versions newer than the pins.
 - Verified cause: release age policy in pnpm workspace. Not a code defect.
 - Work the agent does: re-run `npx expo install --check` after the due time, move the pins, run the full suite, record the result in PROGRESS.md. The agent does not add cooldown exemptions.
 - Owner action: none.

@@ -10,7 +10,7 @@ Still open: the Stage C broker (needs owner hosting and keys), Stages D to G (vo
 
 Completed and verified on main: monorepo, strict typing, lint, format, knip, Jest gates, secret scan, protocol schema v1 with drift check, GlassesLink, capture indicator rule, virtual glasses simulator, Expo app skeleton (development-build config, not built), spend cap decision logic, and the matrices. Last CI run on main: 39334527081 (success).
 
-Stage B (gesture precedence, listening sessions, Locked-feature absence) is integrated in 927ab18. Stopped here, not blocked: the rest of Stage B (retention and log hygiene), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001, 004, 006, 007, 009. Due: BLOCKER-003 after 2026-10-20 14:40 UTC.
+Stage B (gesture precedence, listening sessions, Locked-feature absence) is integrated in 927ab18. Stopped here, not blocked: the rest of Stage B (retention and log hygiene), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001 (deferred until iPhone testing), 004, 006, 007, 009. BLOCKER-002 and BLOCKER-003 are resolved on 2026-10-24.
 
 Owner approval: OWNER-APPROVAL-001 in `blocker.txt` (RESOLVED, 2026-10-20, on main). The smart glasses goal is ACTIVE. Its direct-to-main exception is superseded for development by OWNER-DECISION-002 (2026-10-24): all development goes to `dev`, and `main` changes need owner approval. Policy: `docs/governance/git-branch-policy.md`.
 
@@ -24,6 +24,15 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Created `dev` from `origin/main` and pushed it to `origin/dev` with upstream tracking.
 - Branch `claude/lensmate-blocker-002-eas-a26e60` was created earlier for the EAS work. Its commit now lives on `dev`. Its remote copy is kept until the owner authorizes its deletion.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
+
+## BLOCKER-003 result (2026-10-24)
+
+- Cooldown check: the target versions were published 2026-10-19 to 2026-10-21, outside the 24-hour release-age window. No exemption was added.
+- Pins moved in `apps/mobile/package.json`: `expo` 58.0.14 → 58.0.17 (exact pin, per ADR-0001), `expo-constants` ~58.0.13, `expo-linking` ~58.0.14, `expo-router` ~58.0.25, `expo-updates` ~58.0.18, `jest-expo` ~58.0.12 (dev).
+- `pnpm install` updated the lockfile (41 packages added or changed). The new transitive packages are Expo's own (`@expo/cli`, `@expo/metro-config`, `expo-modules-*`, `noxcturnal`, `xcode`). Each was published 2026-10-19 to 2026-10-21, outside the cooldown.
+- `npx expo install --check`: "Dependencies are up to date".
+- Gates after the change: typecheck, lint, knip, schema check, `pnpm check:expo`, and the full test suite (110 root and 4 mobile tests) all pass.
+- Peer warning from `pnpm peers check`: `react-dom@19.3.1` wants `react` ^19.3.1 while `react@19.3.0` is installed. The same `react-dom@19.3.1` peer was already in the lockfile before this change. Not changed here. Recorded as an open point for the next SDK alignment.
 
 ## BLOCKER-002 verification (2026-10-24)
 
@@ -86,7 +95,7 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - GitHub Actions are pinned to commit SHAs resolved from the release tags on the day of the change.
 - `pnpm` is pinned to 12.5.1 in `package.json`, matching the lockfile.
 - Mobile tests run with `pnpm -F @lensmate/mobile test`, and root `pnpm test` includes them. Mobile coverage is not measured in the root gate yet.
-- The Expo SDK alignment is still open. See BLOCKER-003 (agent task due after 2026-10-20 14:40 UTC).
+- The Expo SDK alignment is closed (BLOCKER-003, 2026-10-24). See "BLOCKER-003 result" above and ADR-0001.
 - Not yet in CI: Maestro end-to-end flows, a dependency audit step, and an accessibility check on screens (QA-004 and the Stage A test list in `TEST_MATRIX.md`).
 
 ## Matrices and registers

@@ -28,6 +28,10 @@ Option 2. `expo@58.0.14` is pinned exactly. `expo-router@58.0.23` and `expo-upda
 
 After 2026-10-20 14:40 UTC (more than 24 hours after 58.0.16 was published), re-run `npx expo install --check`. Move the SDK to the patch the tooling expects. Do not add exemptions to the cooldown. Then re-run the full test suite and record the result in `PROGRESS.md`.
 
+### Follow-up result (2026-10-24)
+
+Completed. The release-age check passed for the target versions (published 2026-10-19 to 2026-10-21). `expo` is now pinned to `58.0.17`, and `expo-constants`, `expo-linking`, `expo-router`, `expo-updates` and `jest-expo` moved to the patches the tooling expects. `npx expo install --check` reports "Dependencies are up to date". The cooldown was not relaxed and no exemptions were added. The full test suite passes.
+
 ## Consequences
 
 - The SDK version is an exact pin, not a range, for `expo`.
