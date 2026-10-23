@@ -26,6 +26,36 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Local branches now: `main` (checked out in the root checkout) and `dev` (checked out in the session worktree). Git allows a branch to be checked out in one worktree at a time, so the root checkout stays on `main`.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
+## BLOCKER-004 audit (2026-10-24)
+
+Read-only GitHub checks (`gh api`, no settings changed):
+
+- Default branch `main`. Branches on origin: `main` and `dev` only.
+- `main` branch protection: not configured (HTTP 404). Repository rulesets: none.
+- Secret scanning: enabled. Push protection: enabled. Validity checks and non-provider patterns: disabled.
+- Dependabot security updates: disabled. Vulnerability alerts: disabled (HTTP 404). No `.github/dependabot.yml` (a version-update config would open routine PRs, which the branch policy does not allow).
+- Repository visibility: public.
+- Open secret-scanning alerts: none (API returned an empty list).
+
+Workflow review (`.github/workflows/ci.yml`, `audit.yml`):
+
+- Each job has read-only `contents` permission, and every action is pinned to a commit SHA. `persist-credentials: false` is set on checkout. Node 22 and `pnpm install --frozen-lockfile` are used.
+- `quality` runs typecheck, lint, format, knip, build, the schema check, the Expo config check and the test suite. `secret-scan` runs gitleaks on full history.
+- Runs trigger on pushes to `main` and `dev`, and on pull requests. The required status checks for `main` protection are `quality` and `secret-scan`.
+- Known gap: the dependency audit (`audit.yml`) runs only on schedule and on demand, and it does not block pushes (BLOCKER-010).
+- Warning in the run annotations: `actions/checkout` and the gitleaks action run on Node 20 forced to Node 24. Their pins should be refreshed when the owner next approves action updates.
+
+Remote branches: `origin/claude/lensmate-blocker-002-eas-a26e60` was no longer present on the remote at this check. It was deleted outside this session. Its commit `4f55bbc` is preserved on `dev` as `4a78a51` (identical file content) and in the backup bundle. No remote branch was deleted by the agent in this step.
+
+Local changes in this step:
+
+- Windows CRLF formatting failure fixed: `.gitattributes` sets `* text=auto eol=lf`, and the working-copy files were rewritten to LF. `pnpm format:check` now passes in this checkout (it previously flagged 67 files that were otherwise correct). The Git index was already LF, so no tracked content changed.
+- React peer mismatch fixed: `react-dom` is pinned to `19.3.0` in `apps/mobile`, the version Expo's bundled module list expects. Before the pin, `react-dom@19.3.1` was resolved through `@expo/metro-runtime` and required `react@^19.3.1`. `pnpm peers check` now reports no issues, and `npx expo install --check` still reports up to date. `react-dom@19.3.0` was published 2026-09-09, outside the cooldown. No other dependency was upgraded.
+
+Gate results for this step (local, CI-equivalent): install (frozen), typecheck, lint, format, knip, build, schema check, `check:expo`, and tests (110 root and 4 mobile) all pass. A local gitleaks run was not possible because gitleaks is not installed here. A targeted pattern scan of tracked files and of the staged diff found no key or token patterns. The CI `secret-scan` job is the full check.
+
+Status: BLOCKER-004 stays OPEN until the owner configures branch protection on `main` and enables Dependabot security updates, and those settings are verified read-only.
+
 ## BLOCKER-003 result (2026-10-24)
 
 - Cooldown check: the target versions were published 2026-10-19 to 2026-10-21, outside the 24-hour release-age window. No exemption was added.
