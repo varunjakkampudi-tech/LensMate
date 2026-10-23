@@ -112,6 +112,8 @@ Test results (2026-10-24, PostgreSQL 17 on a throwaway local instance on 127.0.0
 - Backup and restore round trip (scratch databases, dropped afterwards): backup written with its tag; restore into an empty database reproduced spend 120 and device count 1; a non-empty target, a mismatched confirmation, a tampered file, a wrong MAC key, a password in either URL, and retention of a 2020-dated backup all behaved as required.
 - Typecheck, lint, format, knip, build, `check:schema` and `check:expo` passed. Those results are recorded in the commit message and the report.
 
+CI on dev: commit 3089624 failed all three jobs. Secret scan flagged a device-secret fixture in the app client test; quality failed the 80 percent line-coverage threshold (79.77 percent, because PostgreSQL-only code is skipped in that job); broker-integration had two tests fail with "terminating connection due to administrator command" (server FATAL messages, cause not confirmed from server logs). Commit 0f2456c fixed the fixture, added unit tests for the admin commands and the environment reader (line coverage now 80.84 percent without PostgreSQL), and made the PostgreSQL suite record idle-session errors and close pools before dropping the test database. Run 40039813709 on 0f2456c: quality, broker-integration and secret-scan all succeeded.
+
 Not verified: the Docker image and compose stack (Docker is not running here); the init script running inside the Postgres container; the reverse proxy, TLS and the pre-authentication body size limit (review finding 7); live OpenRouter behaviour; the mobile secure-storage integration (not started, needs an owner-approved Expo dependency).
 
 Status: BLOCKER-006 remains OPEN. It is not resolved by these fixes.
