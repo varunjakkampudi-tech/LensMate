@@ -26,6 +26,20 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Local branches now: `main` (checked out in the root checkout) and `dev` (checked out in the session worktree). Git allows a branch to be checked out in one worktree at a time, so the root checkout stays on `main`.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
+## BLOCKER-004 verification (2026-10-24, final, read-only)
+
+- Ruleset `Protect Production Main`, id 25755233: `enforcement: active`, `target: branch`, `conditions.ref_name.include: ["~DEFAULT_BRANCH"]` (resolves to `main` only). Only ruleset in the repository.
+- Rules: `deletion`, `non_fast_forward`, `required_status_checks` with `quality` and `secret-scan`, each `integration_id: 15368` (GitHub Actions), `strict_required_status_checks_policy: true`, `required_linear_history`, `code_quality` (severity all).
+- Bypass actors: none. `current_user_can_bypass: never`.
+- `dev`: no rules (`repos/.../rules/branches/dev` returns zero rules). Direct pushes to `dev` remain allowed. Earlier direct pushes to `dev` (`2e522cd`, `359b618`) succeeded before the ruleset update. Since `dev` has no rules, the ruleset update does not change that. Classic branch protection on `main`: none (HTTP 404), which is intended.
+- Dependabot alerts: enabled (`vulnerability-alerts` HTTP 204). Dependabot security updates: enabled. Secret scanning: enabled. Push protection: enabled. Secret-scanning validity checks and non-provider patterns: disabled (optional). Open secret-scanning alerts: 0.
+- Collaborators with access (`affiliation=all`): only the owner account, with admin and push. No teams.
+- Branches: `main` and `dev` only.
+- Not tested, by design: a direct push to `main` was not attempted, because that would change the production branch. Expected behavior from the documented rules: a direct push of new commits to `main` is refused until `quality` and `secret-scan` have passed for that commit. Treat as unverified until tested on a safe test case the owner approves.
+- Future-collaborator risk (not a blocker): see BLOCKER-004 in `blocker.txt`. Restrict updates on `main` to the owner, or require a pull request with owner approval, before adding any collaborator with write access.
+
+Status: BLOCKER-004 RESOLVED for the mandatory controls.
+
 ## BLOCKER-004 audit (2026-10-24)
 
 Read-only GitHub checks (`gh api`, no settings changed):
