@@ -21,8 +21,10 @@ require_key_file() {
 
 refuse_password_in_url() {
   local url="$1" label="$2"
-  # user:password@host  -> refuse. user@host and host-only URLs are allowed.
-  if [[ "$url" =~ ://[^/@]*:[^/@]*@ ]]; then
+  # A colon in the userinfo (user:password@host) or a password query parameter is refused. user@host and host-only
+  # URLs are allowed. Only PGPASSFILE may carry the password.
+  local userinfo='://[^/?#]*:[^/?#]*@' query='[?&][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]='
+  if [[ "$url" =~ $userinfo ]] || [[ "$url" =~ $query ]]; then
     die "$label" "the connection URL contains a password; use PGPASSFILE instead"
   fi
 }

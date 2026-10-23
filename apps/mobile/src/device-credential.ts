@@ -1,17 +1,29 @@
-import { enrolDevice } from "@lensmate/core";
+import { BrokerError, enrolDevice } from "@lensmate/core";
 import * as SecureStore from "expo-secure-store";
 
 /**
  * The phone's own broker credential (BLOCKER-006). It is issued once, when the owner's single-use enrolment code is
- * exchanged, and it is stored only in device secure storage. No broker secret is shared across devices or built into
+ * exchanged, and it is kept only in device secure storage. No broker secret is shared across devices or built into
  * the app. The secret is never logged, shown, or returned to the UI.
+ *
+ * Nothing here clears or regenerates a credential on its own. Removal happens only through `clearDeviceCredential`,
+ * which the UI calls after an explicit user action.
  */
 export const DEVICE_CREDENTIAL_KEY = "lensmate.broker.device-credential";
+
+// Same shapes the broker accepts (services/broker/src/devices.ts): a lower-case UUID and a URL-safe secret.
+const DEVICE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const DEVICE_SECRET_PATTERN = /^[A-Za-z0-9_-]{32,256}$/;
 
 export interface StoredDeviceCredential {
   readonly deviceId: string;
   readonly deviceSecret: string;
 }
+
+export type CredentialState =
+  | { readonly status: "enrolled"; readonly credential: StoredDeviceCredential }
+  | { readonly status: "missing" }
+  | { readonly status: "invalid" };
 
 /** The subset of expo-secure-store this module uses. Injected in tests. */
 export interface CredentialStorage {
@@ -24,55 +36,164 @@ export interface CredentialStorage {
   deleteItemAsync(key: string): Promise<void>;
 }
 
+export type CredentialStorageFailure = "READ_FAILED" | "WRITE_FAILED" | "DELETE_FAILED";
+
+/** A storage failure. The message is a fixed code, never the stored value or the platform error text. */
+export class CredentialStorageError extends Error {
+  constructor(readonly failure: CredentialStorageFailure) {
+    super(failure);
+    this.name = "CredentialStorageError";
+  }
+}
+
+export type EnrolmentFailure =
+  | "ALREADY_ENROLLED"
+  | "STORED_CREDENTIAL_INVALID"
+  | "BUSY"
+  | "REFUSED"
+  | "RATE_LIMITED"
+  | "NETWORK"
+  | "MALFORMED"
+  | "FAILED"
+  | "REGISTERED_BUT_NOT_STORED";
+
+/**
+ * An enrolment failure with a fixed code. `deviceId` is set only for REGISTERED_BUT_NOT_STORED, so the owner can
+ * revoke that device. The device secret is never part of the error.
+ */
+export class EnrolmentError extends Error {
+  constructor(
+    readonly failure: EnrolmentFailure,
+    readonly deviceId?: string,
+  ) {
+    super(failure);
+    this.name = "EnrolmentError";
+  }
+}
+
 const secureStorage: CredentialStorage = {
   getItemAsync: (key) => SecureStore.getItemAsync(key),
   setItemAsync: (key, value, options) => SecureStore.setItemAsync(key, value, options),
   deleteItemAsync: (key) => SecureStore.deleteItemAsync(key),
 };
 
-// Readable only while the device is unlocked, never restored to another device from a backup.
+// Readable only while the device is unlocked, and never restored to another device from a backup.
 const ACCESSIBILITY = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
 
+export function isValidCredential(value: unknown): value is StoredDeviceCredential {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<Record<keyof StoredDeviceCredential, unknown>>;
+  return (
+    typeof candidate.deviceId === "string" &&
+    DEVICE_ID_PATTERN.test(candidate.deviceId) &&
+    typeof candidate.deviceSecret === "string" &&
+    DEVICE_SECRET_PATTERN.test(candidate.deviceSecret)
+  );
+}
+
+function serialise(credential: StoredDeviceCredential): string {
+  return JSON.stringify({ deviceId: credential.deviceId, deviceSecret: credential.deviceSecret });
+}
+
+/**
+ * Reads the stored credential. A missing or malformed value is reported as a state, not deleted: removing a
+ * credential is a user decision. A failed read throws CredentialStorageError("READ_FAILED").
+ */
+export async function loadDeviceCredential(
+  storage: CredentialStorage = secureStorage,
+): Promise<CredentialState> {
+  let raw: string | null;
+  try {
+    raw = await storage.getItemAsync(DEVICE_CREDENTIAL_KEY);
+  } catch {
+    throw new CredentialStorageError("READ_FAILED");
+  }
+  if (raw === null) {
+    return { status: "missing" };
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (isValidCredential(parsed)) {
+      return {
+        status: "enrolled",
+        credential: { deviceId: parsed.deviceId, deviceSecret: parsed.deviceSecret },
+      };
+    }
+  } catch {
+    // Not JSON: reported as invalid below.
+  }
+  return { status: "invalid" };
+}
+
+/**
+ * Writes the credential, then reads it back and compares. A write that the platform reports as successful but does not
+ * keep is caught here, not later on the first broker call.
+ */
 export async function saveDeviceCredential(
   credential: StoredDeviceCredential,
   storage: CredentialStorage = secureStorage,
 ): Promise<void> {
-  await storage.setItemAsync(
-    DEVICE_CREDENTIAL_KEY,
-    JSON.stringify({ deviceId: credential.deviceId, deviceSecret: credential.deviceSecret }),
-    ACCESSIBILITY,
-  );
-}
-
-/** Returns the stored credential, or null when none exists or the stored value is malformed. */
-export async function loadDeviceCredential(
-  storage: CredentialStorage = secureStorage,
-): Promise<StoredDeviceCredential | null> {
-  const raw = await storage.getItemAsync(DEVICE_CREDENTIAL_KEY);
-  if (raw === null) {
-    return null;
+  if (!isValidCredential(credential)) {
+    throw new CredentialStorageError("WRITE_FAILED");
   }
+  const value = serialise(credential);
   try {
-    const parsed = JSON.parse(raw) as Partial<StoredDeviceCredential>;
-    if (typeof parsed.deviceId === "string" && typeof parsed.deviceSecret === "string") {
-      return { deviceId: parsed.deviceId, deviceSecret: parsed.deviceSecret };
-    }
+    await storage.setItemAsync(DEVICE_CREDENTIAL_KEY, value, ACCESSIBILITY);
   } catch {
-    // Fall through: a malformed value is treated as absent and removed below.
+    throw new CredentialStorageError("WRITE_FAILED");
   }
-  await storage.deleteItemAsync(DEVICE_CREDENTIAL_KEY);
-  return null;
+  let readBack: string | null;
+  try {
+    readBack = await storage.getItemAsync(DEVICE_CREDENTIAL_KEY);
+  } catch {
+    throw new CredentialStorageError("WRITE_FAILED");
+  }
+  if (readBack !== value) {
+    throw new CredentialStorageError("WRITE_FAILED");
+  }
 }
 
+/** Removes the credential. Call only after an explicit user action. */
 export async function clearDeviceCredential(
   storage: CredentialStorage = secureStorage,
 ): Promise<void> {
-  await storage.deleteItemAsync(DEVICE_CREDENTIAL_KEY);
+  try {
+    await storage.deleteItemAsync(DEVICE_CREDENTIAL_KEY);
+  } catch {
+    throw new CredentialStorageError("DELETE_FAILED");
+  }
+}
+
+let enrolmentInFlight = false;
+
+function mapBrokerFailure(error: unknown): EnrolmentFailure {
+  if (!(error instanceof BrokerError)) {
+    return "FAILED";
+  }
+  switch (error.code) {
+    case "ENROLMENT_REFUSED":
+      return "REFUSED";
+    case "RATE_LIMITED":
+      return "RATE_LIMITED";
+    case "NETWORK":
+      return "NETWORK";
+    case "MALFORMED_REPLY":
+      return "MALFORMED";
+    default:
+      return "FAILED";
+  }
 }
 
 /**
- * Exchanges the owner's enrolment code for this phone's credential and stores it. Returns only the device id, so the
- * secret never reaches the UI or a log. A refused code throws the core client's BrokerError.
+ * Exchanges the owner's enrolment code for this phone's credential and stores it.
+ *
+ * - Refuses while another enrolment is running (BUSY) and while a credential is already stored (ALREADY_ENROLLED), so
+ *   a second registration cannot silently orphan a working device.
+ * - If the broker registers the phone but the credential cannot be stored (after one retry), the function throws
+ *   REGISTERED_BUT_NOT_STORED with the device id. The secret is then gone, so the owner must revoke that device.
+ * - Returns only the device id.
  */
 export async function enrolThisDevice(
   baseUrl: string,
@@ -81,7 +202,38 @@ export async function enrolThisDevice(
   storage: CredentialStorage = secureStorage,
   doFetch?: typeof fetch,
 ): Promise<{ readonly deviceId: string }> {
-  const enrolled = await enrolDevice(baseUrl, code, label, doFetch);
-  await saveDeviceCredential(enrolled, storage);
-  return { deviceId: enrolled.deviceId };
+  if (enrolmentInFlight) {
+    throw new EnrolmentError("BUSY");
+  }
+  enrolmentInFlight = true;
+  try {
+    const existing = await loadDeviceCredential(storage);
+    if (existing.status === "enrolled") {
+      throw new EnrolmentError("ALREADY_ENROLLED", existing.credential.deviceId);
+    }
+    if (existing.status === "invalid") {
+      // Removing a damaged credential is a user decision, never a side effect of enrolling.
+      throw new EnrolmentError("STORED_CREDENTIAL_INVALID");
+    }
+
+    let enrolled: { readonly deviceId: string; readonly deviceSecret: string };
+    try {
+      enrolled = await enrolDevice(baseUrl, code, label, doFetch);
+    } catch (error) {
+      throw new EnrolmentError(mapBrokerFailure(error));
+    }
+
+    try {
+      await saveDeviceCredential(enrolled, storage);
+    } catch {
+      try {
+        await saveDeviceCredential(enrolled, storage);
+      } catch {
+        throw new EnrolmentError("REGISTERED_BUT_NOT_STORED", enrolled.deviceId);
+      }
+    }
+    return { deviceId: enrolled.deviceId };
+  } finally {
+    enrolmentInFlight = false;
+  }
 }

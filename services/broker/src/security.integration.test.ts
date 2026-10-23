@@ -206,6 +206,24 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     await expect(verifySchema(owner)).resolves.toBeUndefined();
   });
 
+  it("the schema guard refuses a database whose immutability trigger was dropped or disabled", async () => {
+    await owner.query("DROP TRIGGER broker_budget_spend_monotonic ON broker_budget_month");
+    await expect(verifySchema(owner)).rejects.toThrow(/broker_budget_spend_monotonic/);
+    await migrate(owner, APP_ROLE, ADMIN_ROLE);
+    await expect(verifySchema(owner)).resolves.toBeUndefined();
+  });
+
+  it("the schema guard refuses a disabled trigger", async () => {
+    await owner.query(
+      "ALTER TABLE broker_device DISABLE TRIGGER broker_device_revocation_permanent",
+    );
+    await expect(verifySchema(owner)).rejects.toThrow(/broker_device_revocation_permanent/);
+    await owner.query(
+      "ALTER TABLE broker_device ENABLE TRIGGER broker_device_revocation_permanent",
+    );
+    await expect(verifySchema(owner)).resolves.toBeUndefined();
+  });
+
   it("the schema guard refuses a table that lost a required column", async () => {
     await owner.query("ALTER TABLE broker_device DROP COLUMN label");
     await expect(verifySchema(owner)).rejects.toThrow(/broker_device\.label/);

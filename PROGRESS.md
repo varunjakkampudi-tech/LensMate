@@ -325,3 +325,31 @@ The next agent steps, which need no owner action: the spend-cap logic and its mo
 - Tests: 7 new mobile tests (round trip, absent, malformed value removed, clear, accessibility option, enrolment success, refused code stores nothing). Full `pnpm test`: root 302 passed, mobile 57 passed in total.
 - Not done: no enrolment screen is wired in the UI yet, and no device run was made. The request path to the broker still needs a configured base URL.
 - BLOCKER-006 remains OPEN.
+
+### BLOCKER-006 mobile enrolment and fresh-context security review (2026-10-24)
+
+Built: an accessible enrolment screen (`apps/mobile/src/enrolment-screen.tsx`, reached from the home screen) that takes an owner-issued code and a phone name. The broker address comes only from `EXPO_PUBLIC_BROKER_BASE_URL`, validated by `broker-config.ts` (https, or loopback http for development; no credentials, query, fragment or path). Nothing is hardcoded. Success shows only the device id. Failures show fixed, safe text. Broker usage is gated by `broker-access.ts`: it needs a configured address, a well-formed device credential, and an accepted cloud-processing disclosure. The disclosure version is still null, because owner decision (e) is not approved, so broker usage stays unavailable.
+
+Credential lifecycle (`device-credential.ts`): validation of the stored shape and lengths; a read-back check on every write; fixed failure codes for read, write and delete; no automatic clearing (a damaged credential needs a second explicit tap); enrolment refused while a credential is stored; one enrolment at a time; one retry of the local save, then `REGISTERED_BUT_NOT_STORED` with the device id so the owner can revoke it.
+
+Fresh-context review (read-only subagent; scope: broker auth and enrolment, schema roles and triggers, backup and restore, compose, core client, mobile authentication). Verdict: APPROVE WITH CONDITIONS. No confirmed high-severity defect. Handling:
+
+| # | Severity | Finding | Handling |
+|---|---|---|---|
+| 1 | Medium | Backup URL guard missed `?password=` and passwords with `/`. | Fixed in `lib.sh`. Checked: userinfo with a colon and a `password=` query are refused; `user@host` and host-only URLs are allowed. |
+| 2 | Medium (procedure) | Restoring an older dump lowers recorded spend, which resets the cap. | Open, owner condition. Restore must keep spend at or above the highest recorded value, or the owner must attest in writing. Not automated. |
+| 3 | Low | Triggers can be dropped or disabled by the table owner, unnoticed at start-up. | Fixed. `verifySchema` requires the three triggers to exist and be enabled. Tests added for a dropped and a disabled trigger. Trigger comment corrected. |
+| 4 | Low | Application role can register devices and zero reservations. | Accepted as defence in depth. Spend cannot decrease (trigger). Noted for the next schema revision. |
+| 5 | Low | One-off compose containers inherit the base service secrets. | Fixed in `docker-compose.admin.yml` and `docker-compose.migrate.yml` with `secrets: !override`. Not run: `docker compose config` needs Docker, which is not available here. |
+| 6 | Low | Role passwords passed to `psql -v` during first-start init. | Residual risk, first start only. Noted. |
+| 7 | Low | Enrolment rate limit is one global bucket, so it can be drained to block the owner. | Accepted. Brute force is infeasible (about 78 bits). Owner to choose a per-source limit at the proxy. |
+| 8 | Low | No broker call path exists yet; any future caller must use `resolveBrokerAccess`. | Noted. |
+| 9 | Low | `enrolThisDevice` could overwrite a damaged credential silently. | Fixed. It now refuses with `STORED_CREDENTIAL_INVALID`. Test added. |
+| 10 | Info | A reply lost after registration leaves an orphan device with no id reported. | Residual. The secret is unknown to anyone, so it is harmless, but the owner cannot see its id. Noted. |
+| 11 | Info | Minor modulo bias in code generation. | Negligible. Not changed. |
+
+Test evidence (2026-10-24, PostgreSQL 17 on a throwaway local instance): `pnpm test` with `BROKER_TEST_DATABASE_URL` set passed 28 of 28 root suites (335 tests, including the trigger-verification tests) and 11 of 11 mobile suites (89 tests). Typecheck, lint, format, knip, build, `check:schema` and `check:expo` all passed.
+
+Not verified: a real device or simulator run; the Docker image and compose stack; the reverse proxy and body limit (finding 7 owner decision); live OpenRouter. The review is not a re-review of the fixes above, so these fixes are not approved until a fresh reviewer checks them.
+
+Status: BLOCKER-006 remains OPEN.

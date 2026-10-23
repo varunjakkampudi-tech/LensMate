@@ -8,6 +8,52 @@ export const STRINGS = {
   disconnect: "Disconnect",
   connectFailed: "Could not connect. Try again.",
   openMeasurement: "Open measurement screen",
+  openEnrolment: "Enrol this phone",
+  enrolment: {
+    title: "Enrol this phone",
+    intro:
+      "Enter the single-use code the owner gave you and a name for this phone. The code works once and expires after 10 minutes. This phone’s credential is kept only on this phone.",
+    codeLabel: "Enrolment code",
+    codeHint: "Sixteen letters and digits, for example ABCD-EFGH-JKMN-PQRS",
+    labelLabel: "Phone name",
+    labelHint: "Letters, numbers, spaces, dots, dashes and underscores, up to 64 characters",
+    submit: "Enrol this phone",
+    submitting: "Enrolling",
+    enrolled: "This phone is enrolled as device {id}.",
+    alreadyEnrolled:
+      "This phone already has a credential (device {id}). Ask the owner to revoke it before enrolling again.",
+    invalidCredential:
+      "The stored credential on this phone is damaged. The app will not delete it on its own. Ask the owner to revoke this phone’s old device, then enrol again.",
+    rejected:
+      "The broker no longer accepts this phone’s credential. Ask the owner to enrol the phone again.",
+    notConfigured: "The broker address is not set in this build, so enrolment is unavailable.",
+    configInvalid:
+      "The broker address in this build is invalid or insecure, so enrolment is unavailable.",
+    codeFormat: "The code has 16 letters and digits, usually shown in groups of four.",
+    labelFormat: "Use 1 to 64 letters, numbers, spaces, dots, dashes or underscores.",
+    errors: {
+      BUSY: "An enrolment is already running. Wait for it to finish.",
+      STORED_CREDENTIAL_INVALID:
+        "A damaged credential is stored on this phone. Remove it first, then enrol again.",
+      REFUSED:
+        "The code was not accepted. It may be wrong, already used, or expired. Ask the owner for a new code.",
+      RATE_LIMITED: "Too many attempts. Wait a few minutes and try again.",
+      NETWORK: "Could not reach the broker. Check the connection and try again.",
+      MALFORMED: "The broker sent an unexpected reply. Try again later.",
+      FAILED: "Enrolment failed. Try again later.",
+      REGISTERED_BUT_NOT_STORED:
+        "The broker registered this phone as device {id}, but the credential could not be stored here. Ask the owner to revoke device {id}, then enrol again.",
+      READ_FAILED:
+        "This phone could not read its stored credential. Restart the app and try again.",
+      WRITE_FAILED:
+        "This phone could not store its credential. Free up storage or unlock the phone, then try again.",
+      DELETE_FAILED: "This phone could not remove the stored credential. Try again.",
+    },
+    removeInvalid: "Remove the damaged credential from this phone",
+    removeConfirm: "Tap again to remove the damaged credential. This cannot be undone.",
+    removed: "The stored credential was removed. You can enrol this phone again.",
+    back: "Back to home",
+  },
   measurement: {
     title: "Measurement",
     close: "Back to home",

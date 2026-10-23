@@ -9,7 +9,7 @@ services:
       BROKER_MIGRATOR_DATABASE_URL_FILE: /run/secrets/postgres_owner_database_url
       BROKER_APP_ROLE: broker_app
       BROKER_ADMIN_ROLE: broker_admin
-    secrets: [postgres_owner_database_url]
+    secrets: !override [postgres_owner_database_url]
 
 secrets:
   postgres_owner_database_url:

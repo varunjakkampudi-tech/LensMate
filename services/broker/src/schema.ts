@@ -7,7 +7,8 @@ import type { Pool } from "pg";
  *   enrolment codes. It cannot issue codes, revoke devices, delete rows, change the schema, or lower recorded spend;
  * - the admin role (BROKER_ADMIN_ROLE) issues enrolment codes and revokes devices. It runs from the server only.
  * Immutability triggers stop a revocation or a used code from being undone, and stop recorded spend from decreasing,
- * even for statements run by the owner. Amounts are integer paise. Timestamps use the database clock.
+ * for every application and admin statement. The table owner can still drop a trigger, so verifySchema checks that each
+ * trigger exists and is enabled at start-up. Amounts are integer paise. Timestamps use the database clock.
  */
 const LEDGER_TABLES = [
   "broker_budget_month",
@@ -107,6 +108,13 @@ CREATE TRIGGER broker_budget_spend_monotonic BEFORE UPDATE ON broker_budget_mont
   FOR EACH ROW EXECUTE FUNCTION broker_forbid_spend_decrease();
 `;
 
+/** Immutability triggers that verifySchema requires to exist and be enabled. */
+const TRIGGERS = [
+  "broker_device_revocation_permanent",
+  "broker_enrolment_code_single_use",
+  "broker_budget_spend_monotonic",
+];
+
 const ROLE_NAME = /^[a-z_][a-z0-9_]{0,62}$/;
 const RESERVED_ROLE = /^(public|pg_.*|information_schema)$/;
 
@@ -183,6 +191,16 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
  */
 export async function verifySchema(pool: Pool): Promise<void> {
   const problems: string[] = [];
+  const triggers = await pool.query<{ tgname: string }>(
+    "SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgenabled <> 'D' AND tgname = ANY($1)",
+    [TRIGGERS],
+  );
+  const enabled = new Set(triggers.rows.map((row) => row.tgname));
+  for (const name of TRIGGERS) {
+    if (!enabled.has(name)) {
+      problems.push(`missing or disabled trigger ${name}`);
+    }
+  }
   for (const table of LEDGER_TABLES) {
     const check = await pool.query<{ name: string | null }>("SELECT to_regclass($1) AS name", [
       `public.${table}`,

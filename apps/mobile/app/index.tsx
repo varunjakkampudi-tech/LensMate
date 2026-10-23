@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { readBrokerConfig } from "../src/broker-config";
+import { EnrolmentScreen } from "../src/enrolment-screen";
 import { MeasurementScreen } from "../src/measurement-screen";
 import { STRINGS } from "../src/strings";
 import { useVirtualGlasses } from "../src/use-virtual-glasses";
@@ -7,7 +9,12 @@ import { useVirtualGlasses } from "../src/use-virtual-glasses";
 export default function HomeScreen() {
   const { status, error, connect, disconnect } = useVirtualGlasses();
   const [measuring, setMeasuring] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
   const connected = status === "connected";
+
+  if (enrolling) {
+    return <EnrolmentScreen config={readBrokerConfig()} onClose={() => setEnrolling(false)} />;
+  }
 
   if (measuring) {
     return <MeasurementScreen onClose={() => setMeasuring(false)} />;
@@ -49,6 +56,21 @@ export default function HomeScreen() {
         }}
       >
         <Text style={{ color: "#1f4e79", textAlign: "center" }}>{STRINGS.openMeasurement}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        style={{
+          minHeight: 48,
+          padding: 12,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: "#1f4e79",
+        }}
+        onPress={() => {
+          setEnrolling(true);
+        }}
+      >
+        <Text style={{ color: "#1f4e79", textAlign: "center" }}>{STRINGS.openEnrolment}</Text>
       </Pressable>
     </View>
   );
