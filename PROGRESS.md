@@ -56,6 +56,8 @@ Gate results for this step (local, CI-equivalent): install (frozen), typecheck, 
 
 Status: BLOCKER-004 stays OPEN until the owner configures branch protection on `main` and enables Dependabot security updates, and those settings are verified read-only.
 
+Re-verification (2026-10-24, later the same day, read-only): unchanged. Default branch `main`; branches `main` and `dev`; `main` not protected (HTTP 404); no rulesets; secret scanning and push protection enabled; validity checks and non-provider patterns disabled; Dependabot security updates disabled; vulnerability alerts disabled (HTTP 404); no open secret-scanning alerts.
+
 ## BLOCKER-003 result (2026-10-24)
 
 - Cooldown check: the target versions were published 2026-10-19 to 2026-10-21, outside the 24-hour release-age window. No exemption was added.
