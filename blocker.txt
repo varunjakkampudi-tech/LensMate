@@ -37,7 +37,10 @@ Nothing is ever committed that should not be public, because history stays publi
 
 ## BLOCKER-002 — Expo account and EAS Build project
 - Priority: high. Module: apps/mobile (build). Requirement: G46; Standards 1 and 6.
-- Status: READY_FOR_OWNER. Owner action only (account creation).
+- Status: RESOLVED (2026-10-24). EAS project linked and verified on the owner account (Expo account varun1408, project `@varun1408/lensmate`). Verification evidence is in PROGRESS.md under "BLOCKER-002 verification".
+- Resolution: the project ID is in `apps/mobile/app.config.ts` at `extra.eas.projectId`. `eas init` could not write it because the config is dynamic (`app.config.ts`), so the ID was added by hand. No other setting was changed. No second Expo project was created.
+- Verified: `npx expo config --type public` and `eas project:info` (see PROGRESS.md). No build was queued; the agent does not start builds.
+- Still owner-only, and not part of this blocker: the first `eas build` (queued on the owner account) needs BLOCKER-001 (Apple membership) for iOS.
 - Problem: EAS builds for iOS and Android need an Expo account and an EAS project. The agent cannot create accounts.
 - Exact owner action: 1) create a free Expo account. 2) Run `npx eas-cli login` on the owner machine. 3) Run `npx eas-cli init` inside apps/mobile and commit only the project ID it writes to app.config.ts, if the owner chooses to store it there (it is not a secret).
 - Do not store: EXPO_TOKEN or any access token in the repository or in CI logs. If CI needs a token later, the owner adds it as a GitHub secret named EXPO_TOKEN.

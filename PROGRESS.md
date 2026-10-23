@@ -10,11 +10,20 @@ Still open: the Stage C broker (needs owner hosting and keys), Stages D to G (vo
 
 Completed and verified on main: monorepo, strict typing, lint, format, knip, Jest gates, secret scan, protocol schema v1 with drift check, GlassesLink, capture indicator rule, virtual glasses simulator, Expo app skeleton (development-build config, not built), spend cap decision logic, and the matrices. Last CI run on main: 39334527081 (success).
 
-Stage B (gesture precedence, listening sessions, Locked-feature absence) is integrated in 927ab18. Stopped here, not blocked: the rest of Stage B (retention and log hygiene), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001, 002, 004, 006, 007, 009. Due: BLOCKER-003 after 2026-10-20 14:40 UTC.
+Stage B (gesture precedence, listening sessions, Locked-feature absence) is integrated in 927ab18. Stopped here, not blocked: the rest of Stage B (retention and log hygiene), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001, 004, 006, 007, 009. Due: BLOCKER-003 after 2026-10-20 14:40 UTC.
 
 Owner approval: OWNER-APPROVAL-001 in `blocker.txt` (RESOLVED, 2026-10-20, on main). The smart glasses goal is ACTIVE. Direct commits to `main` are allowed under the four conditions in that entry.
 
 Status is reported per item with its evidence level. Nothing is marked complete without evidence. No real-phone, hardware, or provider result exists yet.
+
+## BLOCKER-002 verification (2026-10-24)
+
+- EAS project linked to the existing Expo project `@varun1408/lensmate`, ID `2fb3599f-8a9d-4f26-85c0-ad9669a6f23b`. Stored at `extra.eas.projectId` in `apps/mobile/app.config.ts`; no other setting changed.
+- `eas whoami` returns the owner account `varun1408` (no token printed or stored). `eas project:info` (run from `apps/mobile`) returns the project name and the same ID.
+- `pnpm check:expo` (`expo config --type public`) passes and resolves `extra.eas.projectId`.
+- Local gates on the change: `pnpm typecheck` pass, `pnpm lint` pass, `pnpm test` pass (110 root tests, 4 mobile tests), `pnpm check:schema` pass, `pnpm knip` pass.
+- `pnpm format:check` reports 67 files on this Windows checkout. Each one passes Prettier once its line endings are normalized to LF, and the index stores LF, so this is a CRLF working-copy artifact, not a formatting defect. Not fixed here because it is outside this change.
+- Not run: any EAS build (owner-only, and BLOCKER-001 is needed for iOS). `eas init` was not re-run because it cannot write a dynamic config.
 
 ## Current checkpoint (commits since approval: 6)
 
@@ -80,7 +89,7 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 
 ## What the owner needs to do first
 
-1. Enrol in the Apple Developer Program and create an Expo account (BLOCKER-001, BLOCKER-002). Nothing iOS-specific can run on the owner's iPhone without these.
+1. Enrol in the Apple Developer Program (BLOCKER-001). Nothing iOS-specific can run on the owner's iPhone without it. The Expo account and EAS project are done (BLOCKER-002).
 2. Decide the default-branch protection settings (BLOCKER-004). The agent cannot change them.
 3. Check the GitHub Actions plan and minutes (BLOCKER-009) before emulator tests are added.
 4. Decide the provider, the monthly cap and the broker hosting (BLOCKER-006) before any real-provider measurement.
