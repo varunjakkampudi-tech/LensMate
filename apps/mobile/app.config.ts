@@ -16,7 +16,7 @@ const config: ExpoConfig = {
     package: "com.viswatra.lensmate",
     allowBackup: false,
   },
-  plugins: ["expo-router", "expo-dev-client"],
+  plugins: ["expo-router", "expo-dev-client", "expo-secure-store"],
   experiments: {
     typedRoutes: true,
   },

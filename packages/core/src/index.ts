@@ -68,7 +68,7 @@ export type {
   RunByRole,
 } from "./measurement/import.js";
 export { parseCsv } from "./measurement/csv.js";
-export { BrokerError, brokerProviderRun, requestBrokerChat } from "./broker-client.js";
+export { BrokerError, brokerProviderRun, enrolDevice, requestBrokerChat } from "./broker-client.js";
 export type {
   BrokerChatMessage,
   BrokerChatRequest,

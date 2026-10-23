@@ -317,3 +317,11 @@ Previous re-verification (2026-10-24, earlier): unchanged at that time. Default 
 4. Decide the provider, the monthly cap and the broker hosting (BLOCKER-006) before any real-provider measurement.
 
 The next agent steps, which need no owner action: the spend-cap logic and its mocked tests (Stage C), retention and log hygiene (Stage B), and the dependency audit gate in CI.
+
+### BLOCKER-006 mobile secure-storage integration (2026-10-24)
+
+- Owner approved `expo-secure-store` (installed `~58.0.2`, SDK-aligned, published 2026-10-01, outside the two-week cooldown). Registered as an Expo config plugin; `allowBackup` stays `false`.
+- `apps/mobile/src/device-credential.ts`: stores this phone's own `{deviceId, deviceSecret}` in device secure storage with `WHEN_UNLOCKED_THIS_DEVICE_ONLY`. `enrolThisDevice` exchanges the owner's single-use code through core's `enrolDevice` and returns only the device id. No broker secret is in the bundle.
+- Tests: 7 new mobile tests (round trip, absent, malformed value removed, clear, accessibility option, enrolment success, refused code stores nothing). Full `pnpm test`: root 302 passed, mobile 57 passed in total.
+- Not done: no enrolment screen is wired in the UI yet, and no device run was made. The request path to the broker still needs a configured base URL.
+- BLOCKER-006 remains OPEN.
