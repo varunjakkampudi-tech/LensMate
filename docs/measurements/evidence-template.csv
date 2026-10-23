@@ -1,1 +1,1 @@
-run_id,date_utc,operator_role,device_model,ios_version,app_commit,eas_build_id,language,measure,trial,t_start_ms,t_end_ms,value_ms,latency_budget_ms,result,battery_start_pct,temperature_note,raw_location,notes
+measurement_id,measure,outcome,language,trial,evidence_level,run_by_role,date_utc,device_model,os_version,app_build,app_commit,eas_build_id,network_type,provider,sample_set,t_capture_ms,t_phone_received_ms,t_first_words_ms,t_first_sentence_ms,t_speech_start_ms,t_stop_press_ms,t_speech_stopped_ms,battery_start_pct,raw_location,notes

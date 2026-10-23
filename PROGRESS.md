@@ -26,12 +26,26 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Local branches now: `main` (checked out in the root checkout) and `dev` (checked out in the session worktree). Git allows a branch to be checked out in one worktree at a time, so the root checkout stays on `main`.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
-## BLOCKER-005 agent work (2026-10-24)
+## BLOCKER-005 measurement readiness (2026-10-24)
 
-- Written in `docs/measurements/`: the index (`README.md`), the owner-run iPhone 15 procedures (`iphone15-procedures.md`) and the evidence template (`evidence-template.csv`, one row per try with provenance fields).
-- Targets used, from GAP_MATRIX items 7 and 8: interruption within 0.5 s in at least 95 percent of tries; latency budget met in at least 90 percent of tries per language. The latency budget value in milliseconds is not in this repository and is an owner input (`latency_budget_ms`, from Goal 14.2).
-- Nothing was measured. No device test was run, no Apple membership was purchased, and no build was queued. Owner runs need BLOCKER-001.
-- Status: READY_FOR_OWNER (agent part complete). Same policy rules as the repository: no recordings or personal data in the repository, and no credentials.
+Implemented in this step (agent work):
+
+- Targets from LensMate-v9 section 6.4 (verified against the local copy of LensMate-v9.md): capture to phone 300 ms; recognition first words 500 ms; first sentence 1000 ms; speech output 500 ms; total short request under 2500 ms. Interruption 500 ms in at least 95 percent of tries (G19). Latency acceptance: 50 requests per language, at least 90 percent meeting the budget (Goal 14.2). Targets are design targets, not proven performance.
+- Core measurement module (`packages/core/src/measurement`): interval and threshold calculations, per-language evaluation, and the acceptance rules. Boundaries are tested (300, 500, 2499 and 2500 ms; 45 of 50; 19 of 20; 89.9 percent does not round up).
+- Import validator (`importMeasurementCsv`) and CLI (`pnpm measure:import <file>`, package `tools/measurement-import`). It rejects missing provenance, invalid or reversed marks, duplicate IDs, unsupported measures, evidence claims above simulator, emulator and real phone, real-phone claims by the agent or on a simulator device, and personal-data patterns. Simulator rows are reported apart from real-phone rows.
+- In-app capture-to-phone recorder (`apps/mobile/src/measurement-recorder.ts`). It times capture from the glasses' own button timestamp (`VirtualGlasses.lastButtonAtMs`) to the phone's receipt, using events only. A try that cannot be timed is recorded as failed, never estimated. The recorder is not yet wired to a screen.
+- Simulator dry run (`pnpm measure:dry-run`, `apps/mobile/src/measurement-dry-run.test.ts`): 50 scripted presses in English and 50 in Telugu through the virtual glasses, exported and accepted by the validator as simulator evidence. Labelled as a dry run, not a physical-iPhone measurement.
+- Procedures: `docs/measurements/procedures/iphone15-procedures.md`, marked NOT RUNNABLE, because the phone app has no tap control, provenance form or export yet. Template: `docs/measurements/evidence-template.csv`, with the header generated from the validator. Traceability: `docs/measurements/traceability.md`.
+
+Not done (and why):
+
+- Latency total, interruption, speech accuracy, translation and spend are not instrumented on the phone. Recognition, translation and speech output do not exist in the app yet, so those stages have no events to time. The validator rejects these measures until they are instrumented.
+- Measurement screen in the phone app: not built. The owner cannot run any real-phone test until it exists.
+- No real-phone result exists. No dummy evidence was created. No physical device, paid service, OpenRouter call or Apple purchase was used.
+
+Status: BLOCKER-005 READY_FOR_OWNER. Agent implementation partially complete. BLOCKER-001 deferred.
+
+Tests run for this step: typecheck, lint, format, knip, schema check, `check:expo`, and the full test suites (root 181 tests with coverage thresholds met; mobile 14 tests). The simulator dry run passed.
 
 ## BLOCKER-004 verification (2026-10-24, final, read-only)
 
@@ -143,7 +157,7 @@ Previous re-verification (2026-10-24, earlier): unchanged at that time. Default 
 | C | Dependency audit gate | Blocked (BLOCKER-010) | Scheduled workflow reports 2 high advisories with no published fix. Not yet a blocking gate, pending owner waiver decision |
 | D to G | Voice, vision, translation, memory | NOT STARTED | Stage D to G |
 | H | Feature switch framework | NOT STARTED | Stage H |
-| I | P-1 measurement harness and procedures | NOT STARTED | Stage I; owner runs (BLOCKER-005) |
+| I | P-1 measurement harness and procedures | PARTIAL | Import validator, CLI, capture-to-phone recorder, simulator dry run, templates. Measurement screen and latency_total, interruption, speech, translation and spend instrumentation not done. Owner runs (BLOCKER-005) |
 | J | Firmware host-testable abstractions | NOT STARTED | Stage J; no firmware code yet |
 | K | P-1 report template | NOT STARTED | Stage K |
 

@@ -1,0 +1,19 @@
+{
+  "name": "@lensmate/measurement-import",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/cli.js",
+  "bin": {
+    "lensmate-measure-import": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lensmate/core": "workspace:*"
+  }
+}

@@ -54,7 +54,18 @@ export class VirtualGlasses implements GlassesLink {
   private gestureState: GlassesState = IDLE_STATE;
   private readonly effects: GlassesEffect[] = [];
 
-  constructor(private readonly codec: ProtocolCodec) {}
+  /** Time of the most recent button event, on `clock`, in milliseconds. Used by the phone-side measurement. */
+  private lastButtonMs: number | undefined;
+
+  constructor(
+    private readonly codec: ProtocolCodec,
+    private readonly clock: () => number = () => performance.now(),
+  ) {}
+
+  /** When the glasses emitted the latest button event, on the same clock the phone reads. */
+  get lastButtonAtMs(): number | undefined {
+    return this.lastButtonMs;
+  }
 
   /** Effects the gesture state machine produced, in order (for example photo captures). */
   get gestureEffects(): readonly GlassesEffect[] {
@@ -106,6 +117,7 @@ export class VirtualGlasses implements GlassesLink {
   /** Simulates a button event from the glasses. */
   pressButton(action: string, pressMs = 0): void {
     this.requireConnected();
+    this.lastButtonMs = this.clock();
     this.emit({
       protocolVersion: PROTOCOL_VERSION,
       sequence: this.nextSequence(),

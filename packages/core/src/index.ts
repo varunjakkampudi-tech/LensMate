@@ -41,3 +41,30 @@ export {
   sweepTemporaryItems,
 } from "./retention.js";
 export type { TemporaryItem } from "./retention.js";
+export * from "./measurement/targets.js";
+export {
+  captureToPhoneReport,
+  evaluateByLanguage,
+  interruptionCriterionMet,
+  interruptionReport,
+  intervalMs,
+  latencyCriterionMet,
+  latencyTotalReport,
+} from "./measurement/evaluate.js";
+export type { LanguageReport, MarkName, Marks, MeasuredAttempt } from "./measurement/evaluate.js";
+export {
+  MEASUREMENT_COLUMNS,
+  importMeasurementCsv,
+  serializeMeasurementCsv,
+  summarizeEvidence,
+} from "./measurement/import.js";
+export type {
+  EvidenceSummary,
+  ImportResult,
+  MeasurementRecord,
+  NetworkType,
+  Outcome,
+  RejectedRow,
+  RunByRole,
+} from "./measurement/import.js";
+export { parseCsv } from "./measurement/csv.js";

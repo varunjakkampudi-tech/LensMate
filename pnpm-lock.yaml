@@ -270,6 +270,12 @@ importers:
         specifier: 8.8.1
         version: 8.8.1
 
+  tools/measurement-import:
+    dependencies:
+      '@lensmate/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   tools/simulator:
     dependencies:
       '@lensmate/core':
