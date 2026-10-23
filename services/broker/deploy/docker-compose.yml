@@ -1,0 +1,83 @@
+# Broker stack for the single Hostinger VPS (BLOCKER-006). Not deployed by the agent; owner approval is required.
+# Isolation: its own project name, its own networks and volume, no published database port, and no shared
+# containers with other Viswatra products. Secrets come from files under ./secrets (not committed).
+name: lensmate-broker
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  broker:
+    <<: *hardening
+    build:
+      context: ../../..
+      dockerfile: services/broker/deploy/Dockerfile
+    image: lensmate-broker:local
+    user: "node"
+    tmpfs: ["/tmp"]
+    pids_limit: 128
+    mem_limit: 384m
+    cpus: 0.5
+    environment:
+      BROKER_MODE: ${BROKER_MODE:-mock}
+      BROKER_HOST: 0.0.0.0
+      BROKER_PORT: "8080"
+      BROKER_MONTHLY_CAP_PAISE: ${BROKER_MONTHLY_CAP_PAISE:?set the owner-confirmed cap in paise}
+      BROKER_OWNER_CAP_CONFIRMATION_PAISE: ${BROKER_OWNER_CAP_CONFIRMATION_PAISE:-}
+      BROKER_FX_PAISE_PER_USD: ${BROKER_FX_PAISE_PER_USD:?set the owner exchange-rate setting}
+      BROKER_CLIENTS_JSON: ${BROKER_CLIENTS_JSON:?client id and SHA-256 of the secret, never the secret}
+      BROKER_DATABASE_URL_FILE: /run/secrets/broker_database_url
+      OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
+    secrets: [broker_database_url, openrouter_api_key]
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks: [egress, db]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    <<: *hardening
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: broker
+      POSTGRES_USER: broker
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - broker_pgdata:/var/lib/postgresql/data
+    tmpfs: ["/run/postgresql", "/tmp"]
+    # The official entrypoint needs these to set up its data directory. Nothing else is granted.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    mem_limit: 512m
+    cpus: 0.5
+    networks: [db]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U broker -d broker"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+networks:
+  egress: {}
+  db:
+    internal: true
+
+secrets:
+  broker_database_url:
+    file: ./secrets/broker_database_url
+  openrouter_api_key:
+    file: ./secrets/openrouter_api_key
+  postgres_password:
+    file: ./secrets/postgres_password
+
+volumes:
+  broker_pgdata: {}

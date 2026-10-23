@@ -2,7 +2,7 @@
 module.exports = {
   testEnvironment: "node",
   moduleNameMapper: { "^(\\.{1,2}/.*)\\.js$": "$1" },
-  roots: ["<rootDir>/packages", "<rootDir>/tools"],
+  roots: ["<rootDir>/packages", "<rootDir>/tools", "<rootDir>/services"],
   testMatch: ["**/src/**/*.test.ts"],
   transform: {
     "^.+\\.ts$": [
@@ -23,7 +23,13 @@ module.exports = {
       },
     ],
   },
-  collectCoverageFrom: ["packages/*/src/**/*.ts", "tools/*/src/**/*.ts", "!**/*.test.ts"],
+  collectCoverageFrom: [
+    "packages/*/src/**/*.ts",
+    "tools/*/src/**/*.ts",
+    "services/*/src/**/*.ts",
+    "!**/*.test.ts",
+    "!**/test-config.ts",
+  ],
   coverageThreshold: {
     global: { lines: 80, branches: 70 },
   },

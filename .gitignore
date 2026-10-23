@@ -46,3 +46,7 @@ scratchpad/
 Thumbs.db
 .idea/
 .vscode/
+
+# Broker deployment secrets and local env (never commit)
+services/broker/deploy/secrets/
+services/broker/deploy/.env

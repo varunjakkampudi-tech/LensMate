@@ -10,10 +10,21 @@ import { SpendCap } from "./spend-cap.js";
 export type GatewayErrorCode =
   | "DISCLOSURE_REQUIRED"
   | "CAP_REACHED"
+  | "QUOTA_EXCEEDED"
+  | "UNAUTHORIZED"
   | "INVALID_AMOUNT"
   | "CIRCUIT_OPEN"
   | "TIMEOUT"
   | "PROVIDER_ERROR";
+
+/**
+ * An error a provider run can throw to say how the gateway should treat it. `retryable: false` stops the
+ * attempts at once, and `gatewayCode` is reported to the caller instead of PROVIDER_ERROR.
+ */
+export interface ClassifiedProviderError {
+  readonly gatewayCode: GatewayErrorCode;
+  readonly retryable: boolean;
+}
 
 export type GatewayResult<T> =
   { ok: true; value: T; costMinor: number } | { ok: false; errorCode: GatewayErrorCode };
@@ -74,10 +85,15 @@ export class ProviderGateway {
         this.consecutiveFailures = 0;
         return { ok: true, value, costMinor };
       } catch (error) {
-        const errorCode = error instanceof ProviderTimeout ? "TIMEOUT" : "PROVIDER_ERROR";
-        this.recordFailure();
+        const classified = classify(error);
+        const errorCode = error instanceof ProviderTimeout ? "TIMEOUT" : classified.gatewayCode;
+        // Only transient outcomes open the circuit. A budget, quota or authorization refusal is not an outage.
+        if (errorCode === "TIMEOUT" || classified.retryable) {
+          this.recordFailure();
+        }
         if (
           errorCode === "TIMEOUT" ||
+          !classified.retryable ||
           attempt === this.options.maxAttempts ||
           this.isCircuitOpen()
         ) {
@@ -98,6 +114,20 @@ export class ProviderGateway {
       this.consecutiveFailures = 0;
     }
   }
+}
+
+function classify(error: unknown): ClassifiedProviderError {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "gatewayCode" in error &&
+    "retryable" in error &&
+    typeof error.gatewayCode === "string" &&
+    typeof error.retryable === "boolean"
+  ) {
+    return { gatewayCode: error.gatewayCode as GatewayErrorCode, retryable: error.retryable };
+  }
+  return { gatewayCode: "PROVIDER_ERROR", retryable: true };
 }
 
 function runWithTimeout<T>(

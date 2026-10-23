@@ -26,6 +26,48 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Local branches now: `main` (checked out in the root checkout) and `dev` (checked out in the session worktree). Git allows a branch to be checked out in one worktree at a time, so the root checkout stays on `main`.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
+## BLOCKER-006 broker and BLOCKER-008 review (2026-10-24)
+
+What was built (agent scope, mocks and a throwaway local PostgreSQL 17 only):
+
+- Standalone Fastify broker, `services/broker`, with exact pins (fastify 5.12.7, pg 8.23.1, both published before the cooldown date). The broker is the only component that calls OpenRouter. Mock mode is the default and makes no provider call. Live mode is refused unless the key, a database and an owner cap confirmation equal to the cap are all present.
+- Server-side spend cap: every attempt reserves its worst case under PostgreSQL row locks, in integer paise. Concurrency is tested with 100 parallel reservations, two connection pools, and 60 parallel HTTP requests.
+- Authentication: bearer `<id>.<secret>`, secrets at least 32 characters, only SHA-256 hashes stored, constant-time comparison.
+- Quotas and limits: daily request quota, per-client token bucket (per process), and concurrency guards.
+- Model allowlist (`google/gemini-2.5-flash-lite` for text, `google/gemini-2.5-flash` for vision), an output ceiling, byte limits, unknown fields rejected and no type coercion.
+- OpenRouter requests carry `provider.zdr: true` and `data_collection: "deny"`. Redirects are refused, error bodies are not read, and success bodies are capped at 256 KiB.
+- App side: `packages/core/src/broker-client.ts` connects the existing Expo gateway. The token travels only in the Authorization header. Budget refusals, quota refusals and unauthorized responses stop retries at once, and a broker timeout is not retried.
+- Deployment prepared, not built or deployed: hardened Dockerfile, compose stack with an internal database network, no published database port, file-based secrets, and an owner runbook at `services/broker/deploy/README.md`.
+- Provider privacy and models recorded in `docs/governance/provider-privacy-and-models.md`, including the OpenRouter approval-status conflict, the upstream endpoint check still owed, and the capabilities OpenRouter cannot provide.
+
+Independent review (BLOCKER-008): a fresh-context reviewer received the requirements, the file list and the test results, and changed nothing. Verdict: APPROVE WITH CONDITIONS. Findings and handling:
+
+| #   | Severity        | Finding                                                                                                                                    | Handling                                                                                                                                                                                                                  |
+| --- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | High            | A reservation was released after a call that may have been billed (timeout, 5xx, or a reply without usage), so spend could be understated. | Fixed. Every failed attempt is now charged at worst case. Nothing is released after the provider was called. Tests updated. Cost of this choice: a long outage consumes budget at worst case, which needs owner approval. |
+| 2   | Medium          | Reservations stuck by a crash or a database failure stayed open forever.                                                                   | Fixed. `reapStale` charges open reservations older than 5 minutes at worst case, every minute, with `SKIP LOCKED`. Integration test added.                                                                                |
+| 3   | Medium          | The worst-case bound may not cover reasoning tokens for the vision model.                                                                  | Partly fixed. An alert is logged when actual cost exceeds the reservation. Verifying max_tokens against reasoning tokens with OpenRouter remains an owner condition.                                                      |
+| 4   | Low             | Ledger failures returned 500.                                                                                                              | Fixed. Reserve failures return 503 LEDGER_UNAVAILABLE, and no provider call is made. Test added.                                                                                                                          |
+| 5   | Low             | The app circuit breaker counted budget and authorization refusals as outages.                                                              | Fixed. Only transient outcomes open the circuit. Test added.                                                                                                                                                              |
+| 6   | Low             | A broker timeout was retried by the app, multiplying calls.                                                                                | Fixed. Timeouts map to a non-retryable TIMEOUT. Test added.                                                                                                                                                               |
+| 7   | Low             | Unauthenticated requests are validated before authentication, so body size is a resource issue.                                            | Open. To be enforced at the reverse proxy (size limit and pre-auth rate limit). Owner condition on the proxy.                                                                                                             |
+| 8   | Low             | Provider and broker response bodies were unbounded.                                                                                        | Fixed for provider success bodies (256 KiB, streamed and capped) and broker replies (1 MB). Redirects refused. Tests added.                                                                                               |
+| 9   | Low             | The pool had no error listener, so an idle connection error would crash the process.                                                       | Fixed. Listener added, logs a message only.                                                                                                                                                                               |
+| 10  | Low, unverified | The Postgres container may not start with cap_drop ALL.                                                                                    | Fixed as far as possible without Docker: only CHOWN, DAC_OVERRIDE, FOWNER, SETGID and SETUID added, plus a /tmp tmpfs. Not run.                                                                                           |
+| 11  | Info            | Dependency advisories not checked.                                                                                                         | Checked. `pnpm audit --prod` reports node-forge and zod through the Expo CLI in the mobile app. No advisory is reported under the broker's own dependencies.                                                              |
+| 12  | Info            | Client secrets were accepted at 16 characters.                                                                                             | Fixed. Minimum is now 32 characters.                                                                                                                                                                                      |
+
+Test results (2026-10-24, with PostgreSQL 17 on a throwaway local instance):
+
+- Root: 291 tests passed, including 10 PostgreSQL integration tests. Mobile: 50 passed. Coverage thresholds met.
+- Lint, typecheck, format, knip, build, schema check, `check:expo`: passed.
+- `pnpm audit --prod --audit-level=high`: node-forge and zod through the mobile app's Expo CLI (BLOCKER-010). None under the broker.
+- Secret-pattern scan of tracked and new files: no hits. Test placeholders use the `DO-NOT-USE` marker.
+
+Not verified: the Docker image and compose stack (Docker is not running here); live OpenRouter behaviour (no billable call was made); production log retention; the reverse proxy and TLS.
+
+Status: BLOCKER-006 READY_FOR_OWNER. The broker is implemented and reviewed, but it is not production-ready and is not validated against live OpenRouter. Real calls stay blocked until the owner confirms the cap, authorizes testing, and approves hosting.
+
 ## BLOCKER-005 measurement workflow (2026-10-24)
 
 Scope of this step: the agent-owned measurement workflow for the simulator, made operational. No physical device was used, no provider was called, and no measurement was invented.
