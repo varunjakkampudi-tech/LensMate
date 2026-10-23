@@ -47,6 +47,24 @@ Status: BLOCKER-005 READY_FOR_OWNER. Agent implementation partially complete. BL
 
 Tests run for this step: typecheck, lint, format, knip, schema check, `check:expo`, and the full test suites (root 181 tests with coverage thresholds met; mobile 14 tests). The simulator dry run passed.
 
+## BLOCKER-004 hardening verification (2026-10-24, read-only, after the owner's update)
+
+- Ruleset `Protect Production Main`, id 25755233: `enforcement: active`, target `branch`, include `~DEFAULT_BRANCH` (`main` only). The rules list `deletion`, `non_fast_forward`, `required_status_checks`, `required_linear_history`, `code_quality` (severity all) and `update`.
+- Restrict updates: enabled (`update` rule present, and it appears in the effective rules for `main`).
+- Bypass actors: one, `actor_id 197045755` with type `User` and bypass mode `always`. `GET users/varunjakkampudi-tech` returns id 197045755, so the actor is the owner account. `current_user_can_bypass: always`.
+- Other actors: no team (`repos/.../teams` returns 404 for this personal repository), no installed app with bypass (no app appears in `bypass_actors`), and the collaborator list (`affiliation=all`) has one user, the owner, with role `admin`.
+- Required status checks: `quality` and `secret-scan`, both `integration_id 15368` (GitHub Actions), `strict_required_status_checks_policy: true`.
+- Deletion and force-push restrictions: active.
+- `dev`: no rules (`repos/.../rules/branches/dev` returns zero). Direct commits to `dev` remain permitted.
+- Dependabot alerts: enabled (HTTP 204). Dependabot security updates: enabled. Secret scanning: enabled. Push protection: enabled. Validity checks and non-provider patterns: disabled (optional). Automated security fixes: enabled.
+- Branches: `main` and `dev` only.
+
+Documented risk: the owner's `always` bypass lets the owner update `main` and bypass the required checks. This is accepted for a single-owner repository. Production promotion still needs a manual check of the `dev` commit and explicit owner approval for each promotion (see `docs/governance/git-branch-policy.md`).
+
+Status: BLOCKER-004 RESOLVED, FULLY HARDENED. No unintended actor can update `main`.
+
+Not tested: a direct push to `main` was not attempted, because that would change production.
+
 ## BLOCKER-004 verification (2026-10-24, final, read-only)
 
 - Ruleset `Protect Production Main`, id 25755233: `enforcement: active`, `target: branch`, `conditions.ref_name.include: ["~DEFAULT_BRANCH"]` (resolves to `main` only). Only ruleset in the repository.

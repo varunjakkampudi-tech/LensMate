@@ -43,6 +43,31 @@ No other permanent or temporary branches are created for routine work. No featur
 5. Confirm CI passes on `main`.
 6. Deployment is not part of promotion and needs its own authorization.
 
+## Production ruleset controls (verified 2026-10-24, read-only)
+
+- Ruleset `Protect Production Main` (id 25755233) is active and targets `main` only (`~DEFAULT_BRANCH`). `dev` has no rules.
+- Restrict updates: enabled (`update` rule). Only the bypass actor below and the collaborators with write access can update `main`.
+- Bypass actors: one, the owner account `varunjakkampudi-tech` (user id 197045755), bypass mode `always`. No team, app or other collaborator has bypass.
+- Required status checks: `quality` and `secret-scan`, both with integration 15368 (GitHub Actions).
+- Deletion and force-push (non-fast-forward) are blocked. Linear history and code quality rules are on.
+- Dependabot alerts and security updates, secret scanning and push protection are enabled.
+- Direct pushes to `dev` remain permitted.
+
+Known consequence of the `always` bypass: the owner can update `main` and bypass the required checks. Accepted by the owner for this single-owner repository. It is not a reason to skip the promotion steps below.
+
+## Production promotion (manual, owner approval required)
+
+Every promotion of `dev` to `main` is a manual step, even with the owner's bypass:
+
+1. Confirm CI is green on the exact `dev` commit to be promoted (`quality` and `secret-scan`).
+2. Run the release gates that apply (typecheck, lint, format, knip, tests with coverage, schema and secret scans, and the blocker records).
+3. Write the production-readiness report and list any open risks.
+4. Obtain explicit owner approval for that promotion. Approval for one promotion does not carry over to the next.
+5. Promote only the approved commits. Do not force-push, and check CI on `main` afterwards.
+6. Deployment is a separate authorization and does not follow from promotion.
+
+Before adding any collaborator: confirm the ruleset still restricts updates, and that no new bypass actor, team or app was added.
+
 ## Security, testing and review
 
 The branch policy does not relax any requirement. Secret scanning, tests, coverage thresholds, schema drift checks, the independent review for sensitive code (BLOCKER-008) and the release gates all still apply on `dev` and before any promotion.
