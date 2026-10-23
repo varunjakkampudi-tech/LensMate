@@ -80,11 +80,16 @@ Nothing is ever committed that should not be public, because history stays publi
 - Targets: the latency and interruption values come from LensMate-v9 section 6.4 and G19 (the correction to the earlier entry: no owner input is needed for the latency budget values).
 - Owner action: 1) Enrol in the Apple Developer Program when iPhone testing is scheduled (BLOCKER-001). 2) Decide the minimum number of tries for interruption, which the documents do not set. 3) Confirm the latency acceptance wording (see `docs/measurements/traceability.md`). 4) Run the procedure once the measurement screen exists, and send the completed CSV with the commit it measured.
 
-## BLOCKER-006 — Provider broker hosting, provider keys and spend cap (owner-only)
-- Priority: high for P-1 real-provider measurements; no effect on current simulator work. Module: services/broker. Requirement: Goal 10A.3, Standards 4 and 5; checklist 19, 20.
-- Status: READY_FOR_OWNER. Owner decisions: provider choice (G22), monthly spend cap (G10, proposed start INR 500), hosting infrastructure (not AWS, CR-02) and domain.
-- Environment variable names (never values): BROKER_DATABASE_URL, BROKER_SPEND_CAP_MONTHLY, PROVIDER_SPEECH_KEY, PROVIDER_TRANSLATE_KEY, PROVIDER_AI_KEY. Keys go only into the broker's server environment.
-- Exact owner action: 1) choose the providers and confirm their no-training terms (G21). 2) Set the cap. 3) Choose hosting. 4) Provide keys to the hosting environment only, never to the repository, CI logs or the app.
+## BLOCKER-006 — Provider broker hosting, provider keys and spend cap
+- Priority: high for P-1 real-provider measurements; simulator and mock development may continue. Module: services/broker. Requirement: Goal 10A.3, Standards 4 and 5; G10, G21, G22; checklist 19, 20.
+- Status: OWNER CONFIGURATION APPROVED / IMPLEMENTATION AND EXTERNAL VALIDATION PENDING (owner decision, 2026-10-24). Not RESOLVED; no broker deployment or billable provider test has been authorized.
+- Approved by owner: Host the LensMate broker on the existing Hostinger VPS in its own isolated container, with independently scoped secrets, database credentials, network and resource limits. Do not touch other Viswatra products. This reconfirms the earlier Hostinger hosting decision.
+- Approved by owner: Set a hard server-side monthly provider spending cap of INR 500, with fail-closed enforcement before requests, concurrency-safe reservations, cost reconciliation, and tests. This is permission to implement and mock-test the cap, not permission to incur charges.
+- Approved by owner: OpenRouter is the first model-routing provider. Evaluate separate speech and translation providers where OpenRouter does not satisfy functionality or latency. Provider/model routing, available features, prices and no-training/data-retention terms must be verified before live calls or sending user data.
+- Existing prerequisite: owner reports that an OpenRouter API key is available, but the key has not been configured or verified in the isolated broker environment. Never store or echo its value in mobile code, firmware, repository, CI logs, or documentation.
+- Pending agent tasks: implement and independently review the Fastify broker, authentication, server-side quota and spend enforcement, privacy/disclosure gates, mock-based tests, and isolated Hostinger deployment plan. Standardize environment variable names against the approved specification; document names only.
+- Pending owner/external gates: approve chosen models and any separate speech/translation vendor; verify provider no-training and retention conditions; approve an appropriate domain; securely configure keys; explicitly approve deployment and separately authorize any live/billable test. Leave unresolved decisions in this blocker.
+- Execution: work only on dev per OWNER-DECISION-002; never promote to main or deploy without further owner authorization.
 
 ## BLOCKER-007 — Open v9 decisions and proposed items (owner-only)
 - Priority: high. Requirement: v9 section 17 questions; decisions G1 to G45 are PROPOSED.
