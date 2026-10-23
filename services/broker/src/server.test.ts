@@ -9,7 +9,8 @@ import {
   ProviderFailure,
   type ChatProvider,
 } from "./provider.js";
-import { TEST_AUTH_HEADER, TEST_CLIENT_SECRET, testConfig } from "./test-config.js";
+import { TEST_AUTH_HEADER, TEST_CLIENT_SECRET, TEST_DEVICE_ID, testConfig } from "./test-config.js";
+import { InMemoryDeviceStore, issueEnrolmentCode } from "./devices.js";
 import type { BrokerConfig } from "./config.js";
 
 const NOW = Date.UTC(2026, 9, 24, 10, 0, 0);
@@ -21,11 +22,17 @@ interface Harness {
   readonly logs: string[];
 }
 
+/** A harness whose device store is supplied by the test, with no seeded device. */
+function harnessWithDevices(devices: InMemoryDeviceStore): Promise<Harness> {
+  return harness({}, new MockProvider(), new InMemoryBudgetStore(), () => NOW, devices);
+}
+
 async function harness(
   overrides: Partial<BrokerConfig> = {},
   provider: ChatProvider = new MockProvider(),
   store: BudgetStore = new InMemoryBudgetStore(),
   nowMs: () => number = () => NOW,
+  deviceStore?: InMemoryDeviceStore,
 ): Promise<Harness> {
   const logs: string[] = [];
   const sink = new Writable({
@@ -34,9 +41,14 @@ async function harness(
       callback();
     },
   });
+  const devices = deviceStore ?? new InMemoryDeviceStore();
+  if (deviceStore === undefined) {
+    devices.seedDevice(TEST_DEVICE_ID, TEST_CLIENT_SECRET);
+  }
   const app = await buildServer({
     config: testConfig(overrides),
     budget: store,
+    devices,
     provider,
     now: nowMs,
     logger: {
@@ -125,7 +137,11 @@ describe("authentication", () => {
 
   it("refuses a wrong secret and an unknown client id, with the same response", async () => {
     const { app } = await harness();
-    const wrong = await chat(app, GOOD_BODY, `Bearer test-client.wrong-secret-0123456789`);
+    const wrong = await chat(
+      app,
+      GOOD_BODY,
+      `Bearer ${TEST_DEVICE_ID}.wrong-secret-0123456789abcdefghijklmnop`,
+    );
     const unknown = await chat(app, GOOD_BODY, `Bearer nobody.${TEST_CLIENT_SECRET}`);
     expect(wrong.statusCode).toBe(401);
     expect(unknown.body).toBe(wrong.body);
@@ -474,5 +490,82 @@ describe("ledger failures fail closed", () => {
     expect(provider.attemptCount).toBe(0);
     expect(response.body).not.toContain("10.0.0.5");
     expect(logs.join("\n")).not.toContain("10.0.0.5");
+  });
+});
+
+describe("enrolment over HTTP", () => {
+  it("enrols a device with a valid code, then that device can call the broker", async () => {
+    const devices = new InMemoryDeviceStore();
+    const code = await issueEnrolmentCode(devices, NOW);
+    const { app, logs } = await harnessWithDevices(devices);
+    const enrol = await request(app, {
+      method: "POST",
+      url: "/v1/enrol",
+      payload: { code, label: "owner phone" },
+    });
+    expect(enrol.statusCode).toBe(200);
+    const body = enrol.json() as { deviceId: string; deviceSecret: string };
+    const call = await chat(app, GOOD_BODY, `Bearer ${body.deviceId}.${body.deviceSecret}`);
+    expect(call.statusCode).toBe(200);
+    // The device secret must not appear in any log line.
+    expect(logs.join("\n")).not.toContain(body.deviceSecret);
+  });
+
+  it("refuses a reused, wrong or expired code with the same answer", async () => {
+    const devices = new InMemoryDeviceStore();
+    const code = await issueEnrolmentCode(devices, NOW);
+    const { app } = await harnessWithDevices(devices);
+    await request(app, { method: "POST", url: "/v1/enrol", payload: { code, label: "first" } });
+    const reused = await request(app, {
+      method: "POST",
+      url: "/v1/enrol",
+      payload: { code, label: "again" },
+    });
+    const wrong = await request(app, {
+      method: "POST",
+      url: "/v1/enrol",
+      payload: { code: "ZZZZ-ZZZZ-ZZZZ-ZZZZ", label: "x" },
+    });
+    expect(reused.statusCode).toBe(403);
+    expect(wrong.statusCode).toBe(403);
+    expect(reused.body).toBe(wrong.body);
+  });
+
+  it("stops a revoked device at once", async () => {
+    const devices = new InMemoryDeviceStore();
+    const code = await issueEnrolmentCode(devices, NOW);
+    const { app } = await harnessWithDevices(devices);
+    const body = (
+      await request(app, {
+        method: "POST",
+        url: "/v1/enrol",
+        payload: { code, label: "lost phone" },
+      })
+    ).json() as {
+      deviceId: string;
+      deviceSecret: string;
+    };
+    const auth = `Bearer ${body.deviceId}.${body.deviceSecret}`;
+    expect((await chat(app, GOOD_BODY, auth)).statusCode).toBe(200);
+    await devices.revokeDevice(body.deviceId);
+    expect((await chat(app, GOOD_BODY, auth)).statusCode).toBe(401);
+  });
+
+  it("rate-limits enrolment attempts", async () => {
+    const devices = new InMemoryDeviceStore();
+    const { app } = await harnessWithDevices(devices);
+    const statuses: number[] = [];
+    for (let index = 0; index < 8; index += 1) {
+      statuses.push(
+        (
+          await request(app, {
+            method: "POST",
+            url: "/v1/enrol",
+            payload: { code: "AAAA-AAAA-AAAA-AAAA", label: "x" },
+          })
+        ).statusCode,
+      );
+    }
+    expect(statuses).toContain(429);
   });
 });

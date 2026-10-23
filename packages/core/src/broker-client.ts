@@ -153,3 +153,46 @@ function parseReply(text: string): BrokerReply {
 function trimSlash(value: string): string {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
+
+export interface EnrolledDevice {
+  readonly deviceId: string;
+  /** The device's own secret. The app must store it in secure device storage and never log it. */
+  readonly deviceSecret: string;
+}
+
+/**
+ * Exchanges an owner-issued, single-use enrolment code for this device's own credential. The code is typed by the
+ * owner. The returned secret belongs to this device only, and the broker can revoke it on its own.
+ */
+export async function enrolDevice(
+  baseUrl: string,
+  code: string,
+  label: string,
+  doFetch: typeof fetch = fetch,
+): Promise<EnrolledDevice> {
+  let response: Response;
+  try {
+    response = await doFetch(`${trimSlash(baseUrl)}/v1/enrol`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, label }),
+      redirect: "error",
+    });
+  } catch {
+    throw new BrokerError("NETWORK", "PROVIDER_ERROR", true);
+  }
+  const text = await response.text();
+  if (!response.ok) {
+    throw refusalFor(response.status, text);
+  }
+  let parsed: Partial<EnrolledDevice>;
+  try {
+    parsed = JSON.parse(text) as Partial<EnrolledDevice>;
+  } catch {
+    throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+  }
+  if (typeof parsed.deviceId !== "string" || typeof parsed.deviceSecret !== "string") {
+    throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+  }
+  return { deviceId: parsed.deviceId, deviceSecret: parsed.deviceSecret };
+}

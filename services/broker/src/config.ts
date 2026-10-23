@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 /**
@@ -9,12 +8,6 @@ import { readFileSync } from "node:fs";
  */
 type BrokerMode = "mock" | "live";
 
-interface ClientCredential {
-  readonly id: string;
-  /** SHA-256 hex of the client's secret. The secret itself is never stored in configuration. */
-  readonly secretSha256: string;
-}
-
 export interface BrokerConfig {
   readonly mode: BrokerMode;
   readonly port: number;
@@ -22,7 +15,6 @@ export interface BrokerConfig {
   readonly databaseUrl: string | undefined;
   readonly openRouterApiKey: string | undefined;
   readonly openRouterBaseUrl: string;
-  readonly clients: readonly ClientCredential[];
   /** Monthly cap in paise (integer). Owner-confirmed before any live call. */
   readonly monthlyCapPaise: number;
   /** Exchange-rate setting used to convert USD prices to paise. Required; no default. */
@@ -67,7 +59,6 @@ export class ConfigError extends Error {
 
 export function loadConfig(env: Readonly<Record<string, string | undefined>>): BrokerConfig {
   const mode = parseMode(env.BROKER_MODE);
-  const clients = parseClients(env.BROKER_CLIENTS_JSON);
   const monthlyCapPaise = requiredInt(env, "BROKER_MONTHLY_CAP_PAISE", 0);
   const paisePerUsd = requiredInt(env, "BROKER_FX_PAISE_PER_USD", 1);
   const ownerCapConfirmation = optionalInt(env, "BROKER_OWNER_CAP_CONFIRMATION_PAISE");
@@ -100,7 +91,6 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
     databaseUrl,
     openRouterApiKey,
     openRouterBaseUrl: baseUrl,
-    clients,
     monthlyCapPaise,
     paisePerUsd,
     dailyRequestQuotaPerClient:
@@ -123,11 +113,6 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
   };
 }
 
-/** SHA-256 hex of a client secret, for generating the value stored in BROKER_CLIENTS_JSON. */
-export function hashClientSecret(secret: string): string {
-  return createHash("sha256").update(secret, "utf8").digest("hex");
-}
-
 function parseMode(value: string | undefined): BrokerMode {
   if (value === undefined || value === "mock") {
     return "mock";
@@ -136,33 +121,6 @@ function parseMode(value: string | undefined): BrokerMode {
     return "live";
   }
   throw new ConfigError("BROKER_MODE must be mock or live");
-}
-
-function parseClients(value: string | undefined): ClientCredential[] {
-  if (value === undefined || value.trim() === "") {
-    return [];
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    throw new ConfigError("BROKER_CLIENTS_JSON is not valid JSON");
-  }
-  if (!Array.isArray(parsed)) {
-    throw new ConfigError("BROKER_CLIENTS_JSON must be an array");
-  }
-  return parsed.map((entry, index) => {
-    const candidate = entry as { id?: unknown; secretSha256?: unknown };
-    if (
-      typeof candidate.id !== "string" ||
-      !/^[A-Za-z0-9_-]{1,64}$/.test(candidate.id) ||
-      typeof candidate.secretSha256 !== "string" ||
-      !/^[0-9a-f]{64}$/.test(candidate.secretSha256)
-    ) {
-      throw new ConfigError(`BROKER_CLIENTS_JSON entry ${String(index)} is malformed`);
-    }
-    return { id: candidate.id, secretSha256: candidate.secretSha256 };
-  });
 }
 
 function parseAttempts(value: number | undefined): 1 | 2 {

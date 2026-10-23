@@ -1,0 +1,14 @@
+# Used only by the owner for enrolment codes and device revocation. It gives the one-off admin CLI the admin role's
+# connection string. The normal broker containers never receive it, and the broker itself cannot issue codes.
+#   docker compose -p lensmate-broker -f docker-compose.yml -f docker-compose.admin.yml run --rm broker node dist/admin-cli.js enrol-code
+name: lensmate-broker
+
+services:
+  broker:
+    environment:
+      BROKER_ADMIN_DATABASE_URL_FILE: /run/secrets/broker_admin_database_url
+    secrets: [broker_admin_database_url]
+
+secrets:
+  broker_admin_database_url:
+    file: ./secrets/broker_admin_database_url

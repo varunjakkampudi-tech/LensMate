@@ -74,5 +74,6 @@ export type {
   BrokerChatRequest,
   BrokerClientOptions,
   BrokerReply,
+  EnrolledDevice,
 } from "./broker-client.js";
 export type { ClassifiedProviderError } from "./provider-gateway.js";

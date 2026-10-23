@@ -1,17 +1,15 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ConfigError, hashClientSecret, loadConfig } from "./config.js";
-
-const CLIENT = JSON.stringify([
-  { id: "app-1", secretSha256: hashClientSecret("a-long-enough-test-secret") },
-]);
-const LIVE_SECRET = "sk-or-test-DO-NOT-USE-0000000000";
+import { ConfigError, loadConfig } from "./config.js";
 
 const BASE_MOCK = {
   BROKER_MONTHLY_CAP_PAISE: "50000",
   BROKER_FX_PAISE_PER_USD: "9000",
 };
+
+/** A clearly fake provider key used only to check that secrets never reach error messages. */
+const LIVE_SECRET = "sk-or-test-DO-NOT-USE-0000000000";
 
 describe("secret files", () => {
   it("reads a secret from the file named by NAME_FILE", () => {
@@ -105,35 +103,13 @@ describe("loadConfig", () => {
         OPENROUTER_API_KEY: LIVE_SECRET,
         BROKER_DATABASE_URL: "postgres://db",
         BROKER_OWNER_CAP_CONFIRMATION_PAISE: "1",
-        BROKER_CLIENTS_JSON: `not json ${LIVE_SECRET}`,
+        BROKER_PROVIDER_TIMEOUT_MS: LIVE_SECRET,
       });
       throw new Error("expected a ConfigError");
     } catch (error) {
       expect(error).toBeInstanceOf(ConfigError);
       expect((error as Error).message).not.toContain(LIVE_SECRET);
     }
-  });
-
-  it("accepts client credentials as hashes only", () => {
-    const config = loadConfig({ ...BASE_MOCK, BROKER_CLIENTS_JSON: CLIENT });
-    expect(config.clients).toEqual([
-      { id: "app-1", secretSha256: hashClientSecret("a-long-enough-test-secret") },
-    ]);
-  });
-
-  it("rejects a client entry that is not a SHA-256 hex digest", () => {
-    expect(() =>
-      loadConfig({
-        ...BASE_MOCK,
-        BROKER_CLIENTS_JSON: JSON.stringify([{ id: "a", secretSha256: "plain-secret" }]),
-      }),
-    ).toThrow(/entry 0 is malformed/);
-  });
-
-  it("rejects clients that are not an array", () => {
-    expect(() => loadConfig({ ...BASE_MOCK, BROKER_CLIENTS_JSON: "{}" })).toThrow(
-      /must be an array/,
-    );
   });
 
   it("rejects a provider base URL that is not https, except localhost for tests", () => {

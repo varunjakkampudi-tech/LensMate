@@ -1,23 +1,26 @@
 import { Pool } from "pg";
 import { loadConfig } from "./config.js";
 import { InMemoryBudgetStore, type BudgetStore } from "./budget.js";
+import { InMemoryDeviceStore, PostgresDeviceStore, type DeviceStore } from "./devices.js";
 import { PostgresBudgetStore } from "./postgres-budget.js";
 import { OpenRouterProvider, MockProvider, type ChatProvider } from "./provider.js";
 import { buildServer } from "./server.js";
+import { verifySchema } from "./schema.js";
 
 /** Open reservations older than this are charged at worst case by the reaper. It is well past any provider timeout. */
 const REAP_AFTER_SECONDS = 300;
 const REAP_EVERY_MS = 60_000;
 
 /**
- * Broker entry point. Reads configuration from the server environment only. Mock mode (the default) makes no
- * provider call and needs no database. Live mode needs OPENROUTER_API_KEY, a database, and the owner's cap
- * confirmation; loadConfig refuses it otherwise.
+ * Broker entry point. Configuration comes from the server environment only. The broker never runs migrations: those
+ * are run once by the owner role (`pnpm migrate`). If a database is configured, the schema must be complete before
+ * the broker starts, so a missing or half-migrated ledger stops it instead of letting it run unaccounted.
  */
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
 
   let budget: BudgetStore;
+  let devices: DeviceStore;
   let pool: Pool | undefined;
   let reaper: (() => Promise<number>) | undefined;
   if (config.databaseUrl !== undefined) {
@@ -26,12 +29,14 @@ async function main(): Promise<void> {
     pool.on("error", () => {
       process.stderr.write("ledger connection lost; reconnecting\n");
     });
+    await verifySchema(pool);
     const store = new PostgresBudgetStore(pool);
-    await store.migrate();
     budget = store;
+    devices = new PostgresDeviceStore(pool);
     reaper = () => store.reapStale(REAP_AFTER_SECONDS);
   } else {
     budget = new InMemoryBudgetStore();
+    devices = new InMemoryDeviceStore();
   }
 
   if (reaper !== undefined) {
@@ -52,6 +57,7 @@ async function main(): Promise<void> {
   const app = await buildServer({
     config,
     budget,
+    devices,
     provider,
     now: () => Date.now(),
     logger: {
@@ -76,7 +82,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  // Print the error class only. Configuration messages name variables, never their values.
+  // Print the error class only. Configuration and schema messages name variables or tables, never values.
   const name = error instanceof Error ? error.name : "UnknownError";
   const message = error instanceof Error ? error.message : "startup failed";
   process.stderr.write(`broker failed to start: ${name}: ${message}\n`);

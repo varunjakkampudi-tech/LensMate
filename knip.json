@@ -9,6 +9,9 @@
     },
     "apps/mobile": {
       "entry": ["app/**/*.tsx"]
+    },
+    "services/broker": {
+      "entry": ["src/admin-cli.ts", "src/migrate-cli.ts"]
     }
   }
 }

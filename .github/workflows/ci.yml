@@ -65,7 +65,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec jest services/broker/src/postgres-budget.integration.test.ts
+      - run: pnpm exec jest services/broker/src/postgres-budget.integration.test.ts services/broker/src/security.integration.test.ts
 
   secret-scan:
     runs-on: ubuntu-24.04

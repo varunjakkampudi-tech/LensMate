@@ -68,6 +68,54 @@ Not verified: the Docker image and compose stack (Docker is not running here); l
 
 Status: BLOCKER-006 READY_FOR_OWNER. The broker is implemented and reviewed, but it is not production-ready and is not validated against live OpenRouter. Real calls stay blocked until the owner confirms the cap, authorizes testing, and approves hosting.
 
+### BLOCKER-006 remediation after the second review (2026-10-24)
+
+The second review's conditions were applied before integration. Verdict on the reviewed version: APPROVE WITH CONDITIONS. The fixes below are not yet re-reviewed by a fresh-context reviewer, so they are not treated as approval; that re-review is still required.
+
+Database roles and schema (`services/broker/src/schema.ts`):
+
+- Three roles: the owner (migrator, runs `migrate-cli` only), the application role (runtime) and the admin role (enrolment codes and revocation, server-side only). `migrate()` refuses the same role for app and admin, refuses reserved or unsafe role names before any SQL, and refuses to run as the app or admin role.
+- The application role has no CREATE, DROP, ALTER, DELETE, or rights on enrolment-code issuance or revocation. The admin role cannot delete rows or migrate.
+- Immutability triggers, applied to every role including the owner: revocation is permanent, a used enrolment code cannot be made usable again, and recorded spend cannot decrease.
+- The start-up schema guard checks every ledger table and required column, and names what is missing.
+
+Backup and restore (`services/broker/deploy/backup/`):
+
+- No database password appears on any command line. A connection URL that contains a password is refused. libpq reads the password from `PGPASSFILE` (mode 0600 on the server).
+- Each encrypted backup has an HMAC-SHA256 integrity tag, computed with a separate key. Restore verifies the tag before decrypting anything.
+- Restore refuses a target that already holds `broker_*` tables and requires the target name to be typed.
+- Cleanup of partial files runs on any exit, not only on error.
+- Windows caveat: the key-file mode check (no group or other access) refuses on Windows, because Windows reports 644. The round trip below ran on a scratch copy with that one check removed. The owner must run these scripts on the Linux VPS, where the check is meaningful.
+
+Enrolment and revocation (`services/broker/src/devices.ts`, `server.test.ts`, `security.integration.test.ts`):
+
+- Codes are issued only through the admin role or the owner-run `admin-cli`. The application role cannot insert codes (tested: permission denied).
+- Replay is refused (one redemption only). An unknown code and an expired code return the same answer as a used one (HTTP 403 with an identical body, tested). Enrolment is rate limited (429, tested).
+- Ten concurrent redemptions of one code register exactly one device (tested).
+- A revoked device is refused on its next request (HTTP 401, tested). A revoked device cannot be un-revoked, even by the owner (trigger, tested).
+- A stored hash of the device secret cannot be presented as the secret (tested).
+- Known limit: the enrolment rate limit is one global bucket, so a flood of wrong codes can block a legitimate enrolment for about a minute (review finding 6, owner condition for a single-instance deployment).
+
+Ledger loss or corruption:
+
+- A missing table or a missing required column stops the broker at start-up before it listens (tested: names the table and the column).
+- A restored backup keeps its recorded spend (tested: spend 120 and device count 1 after restore). The cap itself comes from configuration, not from the ledger, so a restore cannot raise the cap. Calls are refused once the restored spend reaches the cap (existing reservation tests).
+- Not tested: the broker starting against a restored ledger with a deleted reservation row. That case is unverified.
+
+App client (`packages/core/src/broker-client.ts`): `JSON.parse` of the enrolment success body is now guarded, and a malformed success reply is refused as `MALFORMED_REPLY`.
+
+Configuration: `BROKER_CLIENTS_JSON` is retired from the env template and the deploy notes. Compose adds the admin role password secret and `docker-compose.admin.yml` for the owner-only admin CLI. The broker container never receives the admin URL.
+
+Test results (2026-10-24, PostgreSQL 17 on a throwaway local instance on 127.0.0.1:5433):
+
+- `pnpm test` with `BROKER_TEST_DATABASE_URL` set: 26 of 26 suites and 324 of 324 tests in the root project, 7 of 7 suites and 50 of 50 tests in the mobile project.
+- Backup and restore round trip (scratch databases, dropped afterwards): backup written with its tag; restore into an empty database reproduced spend 120 and device count 1; a non-empty target, a mismatched confirmation, a tampered file, a wrong MAC key, a password in either URL, and retention of a 2020-dated backup all behaved as required.
+- Typecheck, lint, format, knip, build, `check:schema` and `check:expo` passed. Those results are recorded in the commit message and the report.
+
+Not verified: the Docker image and compose stack (Docker is not running here); the init script running inside the Postgres container; the reverse proxy, TLS and the pre-authentication body size limit (review finding 7); live OpenRouter behaviour; the mobile secure-storage integration (not started, needs an owner-approved Expo dependency).
+
+Status: BLOCKER-006 remains OPEN. It is not resolved by these fixes.
+
 ## BLOCKER-005 measurement workflow (2026-10-24)
 
 Scope of this step: the agent-owned measurement workflow for the simulator, made operational. No physical device was used, no provider was called, and no measurement was invented.

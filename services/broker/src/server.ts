@@ -1,4 +1,4 @@
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import Fastify, {
   type FastifyError,
   type FastifyInstance,
@@ -8,6 +8,7 @@ import Fastify, {
 import type { BrokerConfig } from "./config.js";
 import type { BudgetStore, ReserveRefusal, ReserveResult } from "./budget.js";
 import { ConcurrencyGuard, TokenBucket } from "./limits.js";
+import { authenticateDevice, redeemEnrolment, type DeviceStore } from "./devices.js";
 import {
   actualMicroUsd,
   findModel,
@@ -34,6 +35,8 @@ const IMAGE_DATA_URL = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/;
 export interface BrokerDependencies {
   readonly config: BrokerConfig;
   readonly budget: BudgetStore;
+  /** Registered devices and enrolment codes. */
+  readonly devices: DeviceStore;
   readonly provider: ChatProvider;
   /** Source of time, in milliseconds since the epoch. Injected so tests control day and month boundaries. */
   readonly now: () => number;
@@ -100,7 +103,8 @@ interface VisionBody {
  * concurrency guard, a timed provider attempt, then settlement or release. Request content is never logged.
  */
 export async function buildServer(deps: BrokerDependencies): Promise<FastifyInstance> {
-  const { config, budget, provider, now } = deps;
+  const { config, budget, provider, now, devices } = deps;
+  const enrolRate = new TokenBucket(5, 1 / 60, now);
   const app = Fastify<RawServerDefault>({
     logger: deps.logger as NonNullable<FastifyServerOptions["logger"]>,
     bodyLimit: Math.max(config.maxInputBytes, config.maxImageBytes * 2) + 65_536,
@@ -132,8 +136,41 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     }
   });
 
+  app.post<{ Body: { code: string; label: string } }>(
+    "/v1/enrol",
+    {
+      schema: {
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["code", "label"],
+          properties: {
+            code: { type: "string", minLength: 8, maxLength: 40 },
+            label: { type: "string", minLength: 1, maxLength: 64 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      // One global bucket: enrolment is rare, and guessing is slowed down.
+      if (!enrolRate.take("enrol")) {
+        return reply.code(429).send({ error: "try_later", code: "RATE_LIMITED" });
+      }
+      const result = await redeemEnrolment(devices, request.body.code, request.body.label, now());
+      request.log.info({ outcome: result === null ? "refused" : "enrolled" }, "enrolment");
+      if (result === null) {
+        // The same answer for an unknown, used or expired code, so a caller learns nothing about codes.
+        return reply.code(403).send({ error: "enrolment_refused", code: "ENROLMENT_REFUSED" });
+      }
+      return reply.code(200).header("cache-control", "no-store").send({
+        deviceId: result.deviceId,
+        deviceSecret: result.deviceSecret,
+      });
+    },
+  );
+
   app.get("/v1/usage", async (request, reply) => {
-    const client = authenticate(request.headers.authorization, config.clients);
+    const client = await authenticateDevice(request.headers.authorization, devices);
     if (client === null) {
       return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
     }
@@ -156,7 +193,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     "/v1/ai/text",
     { schema: { body: CHAT_BODY } },
     async (request, reply) => {
-      const client = authenticate(request.headers.authorization, config.clients);
+      const client = await authenticateDevice(request.headers.authorization, devices);
       if (client === null) {
         return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
       }
@@ -195,7 +232,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     "/v1/ai/vision",
     { schema: { body: VISION_BODY } },
     async (request, reply) => {
-      const client = authenticate(request.headers.authorization, config.clients);
+      const client = await authenticateDevice(request.headers.authorization, devices);
       if (client === null) {
         return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
       }
@@ -429,23 +466,6 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
   }
 
   return app;
-}
-
-/** Client id from a `Bearer <id>.<secret>` header, or null. The secret is compared as a hash, in constant time. */
-export function authenticate(
-  header: string | undefined,
-  clients: readonly { id: string; secretSha256: string }[],
-): string | null {
-  const match = /^Bearer ([A-Za-z0-9_-]{1,64})\.([A-Za-z0-9_-]{32,256})$/.exec(header ?? "");
-  const id = match?.[1];
-  const secret = match?.[2];
-  const credential = clients.find((client) => client.id === id);
-  const presented = createHash("sha256")
-    .update(secret ?? "", "utf8")
-    .digest();
-  const expected = Buffer.from(credential?.secretSha256 ?? "0".repeat(64), "hex");
-  const equal = timingSafeEqual(presented, expected);
-  return credential !== undefined && secret !== undefined && equal ? credential.id : null;
 }
 
 export function utcMonth(epochMs: number): string {

@@ -7,31 +7,6 @@ import {
   type ReserveResult,
 } from "./budget.js";
 
-/** Tables for the durable ledger. Applied idempotently at start-up. Amounts are integer paise. */
-const BUDGET_SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS broker_budget_month (
-  month text PRIMARY KEY CHECK (month ~ '^[0-9]{4}-[0-9]{2}$'),
-  spent_paise bigint NOT NULL DEFAULT 0 CHECK (spent_paise >= 0),
-  reserved_paise bigint NOT NULL DEFAULT 0 CHECK (reserved_paise >= 0)
-);
-CREATE TABLE IF NOT EXISTS broker_daily_quota (
-  client_id text NOT NULL CHECK (char_length(client_id) BETWEEN 1 AND 64),
-  day text NOT NULL CHECK (day ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'),
-  requests integer NOT NULL DEFAULT 0 CHECK (requests >= 0),
-  PRIMARY KEY (client_id, day)
-);
-CREATE TABLE IF NOT EXISTS broker_reservation (
-  reservation_id text PRIMARY KEY CHECK (char_length(reservation_id) BETWEEN 1 AND 128),
-  client_id text NOT NULL,
-  month text NOT NULL REFERENCES broker_budget_month(month),
-  amount_paise bigint NOT NULL CHECK (amount_paise >= 0),
-  actual_paise bigint CHECK (actual_paise IS NULL OR actual_paise >= 0),
-  state text NOT NULL CHECK (state IN ('reserved', 'settled', 'released')),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  closed_at timestamptz
-);
-`;
-
 /**
  * PostgreSQL implementation. Each reservation runs in one transaction. It locks the month row first and the
  * client's daily quota row second, always in that order, so concurrent reservations serialize on the database
@@ -160,11 +135,6 @@ export class PostgresBudgetStore implements BudgetStore {
     } finally {
       client.release();
     }
-  }
-
-  /** Applies the ledger tables. Safe to run on every start. */
-  async migrate(): Promise<void> {
-    await this.pool.query(BUDGET_SCHEMA_SQL);
   }
 
   private async close(

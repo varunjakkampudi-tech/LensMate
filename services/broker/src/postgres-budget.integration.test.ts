@@ -1,6 +1,10 @@
 import { Pool } from "pg";
 import type { ReserveInput } from "./budget.js";
 import { PostgresBudgetStore } from "./postgres-budget.js";
+import { migrate } from "./schema.js";
+
+const APP_ROLE = "broker_app_test";
+const ADMIN_ROLE = "broker_admin_test";
 
 /**
  * Real PostgreSQL integration (Engineering Standards, broker integration with PostgreSQL in CI).
@@ -32,7 +36,13 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
   beforeAll(async () => {
     const admin = new Pool({ connectionString: URL_VALUE, max: 1 });
     await admin.query(
-      "DROP TABLE IF EXISTS broker_reservation, broker_daily_quota, broker_budget_month",
+      "DROP TABLE IF EXISTS broker_reservation, broker_daily_quota, broker_budget_month, broker_device, broker_enrolment_code",
+    );
+    await admin.query(
+      "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'broker_app_test') THEN CREATE ROLE broker_app_test LOGIN; END IF; END $$",
+    );
+    await admin.query(
+      "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'broker_admin_test') THEN CREATE ROLE broker_admin_test LOGIN; END IF; END $$",
     );
     await admin.end();
   });
@@ -41,7 +51,7 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
     const pool = new Pool({ connectionString: URL_VALUE, max: 10 });
     pools = [pool];
     store = new PostgresBudgetStore(pool);
-    await store.migrate();
+    await migrate(pool, APP_ROLE, ADMIN_ROLE);
     await pool.query("TRUNCATE broker_reservation, broker_daily_quota, broker_budget_month");
   });
 
@@ -51,8 +61,10 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
   });
 
   it("applies the schema idempotently", async () => {
-    await store.migrate();
-    await store.migrate();
+    const again = new Pool({ connectionString: URL_VALUE, max: 1 });
+    pools.push(again);
+    await migrate(again, APP_ROLE, ADMIN_ROLE);
+    await migrate(again, APP_ROLE, ADMIN_ROLE);
     await expect(store.ping()).resolves.toBeUndefined();
   });
 

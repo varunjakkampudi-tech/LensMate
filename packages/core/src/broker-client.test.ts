@@ -1,6 +1,7 @@
 import {
   BrokerError,
   brokerProviderRun,
+  enrolDevice,
   requestBrokerChat,
   type BrokerChatRequest,
 } from "./broker-client.js";
@@ -224,5 +225,47 @@ describe("review follow-ups: timeouts and circuit scope", () => {
         errorCode: "CAP_REACHED",
       });
     }
+  });
+});
+
+describe("device enrolment", () => {
+  it("returns the device's own credential for a valid code", async () => {
+    const fetchImpl = reply(200, {
+      deviceId: "d-1",
+      deviceSecret: "s-secret-0123456789abcdefghijklmnop",
+    });
+    expect(await enrolDevice("https://b", "ABCD-EFGH-JKMN-PQRS", "phone", fetchImpl)).toEqual({
+      deviceId: "d-1",
+      deviceSecret: "s-secret-0123456789abcdefghijklmnop",
+    });
+  });
+
+  it("sends the code and label in the body, and never as a query string", async () => {
+    let seenUrl = "";
+    let seenBody = "";
+    const fetchImpl = ((url: string, init: RequestInit) => {
+      seenUrl = url;
+      seenBody = typeof init.body === "string" ? init.body : "";
+      return Promise.resolve(
+        new Response(JSON.stringify({ deviceId: "d", deviceSecret: "s".repeat(40) }), {
+          status: 200,
+        }),
+      );
+    }) as typeof fetch;
+    await enrolDevice("https://b", "ABCD-EFGH-JKMN-PQRS", "phone", fetchImpl);
+    expect(seenUrl).toBe("https://b/v1/enrol");
+    expect(seenUrl).not.toContain("ABCD");
+    expect(JSON.parse(seenBody)).toEqual({ code: "ABCD-EFGH-JKMN-PQRS", label: "phone" });
+  });
+
+  it("refuses a used, wrong or expired code with a non-retryable error", async () => {
+    await expect(
+      enrolDevice(
+        "https://b",
+        "AAAA-AAAA-AAAA-AAAA",
+        "x",
+        reply(403, { code: "ENROLMENT_REFUSED" }),
+      ),
+    ).rejects.toMatchObject({ gatewayCode: "PROVIDER_ERROR", retryable: false });
   });
 });
