@@ -2,7 +2,8 @@ import { hashClientSecret, type BrokerConfig } from "./config.js";
 
 /** Test-only configuration. Excluded from the build. The FX rate is a test value, not an owner setting. */
 const TEST_CLIENT_ID = "test-client";
-export const TEST_CLIENT_SECRET = "test-secret-0123456789abcdef0123456789abcdef";
+// A clearly fake, low-entropy placeholder. It is long enough for the 32-character minimum and is not a credential.
+export const TEST_CLIENT_SECRET = "not-a-real-secret-".repeat(3);
 export const TEST_AUTH_HEADER = `Bearer ${TEST_CLIENT_ID}.${TEST_CLIENT_SECRET}`;
 
 export function testConfig(overrides: Partial<BrokerConfig> = {}): BrokerConfig {
