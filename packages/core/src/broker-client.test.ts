@@ -232,11 +232,11 @@ describe("device enrolment", () => {
   it("returns the device's own credential for a valid code", async () => {
     const fetchImpl = reply(200, {
       deviceId: "d-1",
-      deviceSecret: "s-secret-0123456789abcdefghijklmnop",
+      deviceSecret: "not-a-real-device-secret-".repeat(3),
     });
     expect(await enrolDevice("https://b", "ABCD-EFGH-JKMN-PQRS", "phone", fetchImpl)).toEqual({
       deviceId: "d-1",
-      deviceSecret: "s-secret-0123456789abcdefghijklmnop",
+      deviceSecret: "not-a-real-device-secret-".repeat(3),
     });
   });
 

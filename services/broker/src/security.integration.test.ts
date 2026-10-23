@@ -34,6 +34,9 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
   let owner: Pool;
   let app: Pool;
   let admin: Pool;
+  // Idle-client errors from the server are recorded here and asserted in afterAll, so a dropped session is reported
+  // with its message instead of as an unhandled error.
+  const poolErrors: string[] = [];
 
   beforeAll(async () => {
     const base = BASE_URL ?? "";
@@ -50,14 +53,17 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     await migrate(owner, APP_ROLE, ADMIN_ROLE);
     app = new Pool({ connectionString: withDatabase(base, DB, APP_ROLE), max: 10 });
     admin = new Pool({ connectionString: withDatabase(base, DB, ADMIN_ROLE), max: 4 });
+    for (const pool of [superuser, owner, app, admin]) {
+      pool.on("error", (error: Error) => poolErrors.push(error.message));
+    }
   });
 
   afterAll(async () => {
-    await app.end();
-    await admin.end();
-    await owner.end();
-    await superuser.query(`DROP DATABASE IF EXISTS ${DB} WITH (FORCE)`);
+    // Close every pool before dropping, so no session is terminated by the drop itself.
+    await Promise.all([app.end(), admin.end(), owner.end()]);
+    await superuser.query(`DROP DATABASE IF EXISTS ${DB}`);
     await superuser.end();
+    expect(poolErrors).toEqual([]);
   });
 
   it("migration is repeatable and the schema verifies", async () => {
