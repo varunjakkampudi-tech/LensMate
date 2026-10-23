@@ -24,9 +24,17 @@ Nothing is ever committed that should not be public, because history stays publi
 - no proprietary hardware design files (custom PCB, enclosure); generic firmware and app code are fine
 - no repository names or links in documents or commit messages
 
+## OWNER-DECISION-002 — Two-branch Git policy (2026-10-24, owner-authorized, ACTIVE)
+- Decided by: Varun (owner, Viswatra), in the chat instruction "Viswatra — Final Git Branch Workflow".
+- Decision: each product has two permanent branches, `main` (production) and `dev` (development). All development is committed and pushed directly to `dev`. Nothing is merged or pushed to `main` without owner approval and passing release gates. No feature, fix or task branches and no routine pull requests. Full text: `docs/governance/git-branch-policy.md`.
+- Supersedes, for future development: the "Owner exception — direct work on main" in OWNER-APPROVAL-001. That historical entry is kept unchanged. Its four conditions (small verified commits, no force-push, independent review for sensitive code, no hardware or paid actions) still apply under the new policy.
+- Not changed: the security, testing, independent review and release requirements.
+- Other products: not migrated by this decision. Each is migrated only when separately authorized.
+
 ## BLOCKER-001 — Apple Developer Program membership (iPhone builds and TestFlight)
 - Priority: high. Module: apps/mobile (iOS). Requirement: G46; Engineering Standards 1 and 6; Goal 14.2.
-- Status: READY_FOR_OWNER. Owner action only (paid account, legal terms).
+- Status: DEFERRED (2026-10-24). Owner action required before real-iPhone testing or TestFlight distribution. Not resolved: Apple Developer Program membership has not been verified. Development continues on simulator, emulator and Android. Reopen this item when iPhone 15 testing or TestFlight distribution is scheduled.
+- Owner action (when scheduled): owner-only (paid account, legal terms).
 - Problem: iPhone 15 testing needs a development or TestFlight build. Without the membership no iOS build can be installed on the owner's phone.
 - Verified cause: not an agent failure. The membership is an owner purchase and an owner acceptance of Apple terms.
 - Current state: no iOS build exists. The app config is ready (bundle identifier com.viswatra.lensmate, set in apps/mobile/app.config.ts).
@@ -37,7 +45,7 @@ Nothing is ever committed that should not be public, because history stays publi
 
 ## BLOCKER-002 — Expo account and EAS Build project
 - Priority: high. Module: apps/mobile (build). Requirement: G46; Standards 1 and 6.
-- Status: RESOLVED (2026-10-24). EAS project linked and verified on the owner account (Expo account varun1408, project `@varun1408/lensmate`). Verification evidence is in PROGRESS.md under "BLOCKER-002 verification".
+- Status: RESOLVED (2026-10-24). EAS project linked and verified. Expo account: CREATED, name `Varun1408`. Expo project: `lensmate` (`@varun1408/lensmate`). Project ID: `2fb3599f-8a9d-4f26-85c0-ad9669a6f23b`. Dependency installation and expo-router resolution: VERIFIED. Verification evidence is in PROGRESS.md under "BLOCKER-002 verification".
 - Resolution: the project ID is in `apps/mobile/app.config.ts` at `extra.eas.projectId`. `eas init` could not write it because the config is dynamic (`app.config.ts`), so the ID was added by hand. No other setting was changed. No second Expo project was created.
 - Verified: `npx expo config --type public` and `eas project:info` (see PROGRESS.md). No build was queued; the agent does not start builds.
 - Still owner-only, and not part of this blocker: the first `eas build` (queued on the owner account) needs BLOCKER-001 (Apple membership) for iOS.
@@ -58,7 +66,7 @@ Nothing is ever committed that should not be public, because history stays publi
 - Priority: medium. Module: repository settings. Requirement: Standards 6; Global 2.4 and 29.2.
 - Status: READY_FOR_OWNER. Owner action only (repository settings are never changed by an agent).
 - Recommended settings (owner chooses): 1) require the status checks `quality` and `secret-scan` before merging to main. 2) Enable secret scanning and push protection. 3) Enable Dependabot security updates. 4) Keep force pushes disabled on main.
-- Note: the owner exception in the approval record allows direct pushes to main under its four conditions. Required checks would still apply to any pull request later.
+- Note: OWNER-DECISION-002 (2026-10-24) supersedes the direct-push exception for development. Development goes to `dev` only, and `main` changes need owner approval. Required checks would still apply to any pull request later.
 
 ## BLOCKER-005 — Owner-run iPhone 15 measurement procedures (agent builds, owner runs)
 - Priority: high. Module: docs/measurements. Requirement: Goal 14.2 and 21; checklist 7, 8, 9, 10.

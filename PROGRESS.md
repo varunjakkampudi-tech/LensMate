@@ -12,9 +12,18 @@ Completed and verified on main: monorepo, strict typing, lint, format, knip, Jes
 
 Stage B (gesture precedence, listening sessions, Locked-feature absence) is integrated in 927ab18. Stopped here, not blocked: the rest of Stage B (retention and log hygiene), Stage C gateway with mocks, the dependency audit gate, and the Maestro flows are unblocked and are the next steps. They are large, so they are not started in this session. Blocked on owner: BLOCKER-001, 004, 006, 007, 009. Due: BLOCKER-003 after 2026-10-20 14:40 UTC.
 
-Owner approval: OWNER-APPROVAL-001 in `blocker.txt` (RESOLVED, 2026-10-20, on main). The smart glasses goal is ACTIVE. Direct commits to `main` are allowed under the four conditions in that entry.
+Owner approval: OWNER-APPROVAL-001 in `blocker.txt` (RESOLVED, 2026-10-20, on main). The smart glasses goal is ACTIVE. Its direct-to-main exception is superseded for development by OWNER-DECISION-002 (2026-10-24): all development goes to `dev`, and `main` changes need owner approval. Policy: `docs/governance/git-branch-policy.md`.
 
 Status is reported per item with its evidence level. Nothing is marked complete without evidence. No real-phone, hardware, or provider result exists yet.
+
+## Branch migration (2026-10-24, OWNER-DECISION-002)
+
+- Policy: two permanent branches, `main` (production) and `dev` (development). Development is committed and pushed directly to `dev`. `main` changes need owner approval. See `docs/governance/git-branch-policy.md`.
+- Backup before any change: `C:/Users/Admin/LensMate-git-backup/2026-10-24/lensmate-all-refs.bundle`, all refs, verified with `git bundle verify`. Ref list saved as `refs-before.txt` in the same folder.
+- Baseline: `main` and `origin/main` were both at `6f9903a` before the migration. No commit was pushed to `main`. The EAS link commit is carried onto `dev` and is waiting for owner approval to promote.
+- Created `dev` from `origin/main` and pushed it to `origin/dev` with upstream tracking.
+- Branch `claude/lensmate-blocker-002-eas-a26e60` was created earlier for the EAS work. Its commit now lives on `dev`. Its remote copy is kept until the owner authorizes its deletion.
+- CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
 ## BLOCKER-002 verification (2026-10-24)
 
