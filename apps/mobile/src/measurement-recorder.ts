@@ -12,6 +12,12 @@ import type { EnvelopeMessage } from "@lensmate/protocol";
 /** The button event that starts one capture-to-phone try. A single tap takes a photo (v9 section 5.0). */
 export const CAPTURE_TRIGGER_ACTION = "BUTTON_ACTION_SINGLE_TAP";
 
+/**
+ * Both timestamps come from one clock (performance.now) in one process, so subtracting them is valid. This is
+ * harness timing, not transport latency: two independent device clocks are never subtracted.
+ */
+const SAME_CLOCK_TIMING = "same_clock_simulator" as const;
+
 /** Glasses link that also reports when the glasses emitted its latest button event (virtual glasses today). */
 export interface TimedGlasses extends GlassesLink {
   readonly lastButtonAtMs: number | undefined;
@@ -122,6 +128,7 @@ export class CaptureToPhoneRecorder {
       language: this.language,
       trial,
       evidenceLevel: context.evidenceLevel,
+      timingSource: SAME_CLOCK_TIMING,
       runByRole: context.runByRole,
       dateUtc: this.dateUtc(),
       deviceModel: context.deviceModel,

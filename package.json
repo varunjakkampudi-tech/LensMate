@@ -21,7 +21,7 @@
     "check:expo": "pnpm -F @lensmate/mobile exec expo config --type public",
     "audit:high": "pnpm audit --audit-level=high",
     "measure:import": "node tools/measurement-import/dist/cli.js",
-    "measure:dry-run": "jest apps/mobile/src/measurement-dry-run.test.ts --runInBand"
+    "measure:dry-run": "pnpm -F @lensmate/mobile exec jest src/measurement-dry-run.test.ts --runInBand"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

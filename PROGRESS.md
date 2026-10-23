@@ -26,26 +26,41 @@ Status is reported per item with its evidence level. Nothing is marked complete 
 - Local branches now: `main` (checked out in the root checkout) and `dev` (checked out in the session worktree). Git allows a branch to be checked out in one worktree at a time, so the root checkout stays on `main`.
 - CI workflow now runs on pushes to `dev` as well as `main`. Pull request runs are unchanged.
 
-## BLOCKER-005 measurement readiness (2026-10-24)
+## BLOCKER-005 measurement workflow (2026-10-24)
 
-Implemented in this step (agent work):
+Scope of this step: the agent-owned measurement workflow for the simulator, made operational. No physical device was used, no provider was called, and no measurement was invented.
 
-- Targets from LensMate-v9 section 6.4 (verified against the local copy of LensMate-v9.md): capture to phone 300 ms; recognition first words 500 ms; first sentence 1000 ms; speech output 500 ms; total short request under 2500 ms. Interruption 500 ms in at least 95 percent of tries (G19). Latency acceptance: 50 requests per language, at least 90 percent meeting the budget (Goal 14.2). Targets are design targets, not proven performance.
-- Core measurement module (`packages/core/src/measurement`): interval and threshold calculations, per-language evaluation, and the acceptance rules. Boundaries are tested (300, 500, 2499 and 2500 ms; 45 of 50; 19 of 20; 89.9 percent does not round up).
-- Import validator (`importMeasurementCsv`) and CLI (`pnpm measure:import <file>`, package `tools/measurement-import`). It rejects missing provenance, invalid or reversed marks, duplicate IDs, unsupported measures, evidence claims above simulator, emulator and real phone, real-phone claims by the agent or on a simulator device, and personal-data patterns. Simulator rows are reported apart from real-phone rows.
-- In-app capture-to-phone recorder (`apps/mobile/src/measurement-recorder.ts`). It times capture from the glasses' own button timestamp (`VirtualGlasses.lastButtonAtMs`) to the phone's receipt, using events only. A try that cannot be timed is recorded as failed, never estimated. The recorder is not yet wired to a screen.
-- Simulator dry run (`pnpm measure:dry-run`, `apps/mobile/src/measurement-dry-run.test.ts`): 50 scripted presses in English and 50 in Telugu through the virtual glasses, exported and accepted by the validator as simulator evidence. Labelled as a dry run, not a physical-iPhone measurement.
-- Procedures: `docs/measurements/procedures/iphone15-procedures.md`, marked NOT RUNNABLE, because the phone app has no tap control, provenance form or export yet. Template: `docs/measurements/evidence-template.csv`, with the header generated from the validator. Traceability: `docs/measurements/traceability.md`.
+Implemented:
 
-Not done (and why):
+- Measurement screen (`apps/mobile/src/measurement-screen.tsx`), reached from the home screen. Session controls (start, end), a simulated single tap, provenance entry (run ID, evidence level, who ran the test, device, OS, app build and commit, EAS build ID, network type, provider, sample set, optional battery), the language of the tries (English, Telugu, Hindi, mixed speech), the count of tries per language, clear error and alert states, and CSV export with the validator result. Provenance is locked while a session runs.
+- Pure rules (`apps/mobile/src/measurement-session.ts`): the provenance checks, the recorder context, the measure status table (only capture to phone is instrumented; everything else is labelled NOT INSTRUMENTED), and the tallies.
+- Timing source: the validator now carries a `timing_source` column. The only supported value is `same_clock_simulator`, meaning both timestamps come from one clock. Any transport source is rejected until a clock synchronization is validated. The summary keeps timing sources apart.
+- The screen and the glasses share one clock. A mismatched clock produces failed tries with the reason, never a latency.
+- Owner procedure (`docs/measurements/procedures/iphone15-procedures.md`): the simulator workflow is executable. The iPhone run lists its requirements and is not yet runnable.
+- Traceability matrix and test inventory (`docs/measurements/traceability.md`).
 
-- Latency total, interruption, speech accuracy, translation and spend are not instrumented on the phone. Recognition, translation and speech output do not exist in the app yet, so those stages have no events to time. The validator rejects these measures until they are instrumented.
-- Measurement screen in the phone app: not built. The owner cannot run any real-phone test until it exists.
-- No real-phone result exists. No dummy evidence was created. No physical device, paid service, OpenRouter call or Apple purchase was used.
+Tests (all passing locally before commit):
 
-Status: BLOCKER-005 READY_FOR_OWNER. Agent implementation partially complete. BLOCKER-001 deferred.
+- Root: 184 tests (core measurement, CLI, existing suites), coverage above the thresholds (96.7 percent lines, 89.1 percent branches).
+- Mobile: 49 tests, including the measurement session rules, the recorder, the screen component and accessibility checks, the end-to-end workflow through the virtual glasses, the mismatched-clock test, and the dry run.
+- Gates: format, lint, typecheck (root and mobile), knip, build, schema check, `check:expo`, and the secret-pattern scan.
 
-Tests run for this step: typecheck, lint, format, knip, schema check, `check:expo`, and the full test suites (root 181 tests with coverage thresholds met; mobile 14 tests). The simulator dry run passed.
+Defects found and fixed during this step:
+
+- Battery value 101 was accepted. The range check now enforces 0 to 100, matching the validator.
+- The screen shared the recorder's mutable array with React state, so later taps did not re-render. The screen now stores a copy.
+- The end-to-end tests missed the state update until `fireEvent` calls were awaited. All UI tests now await them.
+- The end-to-end file had a timeout that was passed to `it` by mistake, and could time out under coverage. It now uses a file-level timeout of 30 seconds and a 10-second find timeout.
+
+Independent review: not required for this step. BLOCKER-008 covers the provider broker, authentication, pairing, permissions and firmware update code. This step changes none of those. It does not change the capture indicator, the session state machine or any permission. The simulator's button method already existed and is used only by tests and the simulator screen.
+
+What is still owner-pending or dependent on future work:
+
+- Owner-run iPhone measurements: owner-pending, needs BLOCKER-001 (Apple membership), an EAS build, and a VoiceOver pass on the device. Real-phone acceptance stays READY_FOR_OWNER until owner-run results are imported and validated.
+- latency_total, interruption, speech accuracy, translation and spend: NOT INSTRUMENTED. They depend on speech recognition, translation, speech output and provider pipelines.
+- Transport timing (Bluetooth glasses): depends on a validated clock synchronization, which does not exist yet.
+
+Status: BLOCKER-005 READY_FOR_OWNER. Agent simulator workflow complete. Agent instrumentation for the unsupported measures not started (dependent on future work).
 
 ## BLOCKER-004 hardening verification (2026-10-24, read-only, after the owner's update)
 
@@ -175,7 +190,7 @@ Previous re-verification (2026-10-24, earlier): unchanged at that time. Default 
 | C | Dependency audit gate | Blocked (BLOCKER-010) | Scheduled workflow reports 2 high advisories with no published fix. Not yet a blocking gate, pending owner waiver decision |
 | D to G | Voice, vision, translation, memory | NOT STARTED | Stage D to G |
 | H | Feature switch framework | NOT STARTED | Stage H |
-| I | P-1 measurement harness and procedures | PARTIAL | Import validator, CLI, capture-to-phone recorder, simulator dry run, templates. Measurement screen and latency_total, interruption, speech, translation and spend instrumentation not done. Owner runs (BLOCKER-005) |
+| I | P-1 measurement harness and procedures | PARTIAL | Simulator workflow complete (screen, validator, dry run, tests). Owner iPhone runs and unsupported measures remain (BLOCKER-005) |
 | J | Firmware host-testable abstractions | NOT STARTED | Stage J; no firmware code yet |
 | K | P-1 report template | NOT STARTED | Stage K |
 

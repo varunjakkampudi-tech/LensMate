@@ -1,55 +1,60 @@
-# iPhone 15 measurement procedures (owner-run)
+# Measurement procedure (owner-run)
 
-Status: NOT RUNNABLE YET. Read this section before anything else.
+Status (2026-10-24):
 
-- The phone app has connect and disconnect controls only. It has no control that sends a tap to the virtual glasses, no form for the provenance fields, and no export. The recorder that times capture to phone exists in code (`apps/mobile/src/measurement-recorder.ts`) but is not wired to any screen.
-- The end-to-end latency (`latency_total`) and interruption measures cannot be run at all yet. The phone app has no recognition, translation or speech output, so those stages have no events to time.
-- Owner runs also need BLOCKER-001 (Apple Developer Program membership) for an iPhone development or TestFlight build.
-- The agent will add the measurement screen (tap control, provenance form and CSV export) as the next implementation step. This document will be updated with the real steps when that screen exists. Until then, do not run anything from this file and do not record results.
+- Simulator workflow: EXECUTABLE. The measurement screen in the app runs against the virtual glasses, and its tries export to a CSV the validator checks. Use it to rehearse the procedure. Its evidence is simulator evidence.
+- iPhone 15 run: NOT YET RUNNABLE. Section "Requirements before an iPhone run" lists what is still missing. Do not record a result from an iPhone until every requirement there is met and the run is reported with real phone evidence.
 
-Read `../README.md` for the rules that apply to every run.
+Read `../README.md` first for the rules that apply to every run.
 
-## When the procedure can run
+## Supported measures and what they mean
 
-All of the following must be true:
+| Measure                             | Status           | What it times                                                                                                                                                        |
+| ----------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `capture_to_phone`                  | Instrumented     | The in-app path, from the glasses' button event to the phone's receipt. Both timestamps come from one clock, so this is harness timing. It is not transport latency. |
+| `latency_total`                     | NOT INSTRUMENTED | Needs recognition, translation and speech output. The app has none yet.                                                                                              |
+| `interruption`                      | NOT INSTRUMENTED | Needs speech output to stop. The app has none yet.                                                                                                                   |
+| Speech accuracy, translation, spend | NOT INSTRUMENTED | Need the speech, translation and provider pipelines.                                                                                                                 |
 
-1. BLOCKER-001 is resolved, and an iPhone 15 development build exists with its EAS build ID.
-2. The measurement screen exists in the build (the agent will record the commit that adds it).
-3. For each measure you run, the instrumentation for that measure exists in that commit (see `../traceability.md`).
+The screen shows each measure with its status and target. Anything not instrumented is labelled that way and never shown as a result.
 
-## Setup (once the screen exists)
+## Simulator workflow (executable now)
 
-1. Record the date (UTC), the iPhone model, the iOS version, the app commit, the EAS build ID, the network type and the provider.
-2. Record a `run_id` that is unique for this run and contains no personal details.
-3. Choose the language (`en`, `te`, `hi`, `mixed`) for the run.
-4. Note the battery level at the start, if it is relevant to the run.
-5. Keep test samples outside the repository and record only the sample-set name.
+1. Build and run the app in a development environment, or run the mobile tests: `pnpm -F @lensmate/mobile test`. The end-to-end test in `measurement-screen-e2e.test.tsx` drives this exact workflow.
+2. Open the measurement screen from the home screen.
+3. Connect the virtual glasses.
+4. Fill in the provenance:
+   - Run ID: a unique name for this run, with no personal details.
+   - Evidence level: Simulator (or Emulator for the Android emulator).
+   - Who ran the test: Agent (dry run) for an agent rehearsal. Owner is only for an owner run.
+   - Device model, OS version, app build, app commit, network type, sample set. Provider defaults to `none`. Battery is optional.
+5. Choose the language for the tries: English, Telugu, Hindi, or Mixed speech. Each language has its own trial numbers.
+6. Start the session. The provenance is locked while the session runs.
+7. Send single taps with the simulated button. Each tap is one try. Repeat for each language you need.
+8. End the session.
+9. Build the CSV. The screen shows the validator result: how many rows were accepted and rejected, and why. Copy the CSV from the text box.
+10. Save the CSV outside the repository. Check it with `pnpm measure:import <file>`.
 
-## Measures
+The screen blocks a session with missing or inconsistent provenance and lists each problem. The validator rejects any row that lacks provenance, so a simulator rehearsal cannot pass as real evidence.
 
-### capture_to_phone (instrumented in code; the screen is still needed)
+## Requirements before an iPhone run
 
-Target: 300 ms or less (v9 section 6.4). Acceptance: none is stated for this stage alone. It is reported as a pass rate.
+Each of these must be met. Until then the iPhone run is not runnable:
 
-1. Start the virtual glasses link in the app. Note that the glasses are virtual, so the evidence is "real phone" only for the phone's timing, not for glasses hardware.
-2. Send one tap for each try, using the measurement screen's tap control.
-3. Export the CSV from the screen and fill in the provenance columns the screen does not fill.
-4. Run at least 50 tries per language, so the result can be compared with the later end-to-end target.
-5. Import the file with `pnpm measure:import <file>`.
-
-### latency_total and interruption (NOT instrumented on the phone yet)
-
-Do not run these. They need recognition, translation and speech output, and interruption needs a press that stops speech. Their targets are kept here for reference only:
-
-- `latency_total`: under 2500 ms end to end, at least 50 requests per language, at least 90 percent meeting the budget (v9 section 6.4, Goal 14.2).
-- `interruption`: stop within 500 ms in at least 95 percent of tries (G19, GAP_MATRIX item 7).
+1. **Apple Developer Program membership (BLOCKER-001).** Needed for a development or TestFlight build. Deferred by the owner until iPhone testing is scheduled.
+2. **EAS build of the app.** Build with `npx eas-cli build --platform ios --profile development` from `apps/mobile`, under the owner's Expo account. Record the EAS build ID. The provenance requires it for real phone evidence.
+3. **Timing rule for real transport.** Two independent device clocks may not be subtracted until a clock synchronization is validated. The screen and the virtual glasses share one clock, so a run on the iPhone with virtual glasses measures only the in-app path. A run with real Bluetooth glasses needs a validated clock synchronization first. Until then it is not measurable.
+4. **Owner-run only.** The agent never runs tests on the owner's phone. The validator rejects real phone rows run by the agent.
+5. **Real phone evidence is labelled as such.** The device name must not say simulator or emulator. The validator rejects the contradiction.
+6. **Accessibility on device.** VoiceOver on the iPhone has not been checked. The automated checks cover roles, labels and states only. The owner runs a VoiceOver pass on the screen and records the result in `PROGRESS.md`.
+7. **Language sample sets.** English, Telugu, Hindi and mixed speech sample sets are owner-supplied and stay outside the repository. The sample set name goes in the provenance.
 
 ## Recording results
 
-1. Use one row per try. Do not delete, edit or reorder a row to change a result. A correction is a new row whose `notes` refer to the old `measurement_id`.
-2. Keep raw recordings and screen captures outside the repository. Put only their location in `raw_location`, using a neutral name without a home folder path.
-3. A failed try is still a row: `outcome` is `failed` and `notes` says what failed.
-4. Send the completed CSV to the agent with the app commit it measured. The agent imports it with `pnpm measure:import`, and the summary goes into `PROGRESS.md` with the evidence level.
+- One row per try. Do not delete or edit a row to change a result. A correction is a new row whose notes refer to the old `measurement_id`.
+- A failed try is still a row, with `outcome` `failed` and notes that say what failed.
+- Keep raw recordings and screen captures outside the repository. Put only their location in `raw_location`, using a neutral name without a home folder path.
+- Send the CSV with the app commit it measured. The agent imports it and records the summary with its evidence level.
 
 ## Stop conditions
 

@@ -16,6 +16,7 @@ const VALID_SIM_CAPTURE: Fields = {
   language: "en",
   trial: "1",
   evidence_level: "simulator",
+  timing_source: "same_clock_simulator",
   run_by_role: "agent",
   date_utc: "2026-10-24T10:00:00Z",
   device_model: "virtual glasses simulator (no phone)",
@@ -43,6 +44,7 @@ const VALID_REAL_CAPTURE: Fields = {
   ...VALID_SIM_CAPTURE,
   measurement_id: "iph15-en-cap-001",
   evidence_level: "real phone",
+  timing_source: "same_clock_simulator",
   run_by_role: "owner",
   device_model: "iPhone 15",
   os_version: "iOS 26.0",
@@ -100,7 +102,9 @@ describe("file-level checks", () => {
   it("rejects a row with the wrong number of fields", () => {
     const text = `${formatCsvLine(MEASUREMENT_COLUMNS)}\nsim-1,capture_to_phone\n`;
     const result = importMeasurementCsv(text);
-    expect(result.rejected[0]?.reasons[0]).toMatch(/expected 26 fields, found 2/);
+    expect(result.rejected[0]?.reasons[0]).toMatch(
+      new RegExp(`expected ${String(MEASUREMENT_COLUMNS.length)} fields, found 2`),
+    );
   });
 
   it("rejects a file with an unterminated quote", () => {
@@ -324,5 +328,33 @@ describe("summaries and round trip", () => {
     const second = importMeasurementCsv(text);
     expect(second.rejected).toEqual([]);
     expect(second.accepted).toEqual(first.accepted);
+  });
+});
+
+describe("timing source", () => {
+  it("rejects a row with no timing source", () => {
+    expect(reasonsFor({ ...VALID_SIM_CAPTURE, timing_source: "" })).toEqual([
+      "missing timing_source",
+    ]);
+  });
+
+  it("rejects a transport timing source until clock synchronization is validated", () => {
+    expect(reasonsFor({ ...VALID_REAL_CAPTURE, timing_source: "ble_glasses_clock" })).toEqual([
+      'timing_source "ble_glasses_clock" is not supported: transport timing needs a validated clock synchronization, which P-1 does not have yet',
+    ]);
+  });
+
+  it("reports same-clock simulator timing apart from any other timing source", () => {
+    const result = importMeasurementCsv(
+      csvOf([VALID_SIM_CAPTURE, { ...VALID_REAL_CAPTURE, trial: "1" }]),
+    );
+    const summaries = summarizeEvidence(result.accepted);
+    expect(new Set(summaries.map((summary) => summary.timingSource))).toEqual(
+      new Set(["same_clock_simulator"]),
+    );
+    expect(summaries.map((summary) => summary.evidenceLevel).sort()).toEqual([
+      "real phone",
+      "simulator",
+    ]);
   });
 });

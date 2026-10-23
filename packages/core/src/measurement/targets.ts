@@ -22,6 +22,14 @@ export const ALL_EVIDENCE_LEVELS = [
 export const IMPORTABLE_EVIDENCE_LEVELS = ["simulator", "emulator", "real phone"] as const;
 export type ImportableEvidenceLevel = (typeof IMPORTABLE_EVIDENCE_LEVELS)[number];
 
+/**
+ * How the two timestamps of a try were taken. In P-1 only the same-clock simulator source is supported: both
+ * timestamps come from one clock in one process. Subtracting timestamps from two independent device clocks needs
+ * a validated synchronization, which does not exist yet, so no transport source is accepted (see traceability.md).
+ */
+export const IMPORTABLE_TIMING_SOURCES = ["same_clock_simulator"] as const;
+export type TimingSource = (typeof IMPORTABLE_TIMING_SOURCES)[number];
+
 /** Measures this version can record and import. Each one is instrumented in the app or the simulator. */
 export const SUPPORTED_MEASURES = ["capture_to_phone", "latency_total", "interruption"] as const;
 export type SupportedMeasure = (typeof SUPPORTED_MEASURES)[number];

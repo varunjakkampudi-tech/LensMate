@@ -12,6 +12,7 @@ const SIM_VALUES: Record<string, string> = {
   language: "en",
   trial: "1",
   evidence_level: "simulator",
+  timing_source: "same_clock_simulator",
   run_by_role: "agent",
   date_utc: "2026-10-24T10:00:00Z",
   device_model: "virtual glasses simulator (no phone)",

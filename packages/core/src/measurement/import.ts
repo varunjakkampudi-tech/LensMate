@@ -14,11 +14,13 @@ import {
 import {
   ALL_EVIDENCE_LEVELS,
   IMPORTABLE_EVIDENCE_LEVELS,
+  IMPORTABLE_TIMING_SOURCES,
   LANGUAGES,
   SUPPORTED_MEASURES,
   type ImportableEvidenceLevel,
   type Language,
   type SupportedMeasure,
+  type TimingSource,
 } from "./targets.js";
 
 /** Columns of the P-1 result template, in order. A file must contain every column and no others. */
@@ -29,6 +31,7 @@ export const MEASUREMENT_COLUMNS = [
   "language",
   "trial",
   "evidence_level",
+  "timing_source",
   "run_by_role",
   "date_utc",
   "device_model",
@@ -84,6 +87,7 @@ export interface MeasurementRecord {
   readonly language: Language;
   readonly trial: number;
   readonly evidenceLevel: ImportableEvidenceLevel;
+  readonly timingSource: TimingSource;
   readonly runByRole: RunByRole;
   readonly dateUtc: string;
   readonly deviceModel: string;
@@ -227,6 +231,7 @@ function validateRow(
   }
 
   reasons.push(...checkEvidence(raw));
+  reasons.push(...checkTiming(raw));
   reasons.push(...checkProvenance(raw));
   reasons.push(...checkPersonalData(raw));
 
@@ -272,6 +277,19 @@ function checkEvidence(raw: Record<string, string>): string[] {
     }
   }
   return reasons;
+}
+
+function checkTiming(raw: Record<string, string>): string[] {
+  const source = raw.timing_source ?? "";
+  if (isOneOf(source, IMPORTABLE_TIMING_SOURCES)) {
+    return [];
+  }
+  if (source === "") {
+    return ["missing timing_source"];
+  }
+  return [
+    `timing_source "${source}" is not supported: transport timing needs a validated clock synchronization, which P-1 does not have yet`,
+  ];
 }
 
 function checkProvenance(raw: Record<string, string>): string[] {
@@ -396,6 +414,7 @@ function toRecord(raw: Record<string, string>): MeasurementRecord {
     language: raw.language as Language,
     trial: Number(raw.trial),
     evidenceLevel: raw.evidence_level as ImportableEvidenceLevel,
+    timingSource: raw.timing_source as TimingSource,
     runByRole: raw.run_by_role as RunByRole,
     dateUtc: raw.date_utc ?? "",
     deviceModel: raw.device_model ?? "",
@@ -425,6 +444,7 @@ function recordToFields(record: MeasurementRecord): string[] {
     record.language,
     String(record.trial),
     record.evidenceLevel,
+    record.timingSource,
     record.runByRole,
     record.dateUtc,
     record.deviceModel,
@@ -451,6 +471,7 @@ function recordToFields(record: MeasurementRecord): string[] {
 /** Summary of accepted completed-or-failed tries, one entry per evidence level, measure and language. */
 export interface EvidenceSummary {
   readonly evidenceLevel: ImportableEvidenceLevel;
+  readonly timingSource: TimingSource;
   readonly measure: SupportedMeasure;
   readonly report: LanguageReport;
   /** Null when the documents set no criterion for the measure (capture to phone is reported only). */
@@ -462,26 +483,34 @@ export interface EvidenceSummary {
  * real-phone results: each evidence level is reported on its own.
  */
 export function summarizeEvidence(records: readonly MeasurementRecord[]): EvidenceSummary[] {
+  const groups = new Map<string, MeasurementRecord[]>();
+  for (const record of records) {
+    const key = `${record.evidenceLevel}|${record.timingSource}|${record.measure}`;
+    const group = groups.get(key) ?? [];
+    group.push(record);
+    groups.set(key, group);
+  }
+
   const summaries: EvidenceSummary[] = [];
   for (const level of IMPORTABLE_EVIDENCE_LEVELS) {
-    for (const measure of SUPPORTED_MEASURES) {
-      const attempts = records
-        .filter((record) => record.evidenceLevel === level && record.measure === measure)
-        .map(toAttempt);
-      if (attempts.length === 0) {
-        continue;
-      }
-      const reports = reportsFor(measure, attempts);
-      for (const report of reports) {
-        if (report.attempts === 0) {
+    for (const timingSource of IMPORTABLE_TIMING_SOURCES) {
+      for (const measure of SUPPORTED_MEASURES) {
+        const group = groups.get(`${level}|${timingSource}|${measure}`);
+        if (group === undefined) {
           continue;
         }
-        summaries.push({
-          evidenceLevel: level,
-          measure,
-          report,
-          criterionMet: criterionFor(measure, report),
-        });
+        for (const report of reportsFor(measure, group.map(toAttempt))) {
+          if (report.attempts === 0) {
+            continue;
+          }
+          summaries.push({
+            evidenceLevel: level,
+            timingSource,
+            measure,
+            report,
+            criterionMet: criterionFor(measure, report),
+          });
+        }
       }
     }
   }
