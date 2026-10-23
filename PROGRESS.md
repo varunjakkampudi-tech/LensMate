@@ -56,7 +56,18 @@ Gate results for this step (local, CI-equivalent): install (frozen), typecheck, 
 
 Status: BLOCKER-004 stays OPEN until the owner configures branch protection on `main` and enables Dependabot security updates, and those settings are verified read-only.
 
-Re-verification (2026-10-24, later the same day, read-only): unchanged. Default branch `main`; branches `main` and `dev`; `main` not protected (HTTP 404); no rulesets; secret scanning and push protection enabled; validity checks and non-provider patterns disabled; Dependabot security updates disabled; vulnerability alerts disabled (HTTP 404); no open secret-scanning alerts.
+Verification after the owner's changes (2026-10-24, read-only, `gh api`; no settings changed by the agent):
+
+- Ruleset `Protect Production Main`, id 25755233: active, source `varunjakkampudi-tech/LensMate`, target `~DEFAULT_BRANCH` (resolves to `main`). `dev` has no rules (`repos/.../rules/branches/dev` returns none), so direct pushes to `dev` are allowed. Confirmed by the push of `2e522cd` to `dev`.
+- Rules on `main`: `deletion`, `non_fast_forward` (blocks force-push), `required_linear_history`, `code_quality` (severity all), and `required_status_checks`.
+- Required status checks: EMPTY. The rule has `required_status_checks: []`, so neither `quality` nor `secret-scan` is required, and no check source is pinned. This is the blocking gap.
+- Bypass actors: none. `current_user_can_bypass` is `never`, so the owner cannot bypass the ruleset either.
+- Classic branch protection on `main`: not configured (HTTP 404). Not needed alongside the ruleset.
+- Promotion permissions: the collaborator list (`affiliation=all`) has one user, the owner, with admin and push. There are no teams and no other collaborators, so no non-owner can push to `main` today. The ruleset does not enforce this on its own. It has no "restrict updates" rule and no pull-request rule, so owner-only control depends on membership, not on the ruleset.
+- Security settings: Dependabot alerts enabled (`vulnerability-alerts` returns 204). Dependabot security updates enabled. Secret scanning enabled. Push protection enabled. Secret-scanning validity checks and non-provider patterns disabled (optional). Open secret-scanning alerts: 0.
+- Branches: `main` and `dev` only.
+
+Previous re-verification (2026-10-24, earlier): unchanged at that time. Default branch `main`; branches `main` and `dev`; `main` not protected (HTTP 404); no rulesets; secret scanning and push protection enabled; validity checks and non-provider patterns disabled; Dependabot security updates disabled; vulnerability alerts disabled (HTTP 404); no open secret-scanning alerts.
 
 ## BLOCKER-003 result (2026-10-24)
 
