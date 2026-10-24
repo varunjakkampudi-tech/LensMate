@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 import { confirmAction, runAgentTask, type AgentStep, type PhoneAction } from "../src/ai/agent";
+import { RequestCancelled } from "../src/ai/assistant";
+import { RunGuard } from "../src/ai/run-guard";
 import { aiErrorText } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { useMicSession } from "../src/ai/use-voice";
@@ -98,6 +100,7 @@ export default function AssistantScreen() {
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nextId = useRef(1);
+  const guard = useRef(new RunGuard()).current;
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const lastAnswer = [...messages]
     .reverse()
@@ -118,28 +121,67 @@ export default function AssistantScreen() {
     setError(null);
     push({ role: "user", text: question });
     setBusy(true);
+    const current = guard.begin();
     const steps: AgentStep[] = [];
     try {
-      const r = await runAgentTask(question, lang, (s) => steps.push(s));
+      const r = await runAgentTask(
+        question,
+        lang,
+        (s) => {
+          if (guard.isCurrent(current.id)) {
+            steps.push(s);
+          }
+        },
+        current.signal,
+      );
+      // A late answer from a cancelled or replaced request is dropped: never shown, never spoken.
+      if (!guard.isCurrent(current.id)) {
+        return;
+      }
+      guard.finish(current.id);
       push({ role: "assistant", text: r.answer, steps, actions: r.actions, source: r.source });
       setSpeaking(true);
       speak(r.answer, lang, prefs.voiceRate, () => setSpeaking(false));
     } catch (e) {
+      if (e instanceof RequestCancelled || !guard.isCurrent(current.id)) {
+        return;
+      }
+      guard.finish(current.id);
       push({
         role: "assistant",
         text: aiErrorText(e),
         failedQuestion: question,
       });
     } finally {
-      setBusy(false);
+      if (guard.isCurrent(current.id)) {
+        setBusy(false);
+      }
     }
   };
 
+  /** Stop: cancels the request in flight, the speech and the microphone. Nothing from a stopped request is added later. */
   const stopAll = () => {
+    const cancelled = guard.cancel();
     mic.stop();
     stopSpeaking();
     setSpeaking(false);
+    setBusy(false);
+    if (cancelled) {
+      push({ role: "assistant", text: "Stopped. No answer was added to this conversation." });
+    }
   };
+
+  // Leaving the screen cancels any request and stops speech and the microphone.
+  useEffect(
+    () => () => {
+      guard.cancel();
+      mic.stop();
+      stopSpeaking();
+    },
+    // The guard and microphone session live for the screen's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const listening = mic.listening !== null;
   const status = listening ? "Listening…" : busy ? "Thinking…" : speaking ? "Speaking…" : "Ready";
