@@ -359,6 +359,19 @@ describe("separate-mount requirement and the cross-process lock", () => {
     }
   });
 
+  it("refuses a spend write, and a write probe, when the anchor directory is not a separate mount", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-requiremount-write-"));
+    try {
+      const path = join(dir, "anchor.json");
+      const anchor = new FileAnchor(path, { requireMount: true });
+      expect(await errorCodeOf(anchor.write({ "2026-10": 1 }))).toBe("ANCHOR_WRITE_FAILED");
+      expect(existsSync(path)).toBe(false);
+      expect(await errorCodeOf(anchor.checkWritable())).toBe("ANCHOR_WRITE_FAILED");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("refuses a write while another writer holds the lock, and never writes unlocked", async () => {
     const dir = mkdtempSync(join(tmpdir(), "broker-lock-"));
     try {

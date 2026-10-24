@@ -19,6 +19,8 @@ export async function runAdmin(
   nowMs: number,
   // Records a revocation on the spend anchor, so a restore cannot bring the device back unnoticed.
   onRevoked?: (deviceId: string) => Promise<void>,
+  // Confirms the anchor is usable. Runs before the database changes, so a refusal revokes nothing.
+  checkAnchor?: () => Promise<void>,
 ): Promise<string> {
   const [command, argument] = args;
   switch (command) {
@@ -42,9 +44,16 @@ export async function runAdmin(
         return "usage: revoke <deviceId>\n";
       }
       // Refuse before changing anything: a revocation the anchor does not record can be undone by a restore.
-      if (onRevoked === undefined) {
+      if (onRevoked === undefined || checkAnchor === undefined) {
         throw new AdminError(
           "revoke needs the anchor volume: set BROKER_LEDGER_ANCHOR_FILE. Nothing was revoked.",
+        );
+      }
+      try {
+        await checkAnchor();
+      } catch {
+        throw new AdminError(
+          "the anchor volume is not writable as a separate mount; nothing was revoked. Check the anchor mount.",
         );
       }
       const ok = await devices.revokeDevice(argument);

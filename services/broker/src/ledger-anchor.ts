@@ -11,6 +11,7 @@ import {
   writeFileSync,
   writeSync,
 } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { dirname } from "node:path";
 import type { BudgetStore, BudgetSummary, ReserveInput, ReserveResult } from "./budget.js";
 
@@ -110,12 +111,23 @@ export class FileAnchor implements AnchorFile {
     });
   }
 
+  /**
+   * Confirms the anchor can be written before anything else changes. The admin revoke command calls this first, so a
+   * refused anchor leaves the device active rather than revoked in the database only.
+   */
+  checkWritable(): Promise<void> {
+    return settle(() => {
+      this.checkMount();
+    }).then(() => this.probe());
+  }
+
   /** Writes and removes a probe file next to the anchor. Rejects with ANCHOR_WRITE_FAILED when that is not possible. */
   probe(): Promise<void> {
-    const probePath = `${this.path}.probe`;
+    // The name is unpredictable and created with "wx", so a planted file or symlink is never written through.
+    const probePath = `${this.path}.${randomBytes(8).toString("hex")}.probe`;
     try {
       mkdirSync(dirname(this.path), { recursive: true });
-      writeFileSync(probePath, "ok", { mode: 0o600 });
+      writeFileSync(probePath, "ok", { mode: 0o600, flag: "wx" });
       rmSync(probePath);
       return Promise.resolve();
     } catch {
@@ -152,6 +164,11 @@ export class FileAnchor implements AnchorFile {
     const lockPath = `${this.path}.lock`;
     const deadline = Date.now() + (this.options.lockTimeoutMs ?? 5000);
     mkdirSync(dirname(this.path), { recursive: true });
+    // Every locked write, spend or revocation, must land on the volume. A directory created just now in the writable
+    // layer is refused here.
+    if (this.options.requireMount) {
+      this.checkMount();
+    }
     for (;;) {
       try {
         closeSync(openSync(lockPath, "wx", 0o600));
@@ -187,8 +204,9 @@ export class FileAnchor implements AnchorFile {
   private persist(state: AnchorState): void {
     try {
       mkdirSync(dirname(this.path), { recursive: true });
-      const temporary = `${this.path}.${String(process.pid)}.tmp`;
-      const descriptor = openSync(temporary, "w", 0o600);
+      // Unpredictable name, created with "wx": a symlink planted at a guessable path cannot redirect the write.
+      const temporary = `${this.path}.${randomBytes(8).toString("hex")}.tmp`;
+      const descriptor = openSync(temporary, "wx", 0o600);
       try {
         writeSync(descriptor, JSON.stringify({ version: 1, ...state }));
         fsyncSync(descriptor);

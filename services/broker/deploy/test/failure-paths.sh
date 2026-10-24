@@ -9,7 +9,7 @@
 #
 # Usage:    sh services/broker/deploy/test/failure-paths.sh
 # Options:  FAILTEST_IMAGE=<tag>  test an existing image instead of building one from the repository root.
-# Exit:     0 all scenarios PASS, 1 a scenario FAILed (or containers changed), 2 a precondition stopped the run.
+# Exit:     0 all scenarios PASS, 1 a scenario FAILed or was NOT RUN (or containers changed), 2 a precondition stopped the run.
 # Scenarios and expectations are listed in README.md in this folder.
 
 set -u
@@ -299,24 +299,6 @@ DEVICE_SECRET=$(sed -n 's/.*"deviceSecret":"\([^"]*\)".*/\1/p' "$SCRATCH/enrol-r
 unset CODE
 printf 'Enrolment: HTTP %s (credentials kept in the temporary directory only)\n' "$ENROL_STATUS"
 
-# ---------------------------------------------------------------- h/i: revocation needs the anchor volume (separate mount)
-# h: the anchor directory sits in the container's writable layer (tmpfs, same device as its parent). Revoke must refuse,
-#    and the device must stay active.
-dca run --rm -T --entrypoint sh broker -c "mkdir -p /tmp/nomount && BROKER_LEDGER_ANCHOR_FILE=/tmp/nomount/anchor.json node dist/admin-cli.js revoke $DEVICE_ID" >"$SCRATCH/h.txt" 2>&1
-H_RC=$?
-H_STATE=$(sql broker "SELECT revoked_at IS NULL FROM broker_device WHERE device_id = '$DEVICE_ID'")
-record h "Revoke refuses when the anchor is not a separate volume, and the device stays active" \
-  "exit non-zero; device still active" "exit=$H_RC; device active=$H_STATE" \
-  "$(if [ "$H_RC" != 0 ] && [ "$H_STATE" = t ]; then printf PASS; else printf FAIL; fi)"
-# i: the real volume is mounted in the admin container. Revoke succeeds and the anchor records the revocation.
-dca run --rm -T broker node dist/admin-cli.js revoke "$DEVICE_ID" >"$SCRATCH/i.txt" 2>&1
-I_RC=$?
-I_ANCHOR=$(anchor_cat)
-case "$I_ANCHOR" in *"$DEVICE_ID"*) I_REC=yes ;; *) I_REC=no ;; esac
-record i "Revoke with the volume mounted succeeds and the anchor records the revocation" \
-  "exit 0; anchor lists the device" "exit=$I_RC; anchor lists device=$I_REC" \
-  "$(if [ "$I_RC" = 0 ] && [ "$I_REC" = yes ]; then printf PASS; else printf FAIL; fi)"
-
 sql broker "CREATE ROLE broker_backup LOGIN" >/dev/null 2>&1
 sql broker "GRANT CONNECT ON DATABASE broker TO broker_backup; GRANT USAGE ON SCHEMA public TO broker_backup; GRANT SELECT ON ALL TABLES IN SCHEMA public TO broker_backup" >/dev/null 2>&1
 SRC_SPEND=$(sql broker "SELECT spent_paise FROM broker_budget_month WHERE month = '$CUR'")
@@ -437,6 +419,26 @@ else
     "HTTP 503 LEDGER_UNAVAILABLE" "not exercised: control request did not succeed" "NOT RUN"
 fi
 
+# ---------------------------------------------------------------- h/i: revocation needs the anchor volume (separate mount)
+# Run after f, because i revokes the device that the f control request uses.
+# h: the anchor directory sits in the container's writable layer (tmpfs, same device as its parent). Revoke must refuse
+#    before any database change, say so, and leave the device active.
+dca run --rm -T --entrypoint sh broker -c "mkdir -p /tmp/nomount && BROKER_LEDGER_ANCHOR_FILE=/tmp/nomount/anchor.json node dist/admin-cli.js revoke $DEVICE_ID" >"$SCRATCH/h.txt" 2>&1
+H_RC=$?
+H_STATE=$(sql broker "SELECT revoked_at IS NULL FROM broker_device WHERE device_id = '$DEVICE_ID'")
+if [ "$H_RC" != 0 ] && [ "$H_STATE" = t ] && grep -q "nothing was revoked" "$SCRATCH/h.txt"; then h_ok=yes; else h_ok=no; fi
+record h "Revoke refuses when the anchor is not a separate volume, and the device stays active" \
+  "exit non-zero; 'nothing was revoked'; device still active" "exit=$H_RC; device active=$H_STATE; refusal text=$h_ok" \
+  "$(verdict "$h_ok")"
+# i: the real volume is mounted in the admin container. Revoke succeeds and the anchor records the revocation.
+dca run --rm -T broker node dist/admin-cli.js revoke "$DEVICE_ID" >"$SCRATCH/i.txt" 2>&1
+I_RC=$?
+I_ANCHOR=$(anchor_cat)
+case "$I_ANCHOR" in *"$DEVICE_ID"*) I_REC=yes ;; *) I_REC=no ;; esac
+record i "Revoke with the volume mounted succeeds and the anchor records the revocation" \
+  "exit 0; anchor lists the device" "exit=$I_RC; anchor lists device=$I_REC" \
+  "$(if [ "$I_RC" = 0 ] && [ "$I_REC" = yes ]; then printf PASS; else printf FAIL; fi)"
+
 # ---------------------------------------------------------------- report and teardown
 printf '\n%-14s %-62s %-8s %s\n' "ID" "SCENARIO" "RESULT" "EVIDENCE"
 while IFS='|' read -r rid rname rexp robs rverd; do
@@ -449,7 +451,7 @@ printf '\nPASS=%s FAIL=%s NOT RUN=%s\n' "$passes" "$fails" "$notrun"
 
 teardown
 trap - EXIT
-if [ "$fails" -gt 0 ] || [ "$CONTAINERS_CHANGED" = 1 ] || [ "$PROJECT_LEFT" = 1 ]; then
+if [ "$fails" -gt 0 ] || [ "$notrun" -gt 0 ] || [ "$CONTAINERS_CHANGED" = 1 ] || [ "$PROJECT_LEFT" = 1 ]; then
   exit 1
 fi
 exit 0

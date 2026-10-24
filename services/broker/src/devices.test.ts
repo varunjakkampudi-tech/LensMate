@@ -141,11 +141,23 @@ describe("owner commands", () => {
     expect(list).not.toContain(enrolled?.deviceSecret ?? "");
 
     expect(
-      await runAdmin(["revoke", enrolled?.deviceId ?? ""], store, NOW, () => Promise.resolve()),
+      await runAdmin(
+        ["revoke", enrolled?.deviceId ?? ""],
+        store,
+        NOW,
+        () => Promise.resolve(),
+        () => Promise.resolve(),
+      ),
     ).toMatch(/^revoked /);
-    expect(await runAdmin(["revoke", "missing-device"], store, NOW, () => Promise.resolve())).toBe(
-      "no device missing-device\n",
-    );
+    expect(
+      await runAdmin(
+        ["revoke", "missing-device"],
+        store,
+        NOW,
+        () => Promise.resolve(),
+        () => Promise.resolve(),
+      ),
+    ).toBe("no device missing-device\n");
   });
 
   it("prints usage for an unknown command", async () => {

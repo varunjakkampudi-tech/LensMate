@@ -25,9 +25,14 @@ describe("owner admin commands", () => {
     const devices = new InMemoryDeviceStore();
     devices.seedDevice("dev-2", "not-a-real-device-secret-".repeat(3), "lost phone");
     const record = () => Promise.resolve();
-    expect(await runAdmin(["revoke", "dev-2"], devices, NOW, record)).toBe("revoked dev-2\n");
+    const anchorOk = () => Promise.resolve();
+    expect(await runAdmin(["revoke", "dev-2"], devices, NOW, record, anchorOk)).toBe(
+      "revoked dev-2\n",
+    );
     expect(await runAdmin(["list-devices"], devices, NOW)).toBe("dev-2  lost phone  REVOKED\n");
-    expect(await runAdmin(["revoke", "missing"], devices, NOW, record)).toBe("no device missing\n");
+    expect(await runAdmin(["revoke", "missing"], devices, NOW, record, anchorOk)).toBe(
+      "no device missing\n",
+    );
   });
 
   it("refuses to revoke without the anchor, and changes nothing", async () => {
@@ -53,10 +58,16 @@ describe("revocation is recorded on the anchor", () => {
     const devices = new InMemoryDeviceStore();
     devices.seedDevice("dev-3", "not-a-real-device-secret-".repeat(3), "phone");
     const recorded: string[] = [];
-    const output = await runAdmin(["revoke", "dev-3"], devices, NOW, (id) => {
-      recorded.push(id);
-      return Promise.resolve();
-    });
+    const output = await runAdmin(
+      ["revoke", "dev-3"],
+      devices,
+      NOW,
+      (id) => {
+        recorded.push(id);
+        return Promise.resolve();
+      },
+      () => Promise.resolve(),
+    );
     expect(output).toBe("revoked dev-3\n");
     expect(recorded).toEqual(["dev-3"]);
   });
@@ -65,7 +76,33 @@ describe("revocation is recorded on the anchor", () => {
     const devices = new InMemoryDeviceStore();
     devices.seedDevice("dev-4", "not-a-real-device-secret-".repeat(3), "phone");
     await expect(
-      runAdmin(["revoke", "dev-4"], devices, NOW, () => Promise.reject(new Error("disk full"))),
+      runAdmin(
+        ["revoke", "dev-4"],
+        devices,
+        NOW,
+        () => Promise.reject(new Error("disk full")),
+        () => Promise.resolve(),
+      ),
     ).rejects.toThrow(/could not be recorded on the anchor/);
+  });
+
+  it("checks the anchor before the database changes, so a refused anchor revokes nothing", async () => {
+    const devices = new InMemoryDeviceStore();
+    devices.seedDevice("dev-6", "not-a-real-device-secret-".repeat(3), "phone");
+    const recorded: string[] = [];
+    await expect(
+      runAdmin(
+        ["revoke", "dev-6"],
+        devices,
+        NOW,
+        (id) => {
+          recorded.push(id);
+          return Promise.resolve();
+        },
+        () => Promise.reject(new Error("mount refused")),
+      ),
+    ).rejects.toThrow(/nothing was revoked/);
+    expect(recorded).toEqual([]);
+    expect(await runAdmin(["list-devices"], devices, NOW)).toBe("dev-6  phone  active\n");
   });
 });

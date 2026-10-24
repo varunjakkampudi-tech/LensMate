@@ -26,6 +26,7 @@ async function main(): Promise<void> {
       new PostgresDeviceStore(pool),
       Date.now(),
       anchor === undefined ? undefined : (deviceId) => anchor.recordRevocation(deviceId),
+      anchor === undefined ? undefined : () => anchor.checkWritable(),
     );
     process.stdout.write(output);
   } finally {

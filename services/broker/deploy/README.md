@@ -162,7 +162,12 @@ that only with approval and a verified backup.
   database cannot tell that apart from a true first start, so the owner must decide that the restored database is the
   right ledger (check the provider's billed amounts for the month first). This is a residual risk; it is not automated.
 - **Revoking a device.** Use only the admin CLI with `BROKER_LEDGER_ANCHOR_FILE` set; it refuses otherwise and changes
-  nothing. The revocation is recorded on the anchor volume before the command reports success.
+  nothing. The admin CLI first checks that the anchor is a separate mount and writable, before the database changes. The
+  revocation is recorded on the anchor volume before the command reports success.
+- **Stale anchor lock.** Each anchor write takes `ledger-anchor.json.lock` on the anchor volume. A crash mid-write can
+  leave that file behind. While it exists, every anchor write fails closed, including the broker's start-up, and no write
+  is made without the lock. Recovery: stop the broker and the admin containers, confirm no broker process is running,
+  delete the lock file, then start the broker again. Do not delete it while a broker or admin command is running.
 - **Revocations made directly in SQL.** The admin role can change `broker_device` directly. The broker records any such
   revocation on the anchor at its next start. Between a direct SQL revocation and the next broker start, a restore of an
   older backup would re-activate the device; restart the broker after any manual revocation.
