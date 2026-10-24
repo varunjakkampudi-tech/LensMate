@@ -289,3 +289,30 @@ Nothing is ever committed that should not be public, because history stays publi
 - Gates (local): format, lint, knip, typecheck, check:schema, check:expo pass; root tests 483 broker and core, 312 mobile.
 - Not checked: `npx expo install --check` (reports newer patch versions available). Expo Go on the App Store must support
   SDK 58; if it does not, the QR code will say the project is incompatible.
+
+## ROUND 2026-10-25 (review remediation): iPhone broker route (owner decision required)
+
+- Problem: broker-config.ts accepts plain HTTP only for localhost. A phone cannot reach the PC's localhost, and a LAN
+  address over HTTP is refused. So AI calls from the iPhone do not work until a secure route exists. This is intended.
+- Options (owner chooses; none has been set up, and none has been authorized):
+  1. A TLS tunnel from a free tunnel service to the local broker. Needs an account and a public URL, so it is public
+     exposure: owner approval required. The broker's own auth and spend cap then apply.
+  2. A local HTTPS certificate trusted on the phone (self-signed certificate installed by the owner). Works on the LAN
+     without internet exposure, but needs the certificate installed on the iPhone, and the app's TLS validation must be
+     satisfied by a trusted root. Not implemented.
+  3. Hosting the broker on HTTPS infrastructure. This is deployment: owner approval, and it is not authorized now.
+- Until one is chosen, the phone runs with mock AI responses (no broker needed) and the broker route is not claimed.
+
+## ROUND 2026-10-25 (deep-review remediation)
+
+- Fixed: the photo Upload button was web-only, so iPhone users could not reach the native picker. It is now shown on
+  every platform (app/capture.tsx). Picker tests cover invocation, cancel, resize failure, missing asset and picker
+  failure (src/capture/picker.test.ts, 6 tests).
+- Fixed: native capture had no in-flight guard. A second tap during capture is refused, capture needs a ready camera and
+  permission, a capture that finishes after unmount is discarded, and errors are reported with a fixed message
+  (src/capture/camera.native.tsx, camera.native.test.ts, 10 tests).
+- Fixed: a notification that opened the app from closed is now routed once on launch (getLastNotificationResponseAsync),
+  with duplicate suppression between the launch read and live taps (src/notify/local.ts, local.test.ts, 12 tests).
+- Not verified on an iPhone: the camera, the picker, notification banners, lock-screen delivery and cold-start taps.
+  Owner device run is required (see the Expo Go checklist in the final report).
+- Open: the iPhone broker route (see the earlier section): owner decision required.
