@@ -14,5 +14,5 @@
       "entry": ["src/admin-cli.ts", "src/migrate-cli.ts"]
     }
   },
-  "ignore": ["apps/mobile/public/sw.js"]
+  "ignore": ["apps/mobile/public/sw.js", "apps/mobile/public/sw.js", "tools/readiness/**"]
 }

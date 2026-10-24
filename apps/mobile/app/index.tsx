@@ -9,6 +9,7 @@ import { useGlasses } from "../src/ui/glasses";
 import { Icon, type IconName } from "../src/ui/icon";
 import { Body, Btn, Card, H2, Notice, Row } from "../src/ui/kit";
 import { usePrefs, type FeatureKey } from "../src/ui/prefs";
+import { ReadinessSection } from "../src/readiness/readiness-section";
 import { FONTS, useTheme } from "../src/ui/theme";
 
 type Tint = "tintBlue" | "tintRed" | "tintIndigo" | "tintAmber";
@@ -260,6 +261,7 @@ export default function HomeScreen() {
         ))}
       </View>
       <SimulatorCard />
+      <ReadinessSection />
       <SetupCard setup={setup} />
       {setup.spentPaise === null || setup.capPaise === null ? null : (
         <Card>
