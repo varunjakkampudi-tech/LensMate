@@ -6,8 +6,3 @@ firmware
 packages/protocol/src/schema.json
 apps/mobile/.expo
 apps/mobile/expo-env.d.ts
-/.emergent
-/memory
-/backend
-/frontend
-/test_reports

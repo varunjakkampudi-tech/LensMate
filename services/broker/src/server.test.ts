@@ -374,9 +374,13 @@ describe("concurrency", () => {
     const config = testConfig();
     const cap = worstPaiseFor(GOOD_BODY, config) * 10;
     const store = new InMemoryBudgetStore();
-    // Replies are held until every request has tried to reserve, so no settlement frees budget mid-test.
+    // Replies are held until all 50 refusals have happened, so no settlement frees budget mid-test. A fixed timer
+    // is not enough: under load the timer can fire before the late requests have reserved.
     const mock = new MockProvider();
-    const gate = new Promise<void>((resolve) => setTimeout(resolve, 200));
+    let releaseReplies: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseReplies = resolve;
+    });
     const held: ChatProvider = {
       complete: async (request) => {
         await gate;
@@ -388,7 +392,20 @@ describe("concurrency", () => {
       held,
       store,
     );
-    const responses = await Promise.all(Array.from({ length: 60 }, () => chat(app, GOOD_BODY)));
+    let refused = 0;
+    const responses = await Promise.all(
+      Array.from({ length: 60 }, () =>
+        chat(app, GOOD_BODY).then((response) => {
+          if (response.statusCode === 503) {
+            refused += 1;
+            if (refused === 50) {
+              releaseReplies();
+            }
+          }
+          return response;
+        }),
+      ),
+    );
     const accepted = responses.filter((response) => response.statusCode === 200).length;
     expect(accepted).toBe(10);
     expect(responses.filter((response) => response.statusCode === 503)).toHaveLength(50);
