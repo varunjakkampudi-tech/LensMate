@@ -1,7 +1,9 @@
 import { createElement } from "react";
-import { Platform, Text } from "react-native";
+import { Platform } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
-// Stroke icons (24px grid). Web renders SVG; native shows a letter until an icon set is approved.
+// Stroke icons on a 24px grid. The same path data draws the icon on the web (SVG) and on the phone (react-native-svg,
+// included in Expo Go). No letter placeholders.
 const PATHS = {
   eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
   mic: "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z M19 11a7 7 0 0 1-14 0 M12 18v3",
@@ -51,13 +53,16 @@ export type IconName = keyof typeof PATHS;
 export function Icon({ name, size = 20, color }: { name: IconName; size?: number; color: string }) {
   if (Platform.OS !== "web") {
     return (
-      <Text
-        accessible={false}
-        importantForAccessibility="no"
-        style={{ color, fontSize: size * 0.7, fontWeight: "700" }}
-      >
-        {name[0]?.toUpperCase()}
-      </Text>
+      <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}>
+        <Path
+          d={PATHS[name]}
+          fill="none"
+          stroke={color}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
     );
   }
   return createElement(
