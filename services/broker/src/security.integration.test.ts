@@ -223,7 +223,7 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
         month,
       ]);
       await anchor.write({ [month]: 500 });
-      await expect(checkContinuity(store, anchor, Date.now())).resolves.toBeUndefined();
+      await expect(checkContinuity(store, anchor, Date.now())).resolves.toBe(false);
 
       // A restore of an older backup: the same month with less spend. Only the owner can do this, and the trigger
       // refuses a decrease, so the test simulates the restore by truncating and re-inserting.
@@ -241,7 +241,7 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
       await owner.query("UPDATE broker_budget_month SET spent_paise = 500 WHERE month = $1", [
         month,
       ]);
-      await expect(checkContinuity(store, anchor, Date.now())).resolves.toBeUndefined();
+      await expect(checkContinuity(store, anchor, Date.now())).resolves.toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -303,7 +303,9 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     const first = await app.query<{ recorded: boolean }>(
       "SELECT broker_record_genesis() AS recorded",
     );
-    expect(first.rows[0]?.recorded).toBe(true);
+    // This database already has budget rows from earlier tests, so the migration backfill may have recorded it. Either
+    // way, the record must exist afterwards and a second call must not record it again.
+    expect(first.rows[0]?.recorded).toEqual(expect.any(Boolean));
     const second = await app.query<{ recorded: boolean }>(
       "SELECT broker_record_genesis() AS recorded",
     );

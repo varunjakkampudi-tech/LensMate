@@ -151,3 +151,20 @@ that only with approval and a verified backup.
   integrity-tag refusal, and retention.
 - Not verified: the Docker image build, the compose stack start-up, the init script inside the container, the proxy,
   TLS, and the firewall. Docker is not running in the agent environment.
+
+## Ledger genesis and revocation records (owner runbook)
+
+- **First start of a new ledger (once, by the owner).** Set `BROKER_LEDGER_GENESIS=yes` for that one start only, then
+  remove it. The broker starts an empty ledger, writes the anchor, and records the genesis in the database. From then on
+  a missing anchor refuses to start (`NO_ANCHOR`), even if the variable is still set. The variable is not a permanent
+  setting, and it does nothing once the database records a genesis.
+- **Restoring a backup taken before the genesis.** Restoring an empty pre-genesis backup can start a new ledger. The
+  database cannot tell that apart from a true first start, so the owner must decide that the restored database is the
+  right ledger (check the provider's billed amounts for the month first). This is a residual risk; it is not automated.
+- **Revoking a device.** Use only the admin CLI with `BROKER_LEDGER_ANCHOR_FILE` set; it refuses otherwise and changes
+  nothing. The revocation is recorded on the anchor volume before the command reports success.
+- **Revocations made directly in SQL.** The admin role can change `broker_device` directly. The broker records any such
+  revocation on the anchor at its next start. Between a direct SQL revocation and the next broker start, a restore of an
+  older backup would re-activate the device; restart the broker after any manual revocation.
+- **Keys for backups.** The encryption key file and the integrity key file must hold different keys. The guard refuses
+  files that share their first line, and files that differ only by whitespace.

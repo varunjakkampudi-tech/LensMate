@@ -10,6 +10,7 @@ import {
   MemoryAnchor,
   checkContinuity,
   checkRevocations,
+  syncRevocations,
   probeAnchor,
   monthOf,
   recentMonths,
@@ -66,7 +67,7 @@ describe("continuity check", () => {
   it("passes an empty ledger with no anchor only for a first start the owner asked for", async () => {
     await expect(
       checkContinuity(new InMemoryBudgetStore(), new MemoryAnchor(), NOW, { genesis: true }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(true);
     expect(
       await errorCodeOf(checkContinuity(new InMemoryBudgetStore(), new MemoryAnchor(), NOW)),
     ).toBe("NO_ANCHOR");
@@ -138,7 +139,7 @@ describe("continuity check", () => {
     await anchor.write({ "2026-10": 500 });
     await store.reserve(reserveInput("a", 500));
     await store.settle("a", 500);
-    await expect(checkContinuity(store, anchor, NOW)).resolves.toBeUndefined();
+    await expect(checkContinuity(store, anchor, NOW)).resolves.toBe(false);
   });
 
   it("refuses a restored ledger whose spend is below the anchored spend", async () => {
@@ -291,9 +292,11 @@ describe("genesis marker", () => {
   it("records the genesis on the first start and then refuses a missing anchor, even with the flag still set", async () => {
     const store = new InMemoryBudgetStore();
     const flagged = marker(false);
+    // The check reports that a genesis is pending; the caller records it once the first anchor is written.
     await expect(
       checkContinuity(store, new MemoryAnchor(), NOW, { genesis: true, marker: flagged }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(true);
+    await flagged.record();
     // The environment still says genesis (a restart), but the ledger has started: a lost anchor must refuse.
     expect(
       await errorCodeOf(
@@ -311,5 +314,34 @@ describe("genesis marker", () => {
         }),
       ),
     ).toBe("NO_ANCHOR");
+  });
+});
+
+describe("revocation record and mount checks", () => {
+  it("refuses to record a revocation when the anchor directory is not mounted", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-mount-"));
+    try {
+      const anchor = new FileAnchor(join(dir, "missing-mount", "anchor.json"));
+      expect(
+        await errorCodeOf(anchor.recordRevocation("11111111-2222-4333-8444-555555555555")),
+      ).toBe("ANCHOR_WRITE_FAILED");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("records in the anchor any device the database shows as revoked", async () => {
+    const anchor = new MemoryAnchor();
+    const revokedInDb = "11111111-2222-4333-8444-555555555555";
+    const activeInDb = "66666666-7777-4888-8999-aaaaaaaaaaaa";
+    const devices = {
+      listDevices: () =>
+        Promise.resolve([
+          { deviceId: revokedInDb, revoked: true },
+          { deviceId: activeInDb, revoked: false },
+        ]),
+    };
+    await syncRevocations(devices, anchor);
+    expect(await anchor.revokedDevices()).toEqual([revokedInDb]);
   });
 });

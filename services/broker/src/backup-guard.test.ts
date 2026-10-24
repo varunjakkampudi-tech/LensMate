@@ -86,3 +86,23 @@ describe("backup guard, percent-encoded names and whitespace-only key difference
     }
   });
 });
+
+describe("backup guard, first-line key match", () => {
+  it("refuses keys that share their first line, because openssl reads only that line", () => {
+    const dir = mkdtempSync(join(tmpdir(), "guard-first-line-"));
+    try {
+      const first = join(dir, "enc.key");
+      const second = join(dir, "mac.key");
+      writeFileSync(first, `${"k".repeat(40)}\nextra material`);
+      writeFileSync(second, `${"k".repeat(40)}\nother material`);
+      const result = spawnSync(
+        "bash",
+        ["-c", 'source "$1"; require_distinct_keys "$2" "$3" backup', "guard", LIB, first, second],
+        { encoding: "utf8" },
+      );
+      expect(result.status).not.toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

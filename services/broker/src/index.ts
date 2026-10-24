@@ -10,6 +10,7 @@ import {
   AnchoredBudgetStore,
   checkContinuity,
   checkRevocations,
+  syncRevocations,
   type LedgerMarker,
   FileAnchor,
   monthOf,
@@ -61,7 +62,7 @@ async function main(): Promise<void> {
           )
         ).rows[0]?.recorded === true,
     };
-    await checkContinuity(store, anchor, Date.now(), {
+    const genesisPending = await checkContinuity(store, anchor, Date.now(), {
       genesis: config.ledgerGenesis,
       marker: genesisMarker,
     });
@@ -72,10 +73,16 @@ async function main(): Promise<void> {
     for (const month of recentMonths(monthOf(Date.now()), 2)) {
       await anchored.refresh(month);
     }
+    // The anchor now exists, so the genesis can be recorded. Recording it earlier would leave a stuck marker if the
+    // anchor write failed.
+    if (genesisPending) {
+      await genesisMarker.record();
+    }
     budget = anchored;
     const registered = new PostgresDeviceStore(pool);
     // A restore can bring back devices that were revoked after the backup. Refuse until they are revoked again.
     await checkRevocations(registered, anchor);
+    await syncRevocations(registered, anchor);
     devices = registered;
     reaper = async () => {
       const settled = await store.reapStale(REAP_AFTER_SECONDS);

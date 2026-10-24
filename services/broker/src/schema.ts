@@ -163,6 +163,9 @@ CREATE OR REPLACE FUNCTION broker_genesis_recorded() RETURNS boolean LANGUAGE sq
 $fn$;
 REVOKE ALL ON FUNCTION broker_record_genesis() FROM PUBLIC;
 REVOKE ALL ON FUNCTION broker_genesis_recorded() FROM PUBLIC;
+-- A ledger that already has spend records has started. Mark it so a later missing anchor refuses, even for a database
+-- that was started before this marker existed.
+INSERT INTO broker_ledger_genesis (id) SELECT 1 WHERE EXISTS (SELECT 1 FROM broker_budget_month) ON CONFLICT (id) DO NOTHING;
 `;
 
 const REDEEM_SQL = `

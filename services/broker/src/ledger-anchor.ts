@@ -1,5 +1,6 @@
 import {
   closeSync,
+  existsSync,
   fsyncSync,
   mkdirSync,
   openSync,
@@ -86,6 +87,10 @@ export class FileAnchor implements AnchorFile {
 
   recordRevocation(deviceId: string): Promise<void> {
     return settle(() => {
+      // Refuse when the anchor directory is not there: a mount that is missing must not look like a recorded revocation.
+      if (!existsSync(dirname(this.path))) {
+        throw new AnchorError("ANCHOR_WRITE_FAILED");
+      }
       const state = this.readState();
       const revoked = [...new Set([...(state?.revoked ?? []), deviceId])];
       this.persist({ months: state?.months ?? {}, revoked });
@@ -264,7 +269,7 @@ export async function checkContinuity(
   anchor: AnchorFile,
   nowMs: number,
   options: { readonly genesis: boolean; readonly marker?: LedgerMarker } = { genesis: false },
-): Promise<void> {
+): Promise<boolean> {
   const anchored = await anchor.read();
   if (anchored === null) {
     for (const month of recentMonths(monthOf(nowMs), LOOKBACK_MONTHS + 1)) {
@@ -281,8 +286,9 @@ export async function checkContinuity(
     if (!options.genesis) {
       throw new AnchorError("NO_ANCHOR");
     }
-    await options.marker?.record();
-    return;
+    // The caller records the genesis after the first anchor is written, so a failed anchor write never leaves a marker
+    // without an anchor.
+    return true;
   }
   for (const [month, spent] of Object.entries(anchored)) {
     const summary = await budget.summary(month);
@@ -290,6 +296,7 @@ export async function checkContinuity(
       throw new AnchorError("ROLLED_BACK");
     }
   }
+  return false;
 }
 
 export class LedgerHaltedError extends Error {
@@ -417,6 +424,22 @@ export async function checkRevocations(
     const device = await devices.findDevice(deviceId);
     if (device === undefined || !device.revoked) {
       throw new AnchorError("REVOCATION_ROLLED_BACK");
+    }
+  }
+}
+
+/**
+ * Records in the anchor every device that the database shows as revoked but the anchor does not. This closes the gap
+ * left by a revocation made directly in SQL: once the broker has started after it, a later restore is detected.
+ */
+export async function syncRevocations(
+  devices: { listDevices(): Promise<readonly { deviceId: string; revoked: boolean }[]> },
+  anchor: AnchorFile,
+): Promise<void> {
+  const recorded = new Set(await anchor.revokedDevices());
+  for (const device of await devices.listDevices()) {
+    if (device.revoked && !recorded.has(device.deviceId)) {
+      await anchor.recordRevocation(device.deviceId);
     }
   }
 }
