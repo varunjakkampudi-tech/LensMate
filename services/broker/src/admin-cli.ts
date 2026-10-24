@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { runAdmin } from "./admin.js";
+import { AdminError, runAdmin } from "./admin.js";
 import { readEnvValue } from "./env.js";
 import { PostgresDeviceStore } from "./devices.js";
 import { FileAnchor } from "./ledger-anchor.js";
@@ -33,6 +33,8 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
   const name = error instanceof Error ? error.name : "UnknownError";
-  process.stderr.write(`admin command failed: ${name}\n`);
+  // Owner-facing messages from this module are shown in full. Anything else prints the error class only.
+  const message = error instanceof AdminError ? error.message : name;
+  process.stderr.write(`admin command failed: ${message}\n`);
   process.exit(1);
 });

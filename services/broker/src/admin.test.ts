@@ -24,9 +24,19 @@ describe("owner admin commands", () => {
   it("revokes a device and shows it as revoked", async () => {
     const devices = new InMemoryDeviceStore();
     devices.seedDevice("dev-2", "not-a-real-device-secret-".repeat(3), "lost phone");
-    expect(await runAdmin(["revoke", "dev-2"], devices, NOW)).toBe("revoked dev-2\n");
+    const record = () => Promise.resolve();
+    expect(await runAdmin(["revoke", "dev-2"], devices, NOW, record)).toBe("revoked dev-2\n");
     expect(await runAdmin(["list-devices"], devices, NOW)).toBe("dev-2  lost phone  REVOKED\n");
-    expect(await runAdmin(["revoke", "missing"], devices, NOW)).toBe("no device missing\n");
+    expect(await runAdmin(["revoke", "missing"], devices, NOW, record)).toBe("no device missing\n");
+  });
+
+  it("refuses to revoke without the anchor, and changes nothing", async () => {
+    const devices = new InMemoryDeviceStore();
+    devices.seedDevice("dev-5", "not-a-real-device-secret-".repeat(3), "phone");
+    await expect(runAdmin(["revoke", "dev-5"], devices, NOW)).rejects.toThrow(
+      /BROKER_LEDGER_ANCHOR_FILE/,
+    );
+    expect(await runAdmin(["list-devices"], devices, NOW)).toBe("dev-5  phone  active\n");
   });
 
   it("explains usage for a missing argument or an unknown command", async () => {

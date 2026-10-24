@@ -249,11 +249,21 @@ export function recentMonths(month: string, count: number): string[] {
  * With an anchor, every anchored month must hold at least the anchored spend. Without one, every recent month must be
  * zero, so a ledger with history cannot start without a verified anchor.
  */
+/**
+ * The database's record that a ledger has started (broker_ledger_genesis). Once recorded, a missing anchor is never
+ * a first start, whatever the environment says.
+ */
+export interface LedgerMarker {
+  isRecorded(): Promise<boolean>;
+  /** Records the genesis. Returns true only when this call recorded it. */
+  record(): Promise<boolean>;
+}
+
 export async function checkContinuity(
   budget: Pick<BudgetStore, "summary">,
   anchor: AnchorFile,
   nowMs: number,
-  options: { readonly genesis: boolean } = { genesis: false },
+  options: { readonly genesis: boolean; readonly marker?: LedgerMarker } = { genesis: false },
 ): Promise<void> {
   const anchored = await anchor.read();
   if (anchored === null) {
@@ -263,11 +273,15 @@ export async function checkContinuity(
         throw new AnchorError("NO_ANCHOR_WITH_SPEND");
       }
     }
-    // An empty ledger with no anchor is only a first start the owner has asked for. Otherwise a restored empty backup
-    // would silently start a new, unanchored ledger.
+    // A missing anchor is accepted only for the first start of an empty ledger that the owner asked for. Once the
+    // ledger has started (recorded in the database), a missing anchor refuses, so a lost anchor cannot reset the ledger.
+    if (options.marker !== undefined && (await options.marker.isRecorded())) {
+      throw new AnchorError("NO_ANCHOR");
+    }
     if (!options.genesis) {
       throw new AnchorError("NO_ANCHOR");
     }
+    await options.marker?.record();
     return;
   }
   for (const [month, spent] of Object.entries(anchored)) {

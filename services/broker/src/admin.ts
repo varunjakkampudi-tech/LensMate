@@ -5,6 +5,14 @@ import { issueEnrolmentCode } from "./devices.js";
  * Owner commands for devices (BLOCKER-006 item 3). Each command returns the text to print. The enrolment code is
  * printed once and never stored in clear. Device secrets are never printed, because the broker does not keep them.
  */
+/** An owner-facing error. Its message is fixed text written by this module; it never includes a secret or a URL. */
+export class AdminError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AdminError";
+  }
+}
+
 export async function runAdmin(
   args: readonly string[],
   devices: DeviceStore,
@@ -33,19 +41,22 @@ export async function runAdmin(
       if (argument === undefined) {
         return "usage: revoke <deviceId>\n";
       }
+      // Refuse before changing anything: a revocation the anchor does not record can be undone by a restore.
+      if (onRevoked === undefined) {
+        throw new AdminError(
+          "revoke needs the anchor volume: set BROKER_LEDGER_ANCHOR_FILE. Nothing was revoked.",
+        );
+      }
       const ok = await devices.revokeDevice(argument);
       if (!ok) {
         return `no device ${argument}\n`;
       }
-      if (onRevoked !== undefined) {
-        try {
-          await onRevoked(argument);
-        } catch {
-          // The device is revoked, but the record that stops a restore from undoing it is missing. Say so.
-          throw new Error(
-            "revoked in the database, but the revocation could not be recorded on the anchor; run revoke again",
-          );
-        }
+      try {
+        await onRevoked(argument);
+      } catch {
+        throw new AdminError(
+          "revoked in the database, but the revocation could not be recorded on the anchor; run revoke again",
+        );
       }
       return `revoked ${argument}\n`;
     }

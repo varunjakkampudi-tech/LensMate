@@ -274,3 +274,42 @@ describe("anchor writes under concurrency", () => {
     expect((await inner.summary("2026-10")).spentPaise).toBe(300);
   });
 });
+
+describe("genesis marker", () => {
+  function marker(initiallyRecorded: boolean) {
+    let recorded = initiallyRecorded;
+    return {
+      isRecorded: () => Promise.resolve(recorded),
+      record: () => {
+        const first = !recorded;
+        recorded = true;
+        return Promise.resolve(first);
+      },
+    };
+  }
+
+  it("records the genesis on the first start and then refuses a missing anchor, even with the flag still set", async () => {
+    const store = new InMemoryBudgetStore();
+    const flagged = marker(false);
+    await expect(
+      checkContinuity(store, new MemoryAnchor(), NOW, { genesis: true, marker: flagged }),
+    ).resolves.toBeUndefined();
+    // The environment still says genesis (a restart), but the ledger has started: a lost anchor must refuse.
+    expect(
+      await errorCodeOf(
+        checkContinuity(store, new MemoryAnchor(), NOW, { genesis: true, marker: flagged }),
+      ),
+    ).toBe("NO_ANCHOR");
+  });
+
+  it("refuses a missing anchor on a started ledger even when the empty backup is restored", async () => {
+    expect(
+      await errorCodeOf(
+        checkContinuity(new InMemoryBudgetStore(), new MemoryAnchor(), NOW, {
+          genesis: true,
+          marker: marker(true),
+        }),
+      ),
+    ).toBe("NO_ANCHOR");
+  });
+});

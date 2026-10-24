@@ -16,6 +16,7 @@ const LEDGER_TABLES = [
   "broker_reservation",
   "broker_device",
   "broker_enrolment_code",
+  "broker_ledger_genesis",
 ] as const;
 
 /** Columns each table must have. Checked at start-up, so a drifted schema stops the broker. */
@@ -33,6 +34,7 @@ const REQUIRED_COLUMNS: Readonly<Record<(typeof LEDGER_TABLES)[number], readonly
   ],
   broker_device: ["device_id", "label", "secret_sha256", "created_at", "revoked_at"],
   broker_enrolment_code: ["code_sha256", "created_at", "expires_at", "used_at"],
+  broker_ledger_genesis: ["id", "created_at"],
 };
 
 const SCHEMA_SQL = `
@@ -69,6 +71,12 @@ CREATE TABLE IF NOT EXISTS broker_enrolment_code (
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
   used_at timestamptz
+);
+-- One row, written once, when the owner starts an empty ledger with BROKER_LEDGER_GENESIS. It records that a ledger
+-- has started, so a later start with a missing anchor refuses instead of starting a new ledger.
+CREATE TABLE IF NOT EXISTS broker_ledger_genesis (
+  id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE OR REPLACE FUNCTION broker_forbid_unrevoke() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
@@ -135,6 +143,26 @@ $fn$;
 DROP TRIGGER IF EXISTS broker_reservation_closed_final ON broker_reservation;
 CREATE TRIGGER broker_reservation_closed_final BEFORE UPDATE ON broker_reservation
   FOR EACH ROW EXECUTE FUNCTION broker_forbid_reservation_reopen();
+`;
+
+/**
+ * Records that the ledger has started. The application role can only call these functions; it cannot write the table
+ * directly. recordGenesis returns true only for the first call.
+ */
+const GENESIS_SQL = `
+CREATE OR REPLACE FUNCTION broker_record_genesis() RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
+DECLARE inserted integer;
+BEGIN
+  INSERT INTO broker_ledger_genesis (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+  GET DIAGNOSTICS inserted = ROW_COUNT;
+  RETURN inserted = 1;
+END
+$fn$;
+CREATE OR REPLACE FUNCTION broker_genesis_recorded() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
+  SELECT EXISTS (SELECT 1 FROM broker_ledger_genesis);
+$fn$;
+REVOKE ALL ON FUNCTION broker_record_genesis() FROM PUBLIC;
+REVOKE ALL ON FUNCTION broker_genesis_recorded() FROM PUBLIC;
 `;
 
 const REDEEM_SQL = `
@@ -225,6 +253,7 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
     await client.query(REDEEM_SQL);
     await client.query(RESERVED_SQL);
     await client.query(CLOSED_FINAL_SQL);
+    await client.query(GENESIS_SQL);
     await client.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
     // Temporary tables would shadow the ledger tables for a session; no role needs them.
     await client.query(
@@ -243,6 +272,9 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
     // a device directly.
     await client.query(
       `GRANT EXECUTE ON FUNCTION broker_redeem_enrolment(text, text, text, text) TO ${app}`,
+    );
+    await client.query(
+      `GRANT EXECUTE ON FUNCTION broker_record_genesis(), broker_genesis_recorded() TO ${app}`,
     );
     await client.query(
       `GRANT UPDATE (spent_paise, reserved_paise) ON broker_budget_month TO ${app}`,

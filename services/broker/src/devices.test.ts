@@ -140,8 +140,10 @@ describe("owner commands", () => {
     expect(list).toContain("phone");
     expect(list).not.toContain(enrolled?.deviceSecret ?? "");
 
-    expect(await runAdmin(["revoke", enrolled?.deviceId ?? ""], store, NOW)).toMatch(/^revoked /);
-    expect(await runAdmin(["revoke", "missing-device"], store, NOW)).toBe(
+    expect(
+      await runAdmin(["revoke", enrolled?.deviceId ?? ""], store, NOW, () => Promise.resolve()),
+    ).toMatch(/^revoked /);
+    expect(await runAdmin(["revoke", "missing-device"], store, NOW, () => Promise.resolve())).toBe(
       "no device missing-device\n",
     );
   });

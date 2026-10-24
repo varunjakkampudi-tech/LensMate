@@ -32,7 +32,9 @@ refuse_password_in_url() {
   if [[ ! "$url" =~ $scheme ]]; then
     die "$label" "the connection must be a postgres:// URL with no password; use PGPASSFILE instead"
   fi
-  if [[ "$url" =~ $userinfo ]] || [[ "$url" =~ $query ]] || [[ "$url" =~ $keyword ]]; then
+  # Percent-encoded parameter names are refused too: libpq decodes them, so "%70assword" is "password" to libpq.
+  local encoded='[?&][^=&]*%'
+  if [[ "$url" =~ $userinfo ]] || [[ "$url" =~ $query ]] || [[ "$url" =~ $keyword ]] || [[ "$url" =~ $encoded ]]; then
     die "$label" "the connection URL contains a password; use PGPASSFILE instead"
   fi
 }
@@ -46,7 +48,9 @@ process.stdout.write(c.createHmac("sha256", key).update(f.readFileSync(process.a
 
 # The encryption key and the integrity key must be different. Reusing one key defeats the separation the tag relies on.
 require_distinct_keys() {
-  if cmp -s "$1" "$2"; then
+  # Compared without whitespace: openssl reads the first line of a key file and the HMAC key is trimmed, so keys that
+  # differ only in a trailing newline or padding are the same secret.
+  if [ "$(tr -d ' \t\r\n' < "$1")" = "$(tr -d ' \t\r\n' < "$2")" ]; then
     die "$3" "the encryption key and the integrity key must be different files"
   fi
 }

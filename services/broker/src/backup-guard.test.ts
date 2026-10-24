@@ -61,3 +61,28 @@ describe("backup guard additions", () => {
     }
   });
 });
+
+describe("backup guard, percent-encoded names and whitespace-only key differences", () => {
+  it("refuses percent-encoded parameter names, which libpq decodes", () => {
+    expect(refused("postgres://db/broker?%70assword=fixture-pass")).toBe(true);
+    expect(refused("postgres://db/broker?p%61ssword=fixture-pass")).toBe(true);
+  });
+
+  it("treats two key files that differ only by a trailing newline as the same key", () => {
+    const dir = mkdtempSync(join(tmpdir(), "guard-keys-ws-"));
+    try {
+      const a = join(dir, "a.key");
+      const b = join(dir, "b.key");
+      writeFileSync(a, "k".repeat(40));
+      writeFileSync(b, `${"k".repeat(40)}\n`);
+      const result = spawnSync(
+        "bash",
+        ["-c", 'source "$1"; require_distinct_keys "$2" "$3" backup', "guard", LIB, a, b],
+        { encoding: "utf8" },
+      );
+      expect(result.status).not.toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

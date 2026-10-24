@@ -10,6 +10,7 @@ import {
   AnchoredBudgetStore,
   checkContinuity,
   checkRevocations,
+  type LedgerMarker,
   FileAnchor,
   monthOf,
   probeAnchor,
@@ -44,7 +45,26 @@ async function main(): Promise<void> {
     // The owner must raise recorded spend to the anchored value, or to the provider-billed amount if higher.
     const anchor = new FileAnchor(config.ledgerAnchorPath ?? "");
     await probeAnchor(anchor);
-    await checkContinuity(store, anchor, Date.now(), { genesis: config.ledgerGenesis });
+    // The database's genesis record: once the ledger has started, a missing anchor always refuses.
+    const ledgerPool: Pool = pool;
+    const genesisMarker: LedgerMarker = {
+      isRecorded: async () =>
+        (
+          await ledgerPool.query<{ recorded: boolean }>(
+            "SELECT broker_genesis_recorded() AS recorded",
+          )
+        ).rows[0]?.recorded === true,
+      record: async () =>
+        (
+          await ledgerPool.query<{ recorded: boolean }>(
+            "SELECT broker_record_genesis() AS recorded",
+          )
+        ).rows[0]?.recorded === true,
+    };
+    await checkContinuity(store, anchor, Date.now(), {
+      genesis: config.ledgerGenesis,
+      marker: genesisMarker,
+    });
     const anchored = new AnchoredBudgetStore(store, anchor);
     await anchored.start();
     // The continuity check has passed, so the verified spend is recorded now. A crash before the first settlement

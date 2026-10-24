@@ -299,6 +299,24 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     expect(grant.rows[0]?.can_temp).toBe(false);
   });
 
+  it("the genesis is recorded once, and the application role cannot write it directly", async () => {
+    const first = await app.query<{ recorded: boolean }>(
+      "SELECT broker_record_genesis() AS recorded",
+    );
+    expect(first.rows[0]?.recorded).toBe(true);
+    const second = await app.query<{ recorded: boolean }>(
+      "SELECT broker_record_genesis() AS recorded",
+    );
+    expect(second.rows[0]?.recorded).toBe(false);
+    const seen = await app.query<{ recorded: boolean }>(
+      "SELECT broker_genesis_recorded() AS recorded",
+    );
+    expect(seen.rows[0]?.recorded).toBe(true);
+    await expect(app.query("INSERT INTO broker_ledger_genesis (id) VALUES (2)")).rejects.toThrow(
+      /permission denied/,
+    );
+  });
+
   it("the schema guard refuses a database whose immutability trigger was dropped or disabled", async () => {
     await owner.query("DROP TRIGGER broker_budget_spend_monotonic ON broker_budget_month");
     await expect(verifySchema(owner)).rejects.toThrow(/broker_budget_spend_monotonic/);
