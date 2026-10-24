@@ -1,5 +1,7 @@
 import * as Notifications from "expo-notifications";
 import {
+  foregroundPresentation,
+  initialNotificationRoute,
   isSafeInAppRoute,
   mapPermission,
   onNotificationTap,
@@ -13,13 +15,19 @@ jest.mock("expo-notifications", () => ({
   scheduleNotificationAsync: jest.fn(async () => "notif-1"),
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getLastNotificationResponseAsync: jest.fn(async () => null),
   SchedulableTriggerInputTypes: { DATE: "date" },
 }));
 
 const mocked = Notifications as unknown as {
   addNotificationResponseReceivedListener: jest.Mock;
   scheduleNotificationAsync: jest.Mock;
+  getLastNotificationResponseAsync: jest.Mock;
 };
+
+function response(id: string, route: unknown) {
+  return { notification: { request: { identifier: id, content: { data: { route } } } } };
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -97,6 +105,62 @@ describe("scheduling", () => {
 
     expect(mocked.scheduleNotificationAsync.mock.calls.at(-1)?.[0].content.data).toEqual({
       route: "/",
+    });
+  });
+});
+
+describe("cold-start notification taps", () => {
+  it("routes the notification that opened the app once", async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValueOnce(response("cold-1", "/memory"));
+
+    await expect(initialNotificationRoute()).resolves.toBe("/memory");
+  });
+
+  it("returns undefined on a second read of the same response", async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValue(response("cold-2", "/memory"));
+
+    await expect(initialNotificationRoute()).resolves.toBe("/memory");
+    await expect(initialNotificationRoute()).resolves.toBeUndefined();
+  });
+
+  it("returns undefined when the app was not opened from a notification", async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValueOnce(null);
+
+    await expect(initialNotificationRoute()).resolves.toBeUndefined();
+  });
+
+  it("routes a notification once when the launch read and the live listener both see it", async () => {
+    const handler = jest.fn();
+    onNotificationTap(handler);
+    const listener = mocked.addNotificationResponseReceivedListener.mock.calls.at(-1)?.[0] as (
+      r: unknown,
+    ) => void;
+    const tapped = response("dup-1", "/memory");
+    mocked.getLastNotificationResponseAsync.mockResolvedValueOnce(tapped);
+
+    const fromLaunch = await initialNotificationRoute();
+    listener(tapped);
+
+    expect(fromLaunch).toBe("/memory");
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unsafe route from a cold start and does not route it", async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValueOnce(
+      response("cold-3", "https://evil.example"),
+    );
+
+    await expect(initialNotificationRoute()).resolves.toBeUndefined();
+  });
+});
+
+describe("foreground presentation", () => {
+  it("shows a banner and list entry while LensMate is open, without sound or badge", () => {
+    expect(foregroundPresentation()).toEqual({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
     });
   });
 });

@@ -1,6 +1,6 @@
 import { router, Stack } from "expo-router";
 import { useEffect } from "react";
-import { onNotificationTap } from "../src/notify/local";
+import { initialNotificationRoute, onNotificationTap } from "../src/notify/local";
 import { AppShell } from "../src/ui/app-shell";
 import { CaptureProvider } from "../src/ui/capture-session";
 import { GlassesProvider } from "../src/ui/glasses";
@@ -10,7 +10,17 @@ import { ThemeProvider } from "../src/ui/theme";
 
 export default function RootLayout() {
   // A tapped notification opens its in-app route (validated in local.ts).
-  useEffect(() => onNotificationTap((route) => router.navigate(route as "/")), []);
+  useEffect(() => {
+    // Opened from a notification while the app was closed: go to its route once, then follow live taps.
+    void initialNotificationRoute()
+      .then((route) => {
+        if (route !== undefined) {
+          router.navigate(route as "/");
+        }
+      })
+      .catch(() => undefined);
+    return onNotificationTap((route) => router.navigate(route as "/"));
+  }, []);
   return (
     <ThemeProvider>
       <PrefsProvider>

@@ -12,18 +12,52 @@ import { Platform } from "react-native";
  */
 export type NotifyPermission = "granted" | "denied" | "undetermined" | "unsupported";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
+/** How a notification is shown while LensMate is open: a banner and list entry, no sound or badge. */
+export function foregroundPresentation() {
+  return {
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
-  }),
+  };
+}
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => foregroundPresentation(),
 });
 
 /** Only in-app paths are accepted from a notification: "/memory" yes, "https://..." or "//host" no. */
 export function isSafeInAppRoute(route: unknown): route is string {
   return typeof route === "string" && /^\/(?!\/)[A-Za-z0-9/_-]*$/.test(route);
+}
+
+/**
+ * Identifiers of tapped notifications already routed. A tap can reach the app twice (once as the initial response when
+ * the app is opened from a notification, and again from the live listener); each is routed only once.
+ */
+const routedIds = new Set<string>();
+
+/** Returns the route of a tapped notification the first time it is seen, and undefined after that or if unsafe. */
+function routeOnce(response: Notifications.NotificationResponse): string | undefined {
+  const id = response.notification.request.identifier;
+  if (routedIds.has(id)) {
+    return undefined;
+  }
+  routedIds.add(id);
+  const route: unknown = response.notification.request.content.data?.route;
+  return isSafeInAppRoute(route) ? route : undefined;
+}
+
+/**
+ * The notification that opened the app from a closed state, if any, as an in-app route. Each notification is returned
+ * once. Call it on launch, then listen with onNotificationTap for taps while the app is running.
+ */
+export async function initialNotificationRoute(): Promise<string | undefined> {
+  if (Platform.OS === "web") {
+    return undefined;
+  }
+  const response = await Notifications.getLastNotificationResponseAsync();
+  return response === null ? undefined : routeOnce(response);
 }
 
 export function mapPermission(status: {
@@ -79,8 +113,8 @@ export function onNotificationTap(handler: (route: string) => void): () => void 
     return () => undefined;
   }
   const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-    const route: unknown = response.notification.request.content.data?.route;
-    if (isSafeInAppRoute(route)) {
+    const route = routeOnce(response);
+    if (route !== undefined) {
       handler(route);
     }
   });
