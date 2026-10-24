@@ -18,9 +18,29 @@ Read `../README.md` first for the rules that apply to every run.
 
 The screen shows each measure with its status and target. Anything not instrumented is labelled that way and never shown as a result.
 
+## Tries per measure and owner questions
+
+Each measure is listed with the tries the documents require. Nothing here is a decided value beyond what Goal 14.2 and v9 state.
+
+| Measure                           | Tries and target (source)                                                                                        | Status                                           |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `capture_to_phone`                | One try per single tap. Reported only; the documents set no pass rule for this stage (v9 6.4 gives 0.3 seconds). | Instrumented (simulator). Not yet run on a phone |
+| `latency_total`                   | 50 requests per language; 90 percent under 2.5 seconds (Goal 14.2, v9 6.4)                                       | NOT INSTRUMENTED                                 |
+| `interruption`                    | Stop within 0.5 seconds in 95 percent of tries (Goal 14.2, G19). The documents set no minimum number of tries    | NOT INSTRUMENTED                                 |
+| Speech accuracy (word error rate) | Recorded sets in English, Telugu, Hindi and mixed speech (v9 6.1). Set size is not decided                       | NOT INSTRUMENTED                                 |
+| Translation                       | v9 section 12 scripts for each language pair; native-speaker scoring by the owner                                | NOT INSTRUMENTED                                 |
+| Spend                             | Cost per request type and projected monthly cost against the cap                                                 | NOT INSTRUMENTED (needs approved provider calls) |
+
+Owner questions. The agent does not choose these; the owner decides and records the answer in `blocker.txt`:
+
+1. Minimum number of tries for interruption. The 95 percent target is set; the number of tries is not.
+2. Size and content of each speech sample set (English, Telugu, Hindi, mixed).
+3. Latency acceptance wording: 90 percent of the 50 tries per language, measured on the total short request, with stage pass rates as diagnostics only (`traceability.md`, open decision 2).
+4. Whether a phone run with virtual glasses, in-app path only, counts as real phone evidence (`traceability.md`, open decision 4).
+
 ## Simulator workflow (executable now)
 
-1. Build and run the app in a development environment, or run the mobile tests: `pnpm -F @lensmate/mobile test`. The end-to-end test in `measurement-screen-e2e.test.tsx` drives this exact workflow.
+1. Build and run the app in a development environment, or run the mobile tests: `pnpm -F @lensmate/mobile test`. The end-to-end test in `measurement-screen-e2e.test.tsx` drives this exact workflow. For the simulator dry run alone, run `pnpm measure:dry-run`: 50 scripted tries in English and 50 in Telugu, labelled SIMULATOR evidence. It rehearses the procedure and is not a measurement.
 2. Open the measurement screen from the home screen.
 3. Connect the virtual glasses.
 4. Fill in the provenance:
@@ -36,6 +56,14 @@ The screen shows each measure with its status and target. Anything not instrumen
 10. Save the CSV outside the repository. Check it with `pnpm measure:import <file>`.
 
 The screen blocks a session with missing or inconsistent provenance and lists each problem. The validator rejects any row that lacks provenance, so a simulator rehearsal cannot pass as real evidence.
+
+## Export and send the file
+
+1. Run `pnpm build` once in the repository root, so the import CLI has its built output (the `dist` folders are not tracked).
+2. Run `pnpm measure:import <file>` from the repository root. A usable file reports `"fileErrors": []` and an empty `"rejected"` list, and exits with code 0. Rejected rows are not counted. Do not edit a row to make it pass; record a correction as a new row (see "Recording results").
+3. Save the CSV outside the repository under a neutral name such as `<run-id>.csv`. Keep the name free of personal details.
+4. Send the CSV to the agent, through a channel the owner chooses, with: the app commit it measured, the EAS build ID for a real phone run, and the import report from step 2. Do not commit the CSV, paste it into a public issue, or attach raw recordings.
+5. Raw recordings and screen captures stay outside the repository. Only their location goes in `raw_location`.
 
 ## Requirements before an iPhone run
 

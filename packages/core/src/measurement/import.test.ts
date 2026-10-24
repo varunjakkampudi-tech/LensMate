@@ -1,4 +1,6 @@
-import { formatCsvLine } from "./csv.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { formatCsvLine, parseCsv } from "./csv.js";
 import {
   MEASUREMENT_COLUMNS,
   importMeasurementCsv,
@@ -127,6 +129,18 @@ describe("provenance", () => {
       `missing provenance field ${column}`,
     );
   });
+
+  it.each([
+    ["run_by_role", "run_by_role must be owner or agent"],
+    ["evidence_level", 'unknown evidence_level ""'],
+    ["language", "language must be one of en, te, hi, mixed"],
+    ["network_type", "network_type must be one of wifi, cellular, none, simulated"],
+  ] as const)(
+    "rejects a row with an empty %s, so who ran it and the rest are never guessed",
+    (column, reason) => {
+      expect(reasonsFor({ ...VALID_SIM_CAPTURE, [column]: "" })).toContain(reason);
+    },
+  );
 
   it("rejects an unknown network type", () => {
     expect(reasonsFor({ ...VALID_SIM_CAPTURE, network_type: "satellite" })).toEqual(
@@ -306,6 +320,15 @@ describe("identifiers and personal data", () => {
 
   it("does not mistake a date or a timing value for a phone number", () => {
     expect(importMeasurementCsv(csvOf([VALID_SIM_CAPTURE])).rejected).toEqual([]);
+  });
+});
+
+describe("documented template", () => {
+  it("keeps the header of docs/measurements/evidence-template.csv identical to the validator columns", () => {
+    const templatePath = resolve(__dirname, "../../../../docs/measurements/evidence-template.csv");
+    const rows = parseCsv(readFileSync(templatePath, "utf8"));
+    expect(rows[0]).toEqual([...MEASUREMENT_COLUMNS]);
+    expect(rows).toHaveLength(1);
   });
 });
 
