@@ -17,6 +17,7 @@ const LEDGER_TABLES = [
   "broker_device",
   "broker_enrolment_code",
   "broker_ledger_genesis",
+  "broker_memory_backup",
 ] as const;
 
 /** Columns each table must have. Checked at start-up, so a drifted schema stops the broker. */
@@ -35,6 +36,7 @@ const REQUIRED_COLUMNS: Readonly<Record<(typeof LEDGER_TABLES)[number], readonly
   broker_device: ["device_id", "label", "secret_sha256", "created_at", "revoked_at"],
   broker_enrolment_code: ["code_sha256", "created_at", "expires_at", "used_at"],
   broker_ledger_genesis: ["id", "created_at"],
+  broker_memory_backup: ["device_id", "ciphertext", "updated_at", "expires_at"],
 };
 
 const SCHEMA_SQL = `
@@ -74,6 +76,12 @@ CREATE TABLE IF NOT EXISTS broker_enrolment_code (
 );
 -- One row, written once, when the owner starts an empty ledger with BROKER_LEDGER_GENESIS. It records that a ledger
 -- has started, so a later start with a missing anchor refuses instead of starting a new ledger.
+CREATE TABLE IF NOT EXISTS broker_memory_backup (
+  device_id text PRIMARY KEY REFERENCES broker_device (device_id) ON DELETE CASCADE,
+  ciphertext text NOT NULL CHECK (char_length(ciphertext) BETWEEN 1 AND 1000000),
+  updated_at timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL CHECK (expires_at > updated_at)
+);
 CREATE TABLE IF NOT EXISTS broker_ledger_genesis (
   id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   created_at timestamptz NOT NULL DEFAULT now()
@@ -287,6 +295,9 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
       `GRANT UPDATE (state, actual_paise, closed_at) ON broker_reservation TO ${app}`,
     );
     await client.query(`GRANT UPDATE (used_at) ON broker_enrolment_code TO ${app}`);
+    await client.query(
+      `GRANT SELECT, INSERT, DELETE, UPDATE (ciphertext, updated_at, expires_at) ON broker_memory_backup TO ${app}`,
+    );
     // Admin role: issue enrolment codes and revoke devices. Used from the server only.
     await client.query(`GRANT SELECT ON broker_device TO ${admin}`);
     await client.query(`GRANT INSERT ON broker_enrolment_code TO ${admin}`);

@@ -70,6 +70,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     link.rel = "stylesheet";
     link.href = FONT_HREF;
     document.head.appendChild(link);
+    const style = document.createElement("style");
+    // Legacy screens set no font family; give them the app font.
+    style.textContent =
+      "[data-lm-legacy] * { font-family: 'Plus Jakarta Sans', 'Noto Sans Telugu', sans-serif; }";
+    document.head.appendChild(style);
   }, []);
   useEffect(() => {
     if (Platform.OS === "web") {

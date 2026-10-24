@@ -31,6 +31,13 @@ Nothing is ever committed that should not be public, because history stays publi
 - Not changed: the security, testing, independent review and release requirements.
 - Other products: not migrated by this decision. Each is migrated only when separately authorized.
 
+## OWNER-DECISION-004 — Memory backup, owner passphrase, languages (2026-10-24, owner chat instructions, ACTIVE)
+- Decided by: Varun (owner), Emergent chat, 2026-10-24.
+- Optional encrypted memory backup: approved. Encrypted on the phone (PBKDF2-SHA-256 310,000 rounds + AES-GCM, user passphrase); the broker stores only ciphertext per device (broker_memory_backup) with a user-chosen retention of 7, 30, 90 or 365 days; expired rows are purged by the reaper and on read. Photos are excluded unless the user includes them. Cloud notice text bumped to version 2026-10-24.2 to disclose it.
+- Owner passphrase for issuing enrolment codes in the preview: LENSMATE_OWNER_PASSPHRASE server secret (requested via the secrets card; minimum 12 characters; 5 tries a minute per address).
+- Languages: owner asked for "all languages". Implemented 20 languages for answers, speech and any-to-any translation; quality depends on the model and the device's speech engine, so "perfect" cannot be guaranteed. Telugu-English remains the measured pair (F20 measurement still open).
+- Legacy demo, measurement and enrolment screens restyled to the mock-up palette.
+
 ## OWNER-DECISION-003 — Emergent preview with real AI, scope additions (2026-10-24, owner chat instructions, ACTIVE for the preview)
 - Decided by: Varun (owner), in the Emergent chat on 2026-10-24. Recorded by the agent; wording summarised, not invented.
 - Real AI in the Emergent web preview: approved, through the existing broker in live mode with the hard server-side cap of INR 500 a month (BROKER_MONTHLY_CAP_PAISE=50000, owner confirmation equal). Broker runs in the preview container with a local PostgreSQL 15 ledger; this is NOT the Hostinger deployment (BLOCKER-006 hosting stays open).

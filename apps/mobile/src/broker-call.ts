@@ -23,9 +23,9 @@ import {
 
 /**
  * The owner-approved cloud-processing disclosure version (owner decision (e), approved in chat on 2026-10-24 for the
- * preview with real AI under the INR 500 cap). The text is STRINGS.cloudDisclosure. Changing the text needs a new version.
+ * preview with real AI under the INR 500 cap; .2 adds the optional encrypted backup). The text is STRINGS.cloudDisclosure. Changing the text needs a new version.
  */
-export const APPROVED_CLOUD_DISCLOSURE_VERSION: string | null = "2026-10-24.1";
+export const APPROVED_CLOUD_DISCLOSURE_VERSION: string | null = "2026-10-24.2";
 
 /** Thrown before any network request when a precondition for broker use is missing (BLOCKER-006). */
 export class BrokerCallBlocked extends Error {
@@ -103,6 +103,39 @@ export async function callBrokerVision(
   signal: AbortSignal,
 ): Promise<BrokerReply> {
   return requestBrokerVision(await brokerOptions(appPolicy()), request, signal);
+}
+
+export interface BackupInfo {
+  readonly ciphertext: string;
+  readonly updatedAt: number;
+  readonly expiresAt: number;
+}
+
+/**
+ * Encrypted memory backup on the broker, under the same access policy as AI calls. "get" returns null when no backup
+ * exists (or it expired). The ciphertext is produced on this device; the broker never sees the key.
+ */
+export async function callBrokerBackup(
+  method: "PUT" | "GET" | "DELETE",
+  body?: { ciphertext: string; retentionDays: number },
+): Promise<BackupInfo | { updatedAt: number; expiresAt: number } | null> {
+  const options = await brokerOptions(appPolicy());
+  const doFetch = options.fetch ?? fetch;
+  const response = await doFetch(`${options.baseUrl}/v1/backup`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${options.token}`,
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  if (response.status === 404 || response.status === 204) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`BACKUP_${response.status}`);
+  }
+  return (await response.json()) as BackupInfo;
 }
 
 /** This month's server-side spend, for display only. */

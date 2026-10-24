@@ -6,7 +6,8 @@ import { aiErrorText } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { useMicSession } from "../src/ai/use-voice";
 import { Icon, type IconName } from "../src/ui/icon";
-import { Btn, Card, Chip, Field, Notice } from "../src/ui/kit";
+import { Btn, Card, Field, Notice } from "../src/ui/kit";
+import { LangPicker } from "../src/ui/lang-picker";
 import { usePrefs, type Lang } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
@@ -190,20 +191,7 @@ export default function AssistantScreen() {
         </Pressable>
       ) : null}
       {mic.error === null ? null : <Notice tone="error">{mic.error}</Notice>}
-      <View style={{ flexDirection: "row", gap: 8, justifyContent: "center" }}>
-        <Chip
-          testID="talk-lang-en"
-          label="English"
-          active={lang === "en"}
-          onPress={() => setLang("en")}
-        />
-        <Chip
-          testID="talk-lang-te"
-          label="తెలుగు"
-          active={lang === "te"}
-          onPress={() => setLang("te")}
-        />
-      </View>
+      <LangPicker prefix="talk-lang" value={lang} onChange={setLang} />
       <View style={{ flexDirection: "row", gap: 10 }}>
         {action("Ask", "pin", () => mic.start(lang, (t) => void run(t)), "action-ask")}
         {action("Translate", "globe", () => router.push("/translate"), "action-translate")}

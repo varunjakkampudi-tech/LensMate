@@ -2,7 +2,30 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Platform } from "react-native";
 
 export type Profile = "personal" | "blind" | "hearing" | "custom";
-export type Lang = "en" | "te";
+/** Languages offered for speech, answers and translation. Speech quality depends on the device's speech engine. */
+export const LANGS = {
+  en: { name: "English", native: "English", locale: "en-IN" },
+  te: { name: "Telugu", native: "తెలుగు", locale: "te-IN" },
+  hi: { name: "Hindi", native: "हिन्दी", locale: "hi-IN" },
+  ta: { name: "Tamil", native: "தமிழ்", locale: "ta-IN" },
+  kn: { name: "Kannada", native: "ಕನ್ನಡ", locale: "kn-IN" },
+  ml: { name: "Malayalam", native: "മലയാളം", locale: "ml-IN" },
+  mr: { name: "Marathi", native: "मराठी", locale: "mr-IN" },
+  bn: { name: "Bengali", native: "বাংলা", locale: "bn-IN" },
+  gu: { name: "Gujarati", native: "ગુજરાતી", locale: "gu-IN" },
+  pa: { name: "Punjabi", native: "ਪੰਜਾਬੀ", locale: "pa-IN" },
+  ur: { name: "Urdu", native: "اردو", locale: "ur-IN" },
+  es: { name: "Spanish", native: "Español", locale: "es-ES" },
+  fr: { name: "French", native: "Français", locale: "fr-FR" },
+  de: { name: "German", native: "Deutsch", locale: "de-DE" },
+  pt: { name: "Portuguese", native: "Português", locale: "pt-BR" },
+  ar: { name: "Arabic", native: "العربية", locale: "ar-SA" },
+  zh: { name: "Chinese", native: "中文", locale: "zh-CN" },
+  ja: { name: "Japanese", native: "日本語", locale: "ja-JP" },
+  ko: { name: "Korean", native: "한국어", locale: "ko-KR" },
+  ru: { name: "Russian", native: "Русский", locale: "ru-RU" },
+} as const;
+export type Lang = keyof typeof LANGS;
 
 export interface Prefs {
   readonly profile: Profile;

@@ -36,7 +36,7 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
   beforeAll(async () => {
     const admin = new Pool({ connectionString: URL_VALUE, max: 1 });
     await admin.query(
-      "DROP TABLE IF EXISTS broker_reservation, broker_daily_quota, broker_budget_month, broker_device, broker_enrolment_code",
+      "DROP TABLE IF EXISTS broker_memory_backup, broker_reservation, broker_daily_quota, broker_budget_month, broker_device, broker_enrolment_code",
     );
     await admin.query(
       "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'broker_app_test') THEN CREATE ROLE broker_app_test LOGIN; END IF; END $$",

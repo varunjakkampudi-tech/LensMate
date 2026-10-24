@@ -1,6 +1,6 @@
 import { BrokerError } from "@lensmate/core";
 import { BrokerCallBlocked, callBroker, callBrokerVision } from "../broker-call";
-import type { Lang } from "../ui/prefs";
+import { LANGS, type Lang } from "../ui/prefs";
 
 // Owner-approved allowlist (services/broker/src/pricing.ts). Zero-data-retention routing is set by the broker.
 const TEXT_MODEL = "google/gemini-3.1-flash-lite";
@@ -29,12 +29,14 @@ export function latencyLog(): readonly LatencyRecord[] {
 }
 
 const RULES =
-  "You are LensMate, an assistant inside smart glasses. Be brief and plain (at most 4 short sentences unless asked). " +
+  "You are LensMate, a warm, friendly assistant inside smart glasses. Talk like a natural person speaking aloud: short sentences, everyday words, contractions, no lists or headings unless asked, at most 4 sentences unless asked. Understand the user in any language or mix of languages. " +
   "Say clearly when you are unsure and why. Never identify people or guess who someone is. " +
   "Never say a road, path or crossing is safe, clear or that the user can go; describe what you see and advise caution instead. " +
   "Give information, not instructions for dangerous tasks. Plain text only, no markdown.";
 
-export const LANG_NAME: Record<Lang, string> = { en: "English", te: "Telugu" };
+export const LANG_NAME = Object.fromEntries(
+  Object.entries(LANGS).map(([k, v]) => [k, v.name]),
+) as Record<Lang, string>;
 
 async function timed(
   route: LatencyRecord["route"],
@@ -128,7 +130,7 @@ export function research(question: string, lang: Lang): Promise<AiAnswer> {
 }
 
 /** Removes markdown emphasis and headings that some replies still contain. */
-function plain(text: string): string {
+export function plain(text: string): string {
   return text.replace(/\*\*|__|^#+\s*/gm, "").replace(/^\s*[-*]\s+/gm, "• ");
 }
 

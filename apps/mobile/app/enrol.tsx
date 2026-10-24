@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { LegacySurface } from "../src/ui/legacy-surface";
 import { useState } from "react";
 import { View } from "react-native";
 import { readBrokerConfig } from "../src/broker-config";
@@ -79,24 +80,26 @@ export default function EnrolRoute() {
   const { c } = useTheme();
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <View style={{ padding: 20, maxWidth: 1080, width: "100%", alignSelf: "center" }}>
+      <View style={{ padding: 20 }}>
         <OwnerCode />
       </View>
-      <View
+      <LegacySurface
         style={{
           flex: 1,
-          backgroundColor: "#F6F4EF",
-          maxWidth: 1080,
-          width: "100%",
-          alignSelf: "center",
+          backgroundColor: "#FFFFFF",
+          marginHorizontal: 20,
+          marginBottom: 20,
           borderRadius: 20,
+          borderWidth: 1,
+          borderColor: c.border,
+          overflow: "hidden",
         }}
       >
         <EnrolmentScreen
           config={readBrokerConfig()}
           onClose={() => (router.canGoBack() ? router.back() : router.replace("/"))}
         />
-      </View>
+      </LegacySurface>
     </View>
   );
 }

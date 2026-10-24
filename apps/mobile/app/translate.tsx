@@ -7,6 +7,7 @@ import { pickImageFile } from "../src/capture/camera";
 import { saveItem } from "../src/memory/vault";
 import { Icon, type IconName } from "../src/ui/icon";
 import { Btn, Field, Notice } from "../src/ui/kit";
+import { LangPicker } from "../src/ui/lang-picker";
 import { usePrefs, type Lang } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
@@ -62,7 +63,8 @@ export default function TranslateScreen() {
   const { prefs } = usePrefs();
   const mic = useMicSession("Translation session");
   const [from, setFrom] = useState<Lang>("en");
-  const to: Lang = from === "en" ? "te" : "en";
+  const [to, setTo] = useState<Lang>("te");
+  const [picking, setPicking] = useState<"from" | "to" | null>(null);
   const [announced, setAnnounced] = useState(false);
   const [original, setOriginal] = useState<string | null>(null);
   const [result, setResult] = useState<{ text: string; uncertain: readonly string[] } | null>(null);
@@ -77,7 +79,7 @@ export default function TranslateScreen() {
     if (!announced) {
       setAnnounced(true);
       speak(ANNOUNCEMENT.en, "en", prefs.voiceRate, () =>
-        speak(ANNOUNCEMENT.te, "te", prefs.voiceRate),
+        from === "te" || to === "te" ? speak(ANNOUNCEMENT.te, "te", prefs.voiceRate) : undefined,
       );
     }
   };
@@ -119,8 +121,11 @@ export default function TranslateScreen() {
     });
 
   const langBox = (lang: Lang, sub: string, testID: string) => (
-    <View
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${sub} ${LANG_NAME[lang]}, change`}
       testID={testID}
+      onPress={() => setPicking(sub.includes("speak") ? "from" : "to")}
       style={{
         flex: 1,
         backgroundColor: c.surface,
@@ -134,7 +139,7 @@ export default function TranslateScreen() {
         {LANG_NAME[lang]}
       </Text>
       <Text style={{ color: c.muted, fontSize: 11 }}>{sub}</Text>
-    </View>
+    </Pressable>
   );
   const bottom = (label: string, icon: IconName, onPress: () => void, testID: string) => (
     <Pressable
@@ -178,6 +183,7 @@ export default function TranslateScreen() {
           testID="swap-languages"
           onPress={() => {
             setFrom(to);
+            setTo(from);
             setResult(null);
             setOriginal(null);
           }}
@@ -186,6 +192,21 @@ export default function TranslateScreen() {
         </Pressable>
         {langBox(to, "(Translate to)", "lang-to")}
       </View>
+      {picking === null ? null : (
+        <LangPicker
+          prefix={`pick-${picking}`}
+          value={picking === "from" ? from : to}
+          onChange={(l) => {
+            if (picking === "from") {
+              setFrom(l);
+            } else {
+              setTo(l);
+            }
+            setPicking(null);
+            setResult(null);
+          }}
+        />
+      )}
       {announced ? null : (
         <Notice tone="info">
           The first time you speak, LensMate announces the translation to everyone in both
@@ -371,9 +392,9 @@ export default function TranslateScreen() {
         </Pressable>
         {bottom("Camera", "camera", fromPhoto, "translate-camera")}
       </View>
-      {hasVoiceFor("te") ? null : (
+      {hasVoiceFor(to) ? null : (
         <Text style={{ color: c.muted, fontSize: 11, textAlign: "center" }}>
-          No Telugu voice in this browser: Telugu is shown as captions.
+          No {LANG_NAME[to]} voice in this browser: the translation is shown as captions.
         </Text>
       )}
     </ScrollView>

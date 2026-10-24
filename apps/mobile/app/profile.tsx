@@ -8,6 +8,7 @@ import { rupees, useAiSetup } from "../src/ai/use-ai-setup";
 import { readBrokerConfig } from "../src/broker-config";
 import { STRINGS } from "../src/strings";
 import { Body, Btn, Card, Chip, H2, Notice, Page, Row } from "../src/ui/kit";
+import { LangPicker } from "../src/ui/lang-picker";
 import { FEATURES, usePrefs, type FeatureKey, type Profile } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
@@ -191,20 +192,11 @@ export default function MoreScreen() {
               />
             ))}
           </Row>
-          <Row>
-            <Chip
-              testID="pref-lang-en"
-              label="English"
-              active={prefs.language === "en"}
-              onPress={() => update({ language: "en", profile: prefs.profile })}
-            />
-            <Chip
-              testID="pref-lang-te"
-              label="తెలుగు"
-              active={prefs.language === "te"}
-              onPress={() => update({ language: "te", profile: prefs.profile })}
-            />
-          </Row>
+          <LangPicker
+            prefix="pref-lang"
+            value={prefs.language}
+            onChange={(l) => update({ language: l, profile: prefs.profile })}
+          />
         </Card>
       </View>
 

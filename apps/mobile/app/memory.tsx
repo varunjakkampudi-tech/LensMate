@@ -10,6 +10,7 @@ import {
   type MemoryItem,
   type MemoryKind,
 } from "../src/memory/vault";
+import { BackupCard } from "../src/memory/backup-card";
 import { Body, Btn, Card, Chip, Field, H2, Notice, Page, Row } from "../src/ui/kit";
 import { usePrefs } from "../src/ui/prefs";
 import { useTheme } from "../src/ui/theme";
@@ -247,6 +248,7 @@ export default function MemoryScreen() {
           </View>
         ))}
       </Card>
+      <BackupCard onRestored={refresh} />
       <Card>
         <H2>Your data</H2>
         <Row>
@@ -272,7 +274,7 @@ export default function MemoryScreen() {
         </Row>
         {message === null ? null : <Notice tone="info">{message}</Notice>}
         <Body muted size={12}>
-          Server backup is not switched on yet: it needs the owner's retention decision first.
+          Server backup is optional and off until you use the card above.
         </Body>
       </Card>
     </Page>

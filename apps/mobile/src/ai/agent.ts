@@ -1,7 +1,7 @@
 import { Linking } from "react-native";
 import { askText, research, translate, type AiAnswer } from "./assistant";
 import { listItems, saveItem } from "../memory/vault";
-import type { Lang } from "../ui/prefs";
+import { LANGS, type Lang } from "../ui/prefs";
 
 /**
  * Multi-agent task runner. A planner agent splits the user's goal into at most four tool steps; specialist agents
@@ -39,20 +39,22 @@ export interface AgentResult {
 
 type ToolCall = { tool: string; input: Record<string, unknown> };
 
-const PLANNER =
-  "You are the planner of a smart-glasses assistant. Break the user's goal into at most 4 tool calls. Tools: " +
-  'web_research{"query"} (live internet, costs money: use ONLY for current events, prices, weather, schedules or facts that change; never for stable general knowledge); ' +
-  'recall_memory{"query"} (search the user\'s saved notes); save_note{"title","text"}; ' +
-  'set_reminder{"title","minutes"}; translate{"text","to":"en"|"te"}; ' +
-  'phone_action{"kind":"call"|"sms"|"email"|"maps"|"web","target","body"} (only propose, the user confirms). ' +
-  'Reply with JSON only: {"calls":[{"tool":"...","input":{...}}]}. Use an empty list if no tool is needed. ' +
-  "Never plan actions that identify people, record in the background, control a computer, or pay money.";
+const PLANNER = [
+  "You are the planner of a smart-glasses assistant. Break the user's goal into at most 4 tool calls. Tools:",
+  'web_research{"query"} (live internet, costs money: use ONLY for current events, prices, weather, schedules or facts that change; never for stable general knowledge);',
+  'recall_memory{"query"} (search the user\'s saved notes); save_note{"title","text"}; set_reminder{"title","minutes"};',
+  `translate{"text","from","to"} (language codes: ${Object.keys(LANGS).join(", ")});`,
+  'phone_action{"kind":"call"|"sms"|"email"|"maps"|"web","target","body"} (only propose, the user confirms).',
+  'Reply with JSON only: {"calls":[{"tool":"...","input":{...}}]}. Use an empty list if no tool is needed.',
+  "Plan save_note, set_reminder or phone_action ONLY when the user explicitly asks for them. For general questions you can answer yourself, plan no tools.",
+  "Never plan actions that identify people, record in the background, control a computer, or pay money.",
+].join(" ");
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : typeof v === "number" ? String(v) : "";
 }
 
-function actionUrl(kind: string, target: string, body: string): PhoneAction | null {
+export function actionUrl(kind: string, target: string, body: string): PhoneAction | null {
   const t = encodeURIComponent(target);
   const b = encodeURIComponent(body);
   switch (kind) {
@@ -83,7 +85,7 @@ export function confirmAction(action: PhoneAction): Promise<void> {
   return Linking.openURL(action.url);
 }
 
-function parseCalls(text: string): ToolCall[] {
+export function parseCalls(text: string): ToolCall[] {
   try {
     const parsed = JSON.parse(/\{[\s\S]*\}/.exec(text)?.[0] ?? "") as { calls?: unknown };
     return Array.isArray(parsed.calls)
@@ -176,8 +178,13 @@ export async function runAgentTask(
           status: "done",
         });
       } else if (call.tool === "translate") {
-        const to = str(input.to) === "te" ? "te" : "en";
-        const result = await translate(str(input.text), to === "te" ? "en" : "te", to);
+        const code = (v: unknown, fallback: Lang): Lang =>
+          str(v) in LANGS ? (str(v) as Lang) : fallback;
+        const result = await translate(
+          str(input.text),
+          code(input.from, "en"),
+          code(input.to, lang),
+        );
         cost += result.answer.costPaise;
         findings.push(`Translation: ${result.translation}`);
         step({ agent: "Translator", summary: result.translation, status: "done" });
@@ -211,7 +218,7 @@ export async function runAgentTask(
       },
     ],
     lang,
-    "You are the writer agent. Use only the agent results and the goal; never invent news, facts or items. Be concise and concrete. Mention uncertainty. Do not claim an action was done unless the results say so.",
+    "You are the writer agent. When agent results exist, base the answer on them and never invent news, prices or saved items; when there are none, answer from your general knowledge. Be concise and concrete. Mention uncertainty. Do not claim an action was done unless the results say so.",
   );
   cost += final.costPaise;
   step({ agent: "Writer", summary: "Answer ready", status: "done" });
