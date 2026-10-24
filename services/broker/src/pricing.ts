@@ -1,7 +1,8 @@
 /**
  * Model allowlist and price snapshot for the broker (Amendment 2026-10-20C C.2 and C.5).
  *
- * Prices are OpenRouter's public catalogue values read on 2026-10-24, stored as integer micro-USD per million
+ * Prices are the highest tier OpenRouter lists for each model's zero-data-retention endpoints, read on 2026-10-24
+ * (the 2.5 models had no ZDR endpoint for this account), stored as integer micro-USD per million
  * tokens so cost arithmetic stays exact. They are a snapshot: the owner re-verifies them before live use, and a
  * price change is a code change reviewed like any other. Models not in this list are refused.
  */
@@ -15,23 +16,35 @@ export interface ModelPrice {
   readonly maxContextTokens: number;
   /** Whether the model accepts image input. Vision routes need an owner-measured image ceiling as well. */
   readonly acceptsImages: boolean;
-  /** Which broker route may use this model: text routes or the vision route. */
-  readonly feature: "text" | "vision";
+  /** Which broker route may use this model: text routes (plain or with web research) or the vision route. */
+  readonly feature: "text" | "research" | "vision";
+  /** Flat worst-case charge per attempt for built-in web search, in micro-USD (research models only). */
+  readonly webSearchMicroUsd?: number;
 }
 
 export const MODEL_ALLOWLIST: readonly ModelPrice[] = [
   {
-    id: "google/gemini-2.5-flash-lite",
-    inputMicroUsdPerMillion: 100_000,
-    outputMicroUsdPerMillion: 400_000,
+    id: "google/gemini-3.1-flash-lite",
+    inputMicroUsdPerMillion: 450_000,
+    outputMicroUsdPerMillion: 2_700_000,
     maxContextTokens: 1_048_576,
     acceptsImages: false,
     feature: "text",
   },
   {
-    id: "google/gemini-2.5-flash",
-    inputMicroUsdPerMillion: 300_000,
-    outputMicroUsdPerMillion: 2_500_000,
+    // OpenRouter's web plugin (up to 5 results at 4 USD per 1000) under zero-data-retention routing, checked 2026-10-24.
+    id: "google/gemini-3.1-flash-lite:online",
+    inputMicroUsdPerMillion: 450_000,
+    outputMicroUsdPerMillion: 2_700_000,
+    maxContextTokens: 1_048_576,
+    acceptsImages: false,
+    feature: "research",
+    webSearchMicroUsd: 25_000,
+  },
+  {
+    id: "google/gemini-3.5-flash-lite",
+    inputMicroUsdPerMillion: 540_000,
+    outputMicroUsdPerMillion: 4_500_000,
     maxContextTokens: 1_048_576,
     acceptsImages: true,
     feature: "vision",
@@ -56,7 +69,8 @@ export function worstCaseMicroUsd(
   const inputTokens = inputBoundTokens;
   return (
     tokensToMicroUsd(inputTokens, model.inputMicroUsdPerMillion) +
-    tokensToMicroUsd(maxOutputTokens, model.outputMicroUsdPerMillion)
+    tokensToMicroUsd(maxOutputTokens, model.outputMicroUsdPerMillion) +
+    (model.webSearchMicroUsd ?? 0)
   );
 }
 
@@ -68,7 +82,8 @@ export function actualMicroUsd(
 ): number {
   return (
     tokensToMicroUsd(promptTokens, model.inputMicroUsdPerMillion) +
-    tokensToMicroUsd(completionTokens, model.outputMicroUsdPerMillion)
+    tokensToMicroUsd(completionTokens, model.outputMicroUsdPerMillion) +
+    (model.webSearchMicroUsd ?? 0)
   );
 }
 

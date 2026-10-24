@@ -1,5 +1,6 @@
 import { BrokerError, enrolDevice } from "@lensmate/core";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 /**
  * The phone's own broker credential (BLOCKER-006). It is issued once, when the owner's single-use enrolment code is
@@ -71,12 +72,31 @@ export class EnrolmentError extends Error {
   }
 }
 
-/** Secure device storage. The default for every caller in the app. */
-export const secureStorage: CredentialStorage = {
-  getItemAsync: (key) => SecureStore.getItemAsync(key),
-  setItemAsync: (key, value, options) => SecureStore.setItemAsync(key, value, options),
-  deleteItemAsync: (key) => SecureStore.deleteItemAsync(key),
+/**
+ * Web preview only: browsers have no keychain, so the credential sits in this browser's storage for this origin.
+ * Phones always use the platform keychain or keystore below.
+ */
+const webPreviewStorage: CredentialStorage = {
+  getItemAsync: (key) => Promise.resolve(globalThis.localStorage.getItem(key)),
+  setItemAsync: (key, value) => {
+    globalThis.localStorage.setItem(key, value);
+    return Promise.resolve();
+  },
+  deleteItemAsync: (key) => {
+    globalThis.localStorage.removeItem(key);
+    return Promise.resolve();
+  },
 };
+
+/** Secure device storage. The default for every caller in the app. */
+export const secureStorage: CredentialStorage =
+  Platform.OS === "web"
+    ? webPreviewStorage
+    : {
+        getItemAsync: (key) => SecureStore.getItemAsync(key),
+        setItemAsync: (key, value, options) => SecureStore.setItemAsync(key, value, options),
+        deleteItemAsync: (key) => SecureStore.deleteItemAsync(key),
+      };
 
 // Readable only while the device is unlocked, and never restored to another device from a backup.
 const ACCESSIBILITY = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };

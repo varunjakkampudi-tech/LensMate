@@ -31,6 +31,19 @@ Nothing is ever committed that should not be public, because history stays publi
 - Not changed: the security, testing, independent review and release requirements.
 - Other products: not migrated by this decision. Each is migrated only when separately authorized.
 
+## OWNER-DECISION-003 — Emergent preview with real AI, scope additions (2026-10-24, owner chat instructions, ACTIVE for the preview)
+- Decided by: Varun (owner), in the Emergent chat on 2026-10-24. Recorded by the agent; wording summarised, not invented.
+- Real AI in the Emergent web preview: approved, through the existing broker in live mode with the hard server-side cap of INR 500 a month (BROKER_MONTHLY_CAP_PAISE=50000, owner confirmation equal). Broker runs in the preview container with a local PostgreSQL 15 ledger; this is NOT the Hostinger deployment (BLOCKER-006 hosting stays open).
+- Exchange rate set by the agent conservatively at BROKER_FX_PAISE_PER_USD=9000 (overstates cost). Owner to confirm.
+- Models: the 2.5 Gemini models had no zero-data-retention endpoint for this account, so the allowlist moved to google/gemini-3.1-flash-lite (text), google/gemini-3.1-flash-lite:online (web research, flat 25,000 micro-USD worst case per call) and google/gemini-3.5-flash-lite (vision), priced at the highest listed ZDR tier. zdr and data_collection deny stay on every request. Vision image ceiling set to 1600 tokens (agent estimate; owner measurement still due).
+- Cloud disclosure text version 2026-10-24.1 (STRINGS.cloudDisclosure) approved for the preview (owner decision (e)).
+- Speech: free platform speech (Web Speech API in the browser; native modules later). Chrome sends audio to Google for recognition; the disclosure says so.
+- Memory: owner chose both "on the phone, encrypted" and "phone plus server copy". Implemented: on-device encrypted (AES-GCM, non-extractable key, IndexedDB). Server copy: READY_FOR_OWNER (needs a retention and privacy decision before any upload).
+- First translation pair: English and Telugu.
+- UI: owner supplied a reference mock-up (light, blue, five tabs: Home, Simulator, Capture, Assistant, Profile). Implemented as the neutral theme until the Viswatra identity is approved; dark mode follows the system.
+- Scope additions requested by the owner beyond P-1: multi-agent tasks, live internet research, automations, phone actions, interview practice, profiles. Implemented only where they need no camera or microphone outside a user-started session, and phone actions only as proposals the user taps. Not built: computer (PC) control, payments, background capture, scene-watching companion mode (Locked list and G26) — READY_FOR_OWNER if the owner wants a written design.
+- Preview owner code helper: /api/owner/enrol-code issues a single-use code when given LENSMATE_OWNER_PASSPHRASE (server secret, not yet set).
+
 ## BLOCKER-001 — Apple Developer Program membership (iPhone builds and TestFlight)
 - Priority: high. Module: apps/mobile (iOS). Requirement: G46; Engineering Standards 1 and 6; Goal 14.2.
 - Status: DEFERRED (2026-10-24). Owner action required before real-iPhone testing or TestFlight distribution. Not resolved: Apple Developer Program membership has not been verified. Development continues on simulator, emulator and Android. Reopen this item when iPhone 15 testing or TestFlight distribution is scheduled.

@@ -32,12 +32,20 @@ describe("parseBrokerBaseUrl", () => {
     });
   });
 
+  it("accepts a reverse-proxy path prefix without a trailing slash", () => {
+    expect(parseBrokerBaseUrl("https://broker.example.org/api/broker/")).toEqual({
+      ok: true,
+      baseUrl: "https://broker.example.org/api/broker",
+    });
+  });
+
   it("refuses credentials in the URL, query strings, fragments, paths and other schemes", () => {
     for (const value of [
       "https://user:pass@broker.example.org",
       "https://broker.example.org/?token=1",
       "https://broker.example.org/#x",
       "https://broker.example.org/v1",
+      "https://broker.example.org/API/x y",
       "ftp://broker.example.org",
       "not a url",
     ]) {

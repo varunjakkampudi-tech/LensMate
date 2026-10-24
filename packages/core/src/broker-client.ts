@@ -50,15 +50,76 @@ export class BrokerError extends Error implements ClassifiedProviderError {
 const MAX_REPLY_CHARS = 1_000_000;
 
 /** Calls the broker's text route. The signal is the gateway's timeout, so a stalled call is cancelled. */
-export async function requestBrokerChat(
+export function requestBrokerChat(
   options: BrokerClientOptions,
   body: BrokerChatRequest,
+  signal: AbortSignal,
+): Promise<BrokerReply> {
+  return postForReply(options, "/v1/ai/text", body, signal);
+}
+
+export interface BrokerVisionRequest {
+  readonly model: string;
+  readonly prompt: string;
+  /** A JPEG or PNG data URL taken inside a user-started capture session. */
+  readonly imageDataUrl: string;
+  readonly maxOutputTokens: number;
+}
+
+/** Calls the broker's vision route with one user-captured image. */
+export function requestBrokerVision(
+  options: BrokerClientOptions,
+  body: BrokerVisionRequest,
+  signal: AbortSignal,
+): Promise<BrokerReply> {
+  return postForReply(options, "/v1/ai/vision", body, signal);
+}
+
+export interface BrokerUsage {
+  readonly month: string;
+  readonly capPaise: number;
+  readonly spentPaise: number;
+  readonly reservedPaise: number;
+  readonly remainingPaise: number;
+  readonly source: "openrouter" | "mock";
+}
+
+/** Reads this month's server-side spend. The app only mirrors it; the broker enforces the cap. */
+export async function requestBrokerUsage(
+  options: BrokerClientOptions,
+  signal: AbortSignal,
+): Promise<BrokerUsage> {
+  const doFetch = options.fetch ?? fetch;
+  let response: Response;
+  try {
+    response = await doFetch(`${trimSlash(options.baseUrl)}/v1/usage`, {
+      headers: { Authorization: `Bearer ${options.token}` },
+      signal,
+    });
+  } catch {
+    throw new BrokerError("NETWORK", "PROVIDER_ERROR", true);
+  }
+  const text = await response.text();
+  if (!response.ok) {
+    throw refusalFor(response.status, text);
+  }
+  const parsed = JSON.parse(text) as Partial<BrokerUsage>;
+  if (typeof parsed.capPaise !== "number" || typeof parsed.spentPaise !== "number") {
+    throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+  }
+  return parsed as BrokerUsage;
+}
+
+async function postForReply(
+  options: BrokerClientOptions,
+  path: string,
+  body: unknown,
   signal: AbortSignal,
 ): Promise<BrokerReply> {
   const doFetch = options.fetch ?? fetch;
   let response: Response;
   try {
-    response = await doFetch(`${trimSlash(options.baseUrl)}/v1/ai/text`, {
+    response = await doFetch(`${trimSlash(options.baseUrl)}${path}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${options.token}`,

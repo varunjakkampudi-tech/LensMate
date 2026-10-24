@@ -238,7 +238,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
         return reply.code(429).send({ error: "try_later", code: "RATE_LIMITED" });
       }
       const model = findModel(request.body.model);
-      if (model === undefined || model.feature !== "text") {
+      if (model === undefined || (model.feature !== "text" && model.feature !== "research")) {
         return reply.code(400).send({ error: "invalid_request", code: "MODEL_NOT_ALLOWED" });
       }
       if (request.body.maxOutputTokens > config.maxOutputTokensCeiling) {

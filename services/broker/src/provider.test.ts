@@ -9,7 +9,7 @@ const KEY = "sk-or-test-DO-NOT-USE-0000000000";
 
 function request(signal: AbortSignal = new AbortController().signal): ProviderRequest {
   return {
-    model: "google/gemini-2.5-flash-lite",
+    model: "google/gemini-3.1-flash-lite",
     messages: [{ role: "user", content: "hello" }],
     maxOutputTokens: 64,
     signal,

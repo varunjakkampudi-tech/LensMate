@@ -1,4 +1,13 @@
-import { requestBrokerChat, type BrokerChatRequest, type BrokerReply } from "@lensmate/core";
+import {
+  requestBrokerChat,
+  requestBrokerUsage,
+  requestBrokerVision,
+  type BrokerChatRequest,
+  type BrokerClientOptions,
+  type BrokerReply,
+  type BrokerUsage,
+  type BrokerVisionRequest,
+} from "@lensmate/core";
 import {
   isCloudDisclosureAccepted,
   resolveBrokerAccess,
@@ -13,10 +22,10 @@ import {
 } from "./device-credential";
 
 /**
- * The owner-approved cloud-processing disclosure version. Null until the owner approves the text (owner decision (e) in
- * provider-privacy-and-models.md). While it is null, no call can be made from the app.
+ * The owner-approved cloud-processing disclosure version (owner decision (e), approved in chat on 2026-10-24 for the
+ * preview with real AI under the INR 500 cap). The text is STRINGS.cloudDisclosure. Changing the text needs a new version.
  */
-export const APPROVED_CLOUD_DISCLOSURE_VERSION: string | null = null;
+export const APPROVED_CLOUD_DISCLOSURE_VERSION: string | null = "2026-10-24.1";
 
 /** Thrown before any network request when a precondition for broker use is missing (BLOCKER-006). */
 export class BrokerCallBlocked extends Error {
@@ -39,11 +48,8 @@ export interface BrokerCallPolicy {
  * itself, and sends the request only when all three hold. A blocked call makes no request. The caller cannot supply
  * the approval or the acceptance.
  */
-export async function callBrokerWithPolicy(
-  policy: BrokerCallPolicy,
-  request: BrokerChatRequest,
-  signal: AbortSignal,
-): Promise<BrokerReply> {
+/** Resolves broker access for one call, or throws BrokerCallBlocked before any request is made. */
+async function brokerOptions(policy: BrokerCallPolicy): Promise<BrokerClientOptions> {
   let credential: CredentialState;
   try {
     credential = await loadDeviceCredential(policy.storage);
@@ -63,26 +69,48 @@ export async function callBrokerWithPolicy(
   if (!access.ok) {
     throw new BrokerCallBlocked(access.reason);
   }
-  return requestBrokerChat(
-    {
-      baseUrl: access.baseUrl,
-      token: access.token,
-      ...(policy.doFetch === undefined ? {} : { fetch: policy.doFetch }),
-    },
-    request,
-    signal,
-  );
+  return {
+    baseUrl: access.baseUrl,
+    token: access.token,
+    ...(policy.doFetch === undefined ? {} : { fetch: policy.doFetch }),
+  };
+}
+
+/**
+ * The only path from the app to the broker. It reads the address, the device credential and the disclosure acceptance
+ * itself, and sends the request only when all three hold. A blocked call makes no request. The caller cannot supply
+ * the approval or the acceptance.
+ */
+export async function callBrokerWithPolicy(
+  policy: BrokerCallPolicy,
+  request: BrokerChatRequest,
+  signal: AbortSignal,
+): Promise<BrokerReply> {
+  return requestBrokerChat(await brokerOptions(policy), request, signal);
+}
+
+function appPolicy(): BrokerCallPolicy {
+  return {
+    config: readBrokerConfig(),
+    storage: secureStorage,
+    approvedDisclosureVersion: APPROVED_CLOUD_DISCLOSURE_VERSION,
+  };
+}
+
+/** One user-captured image to the vision route, under the same access policy as text. */
+export async function callBrokerVision(
+  request: BrokerVisionRequest,
+  signal: AbortSignal,
+): Promise<BrokerReply> {
+  return requestBrokerVision(await brokerOptions(appPolicy()), request, signal);
+}
+
+/** This month's server-side spend, for display only. */
+export async function fetchBrokerUsage(signal: AbortSignal): Promise<BrokerUsage> {
+  return requestBrokerUsage(await brokerOptions(appPolicy()), signal);
 }
 
 /** The app's entry point: the address from configuration, secure storage, and the approved disclosure constant. */
 export function callBroker(request: BrokerChatRequest, signal: AbortSignal): Promise<BrokerReply> {
-  return callBrokerWithPolicy(
-    {
-      config: readBrokerConfig(),
-      storage: secureStorage,
-      approvedDisclosureVersion: APPROVED_CLOUD_DISCLOSURE_VERSION,
-    },
-    request,
-    signal,
-  );
+  return callBrokerWithPolicy(appPolicy(), request, signal);
 }
