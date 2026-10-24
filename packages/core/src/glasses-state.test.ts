@@ -1,8 +1,13 @@
 import {
   IDLE_STATE,
+  SILENCE_TIMEOUT_MS,
+  TRANSLATION_START_ANNOUNCEMENT,
   applyCutoff,
+  applySilenceTimeout,
+  captureSessionForEffect,
   isCapturing,
   onGesture,
+  speechEnded,
   speechStarted,
   startListeningSession,
   stopListeningSession,
@@ -11,12 +16,16 @@ import type { Gesture, GlassesEffect, GlassesMode, GlassesState } from "./glasse
 
 const GESTURES: readonly Gesture[] = ["SINGLE_TAP", "DOUBLE_TAP", "HOLD", "RELEASE", "PRESS"];
 
+/** Gestures that do not exist in P-1 (v9 5.0: triple tap is companion, five presses is emergency). */
+const OUT_OF_SCOPE_GESTURES = ["TRIPLE_TAP", "FIVE_PRESS"] as unknown as readonly Gesture[];
+
 const PTT: GlassesState = { mode: "PUSH_TO_TALK", speaking: false };
 const TRANSLATION: GlassesState = { mode: "TRANSLATION", speaking: false };
 const CAPTION: GlassesState = { mode: "CAPTION", speaking: false };
 const CUTOFF: GlassesState = { mode: "CUTOFF", speaking: false };
 const SPEAKING_IDLE: GlassesState = { mode: "IDLE", speaking: true };
 const SPEAKING_TRANSLATION: GlassesState = { mode: "TRANSLATION", speaking: true };
+const SPEAKING_PTT: GlassesState = { mode: "PUSH_TO_TALK", speaking: true };
 
 type Row = readonly [string, GlassesState, Gesture, GlassesEffect, GlassesMode];
 
@@ -53,7 +62,13 @@ const TABLE: readonly Row[] = [
   ["speaking idle", SPEAKING_IDLE, "RELEASE", "NONE", "IDLE"],
   ["speaking idle", SPEAKING_IDLE, "PRESS", "STOP_SPEECH", "IDLE"],
   ["speaking translation", SPEAKING_TRANSLATION, "SINGLE_TAP", "NONE", "TRANSLATION"],
+  ["speaking translation", SPEAKING_TRANSLATION, "DOUBLE_TAP", "NONE", "TRANSLATION"],
+  ["speaking translation", SPEAKING_TRANSLATION, "HOLD", "NONE", "TRANSLATION"],
+  ["speaking translation", SPEAKING_TRANSLATION, "RELEASE", "NONE", "TRANSLATION"],
   ["speaking translation", SPEAKING_TRANSLATION, "PRESS", "STOP_SPEECH", "TRANSLATION"],
+  ["speaking push-to-talk", SPEAKING_PTT, "SINGLE_TAP", "NONE", "PUSH_TO_TALK"],
+  ["speaking push-to-talk", SPEAKING_PTT, "RELEASE", "NONE", "PUSH_TO_TALK"],
+  ["speaking push-to-talk", SPEAKING_PTT, "PRESS", "STOP_SPEECH", "PUSH_TO_TALK"],
 ];
 
 describe("onGesture precedence table", () => {
@@ -93,6 +108,60 @@ describe("onGesture precedence table", () => {
       }
     }
   });
+
+  it("push-to-talk never captures a photo, whatever the gesture", () => {
+    for (const gesture of GESTURES) {
+      const effect = onGesture(PTT, gesture).effect;
+      expect(effect).not.toBe("CAPTURE_PHOTO");
+      expect(effect).not.toBe("CAPTURE_VISUAL_QUESTION");
+    }
+  });
+
+  it("ignores taps during a translation or caption session, and during cutoff", () => {
+    for (const state of [TRANSLATION, CAPTION, CUTOFF]) {
+      expect(onGesture(state, "SINGLE_TAP")).toEqual({ state, effect: "NONE" });
+      expect(onGesture(state, "DOUBLE_TAP")).toEqual({ state, effect: "NONE" });
+    }
+  });
+
+  it("ignores a state mode it does not know, so an unexpected value never claims a gesture", () => {
+    const unknown = { mode: "COMPANION", speaking: false } as unknown as GlassesState;
+    expect(onGesture(unknown, "SINGLE_TAP")).toEqual({ state: unknown, effect: "NONE" });
+  });
+
+  it("ignores gestures that are out of P-1 scope in every state, so they never start companion, walk or emergency", () => {
+    const states = [
+      IDLE_STATE,
+      PTT,
+      TRANSLATION,
+      CAPTION,
+      CUTOFF,
+      SPEAKING_IDLE,
+      SPEAKING_TRANSLATION,
+    ];
+    for (const state of states) {
+      for (const gesture of OUT_OF_SCOPE_GESTURES) {
+        expect(onGesture(state, gesture)).toEqual({ state, effect: "NONE" });
+      }
+    }
+  });
+});
+
+describe("speech and the press that stops it (G19)", () => {
+  it("a press during speech stops speech and does nothing else", () => {
+    expect(onGesture(SPEAKING_IDLE, "PRESS")).toEqual({ state: IDLE_STATE, effect: "STOP_SPEECH" });
+  });
+
+  it("taps work again after speech ends on its own", () => {
+    const ended = speechEnded(speechStarted(IDLE_STATE));
+    expect(onGesture(ended, "SINGLE_TAP").effect).toBe("CAPTURE_PHOTO");
+  });
+
+  it("speechEnded clears speaking and leaves other states alone", () => {
+    expect(speechEnded(SPEAKING_TRANSLATION)).toEqual(TRANSLATION);
+    expect(speechEnded(IDLE_STATE)).toEqual(IDLE_STATE);
+    expect(speechEnded(CUTOFF)).toEqual(CUTOFF);
+  });
 });
 
 describe("listening sessions from the phone app or voice", () => {
@@ -100,23 +169,73 @@ describe("listening sessions from the phone app or voice", () => {
     expect(startListeningSession(IDLE_STATE, "TRANSLATION")).toEqual({
       state: TRANSLATION,
       accepted: true,
+      announcement: TRANSLATION_START_ANNOUNCEMENT,
     });
     expect(startListeningSession(IDLE_STATE, "CAPTION")).toEqual({
       state: CAPTION,
       accepted: true,
+      announcement: null,
     });
+  });
+
+  it("announces translation at every start (G15, checklist item 3) and never announces a refused start", () => {
+    expect(TRANSLATION_START_ANNOUNCEMENT).toBe(
+      "Translation on. This conversation is being listened to for translation",
+    );
+    expect(startListeningSession(SPEAKING_IDLE, "TRANSLATION").announcement).toBe(
+      TRANSLATION_START_ANNOUNCEMENT,
+    );
+    for (const state of [PTT, CUTOFF, TRANSLATION, CAPTION]) {
+      expect(startListeningSession(state, "TRANSLATION")).toEqual({
+        state,
+        accepted: false,
+        announcement: null,
+      });
+    }
   });
 
   it("refuses to start a listening session while push-to-talk, cutoff or another session is active", () => {
     for (const state of [PTT, CUTOFF, TRANSLATION, CAPTION]) {
       expect(startListeningSession(state, "TRANSLATION").accepted).toBe(false);
+      expect(startListeningSession(state, "CAPTION").accepted).toBe(false);
     }
+  });
+
+  it("keeps speech going when a session starts or stops, so the press is still needed to stop it", () => {
+    expect(startListeningSession(SPEAKING_IDLE, "TRANSLATION").state).toEqual(SPEAKING_TRANSLATION);
+    expect(stopListeningSession(SPEAKING_TRANSLATION)).toEqual(SPEAKING_IDLE);
   });
 
   it("stops translation and caption, and leaves other states alone", () => {
     expect(stopListeningSession(TRANSLATION)).toEqual(IDLE_STATE);
     expect(stopListeningSession(CAPTION)).toEqual(IDLE_STATE);
     expect(stopListeningSession(PTT)).toEqual(PTT);
+  });
+});
+
+describe("silence timeout for translation and caption (v9 5.3, section 21)", () => {
+  it("is two minutes", () => {
+    expect(SILENCE_TIMEOUT_MS).toBe(120_000);
+  });
+
+  it("keeps a translation or caption session just before two minutes of silence", () => {
+    expect(applySilenceTimeout(TRANSLATION, SILENCE_TIMEOUT_MS - 1)).toEqual(TRANSLATION);
+    expect(applySilenceTimeout(CAPTION, SILENCE_TIMEOUT_MS - 1)).toEqual(CAPTION);
+  });
+
+  it("stops translation and caption at exactly two minutes of silence", () => {
+    expect(applySilenceTimeout(TRANSLATION, SILENCE_TIMEOUT_MS)).toEqual(IDLE_STATE);
+    expect(applySilenceTimeout(CAPTION, SILENCE_TIMEOUT_MS + 5_000)).toEqual(IDLE_STATE);
+  });
+
+  it("keeps the speech flag when silence stops the session", () => {
+    expect(applySilenceTimeout(SPEAKING_TRANSLATION, SILENCE_TIMEOUT_MS)).toEqual(SPEAKING_IDLE);
+  });
+
+  it("never ends push-to-talk, idle or cutoff on silence", () => {
+    for (const state of [PTT, IDLE_STATE, CUTOFF]) {
+      expect(applySilenceTimeout(state, SILENCE_TIMEOUT_MS * 10)).toEqual(state);
+    }
   });
 });
 
@@ -131,12 +250,40 @@ describe("cutoff and speech", () => {
   });
 });
 
-describe("isCapturing", () => {
+describe("isCapturing and capture sessions", () => {
   it("is true for push-to-talk, translation and caption, and false otherwise", () => {
     expect(isCapturing(PTT)).toBe(true);
     expect(isCapturing(TRANSLATION)).toBe(true);
     expect(isCapturing(CAPTION)).toBe(true);
     expect(isCapturing(IDLE_STATE)).toBe(false);
     expect(isCapturing(CUTOFF)).toBe(false);
+  });
+
+  it("maps every capture effect to an indicator session, so each capture runs with the indicator on", () => {
+    expect(captureSessionForEffect("CAPTURE_PHOTO")).toBe("PHOTO_QUESTION");
+    expect(captureSessionForEffect("CAPTURE_VISUAL_QUESTION")).toBe("PHOTO_QUESTION");
+    expect(captureSessionForEffect("START_PUSH_TO_TALK")).toBe("PUSH_TO_TALK");
+  });
+
+  it("opens no indicator session for effects that do not capture", () => {
+    for (const effect of [
+      "NONE",
+      "SEND_QUESTION",
+      "CANCEL_QUESTION",
+      "STOP_SPEECH",
+    ] as const satisfies readonly GlassesEffect[]) {
+      expect(captureSessionForEffect(effect)).toBeNull();
+    }
+  });
+
+  it("every gesture effect that captures is covered by the indicator mapping", () => {
+    for (const [, state, gesture] of TABLE) {
+      const { effect } = onGesture(state, gesture);
+      const captures =
+        effect === "CAPTURE_PHOTO" ||
+        effect === "CAPTURE_VISUAL_QUESTION" ||
+        effect === "START_PUSH_TO_TALK";
+      expect(captureSessionForEffect(effect) !== null).toBe(captures);
+    }
   });
 });

@@ -11,9 +11,14 @@ export { SpendCap } from "./spend-cap.js";
 export type { SpendDecision } from "./spend-cap.js";
 export {
   IDLE_STATE,
+  SILENCE_TIMEOUT_MS,
+  TRANSLATION_START_ANNOUNCEMENT,
   applyCutoff,
+  applySilenceTimeout,
+  captureSessionForEffect,
   isCapturing,
   onGesture,
+  speechEnded,
   speechStarted,
   startListeningSession,
   stopListeningSession,
@@ -24,6 +29,7 @@ export type {
   GlassesMode,
   GlassesState,
   GlassesTransition,
+  ListeningSessionStart,
   ListeningSessionType,
 } from "./glasses-state.js";
 export { ProviderGateway, ProviderTimeout } from "./provider-gateway.js";
@@ -68,6 +74,14 @@ export type {
   RunByRole,
 } from "./measurement/import.js";
 export { parseCsv } from "./measurement/csv.js";
+export { calculateSpend } from "./measurement/spend.js";
+export type {
+  PerRequestCost,
+  PriceEntry,
+  RequestAssumption,
+  SpendCalculation,
+  SpendCalculationInput,
+} from "./measurement/spend.js";
 export { BrokerError, brokerProviderRun, enrolDevice, requestBrokerChat } from "./broker-client.js";
 export type {
   BrokerChatMessage,

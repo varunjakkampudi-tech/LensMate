@@ -52,14 +52,14 @@ describe("VirtualGlasses", () => {
   it("turns the indicator on for a capture session and off after it ends", async () => {
     const { glasses, fromGlasses } = setup();
     await glasses.connect();
-    await glasses.send(sessionMessage("SESSION_TYPE_PUSH_TO_TALK", "SESSION_PHASE_ACTIVE"));
+    await glasses.send(sessionMessage("SESSION_TYPE_CAPTION", "SESSION_PHASE_ACTIVE"));
     expect(glasses.indicatorOn).toBe(true);
     expect(fromGlasses.at(-1)?.indicator).toEqual({
       on: true,
-      reason: "INDICATOR_REASON_PUSH_TO_TALK",
+      reason: "INDICATOR_REASON_CAPTION",
     });
 
-    await glasses.send(sessionMessage("SESSION_TYPE_PUSH_TO_TALK", "SESSION_PHASE_ENDED", 2));
+    await glasses.send(sessionMessage("SESSION_TYPE_CAPTION", "SESSION_PHASE_ENDED", 2));
     expect(glasses.indicatorOn).toBe(false);
     // proto3 omits on=false, so an absent `on` means the indicator is off.
     expect(fromGlasses.at(-1)?.indicator).toEqual({ reason: "INDICATOR_REASON_IDLE" });
@@ -124,6 +124,6 @@ describe("VirtualGlasses", () => {
     glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
     unsubscribe();
     glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
-    expect(received).toHaveLength(1);
+    expect(received.filter((message) => message.button !== undefined)).toHaveLength(1);
   });
 });
