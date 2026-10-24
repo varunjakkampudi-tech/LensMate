@@ -132,20 +132,24 @@ export function askVision(
   imageDataUrl: string,
   lang: Lang,
   detailed: boolean,
+  external?: AbortSignal,
 ): Promise<AiAnswer> {
   const style = detailed
     ? "Describe in useful detail for someone who cannot see, most important first."
     : "";
-  return timed("vision", (signal) =>
-    callBrokerVision(
-      {
-        model: VISION_MODEL,
-        prompt: `${RULES} ${style} Reply in ${LANG_NAME[lang]}.\n\nUser request: ${prompt}`,
-        imageDataUrl,
-        maxOutputTokens: 450,
-      },
-      signal,
-    ),
+  return timed(
+    "vision",
+    (signal) =>
+      callBrokerVision(
+        {
+          model: VISION_MODEL,
+          prompt: `${RULES} ${style} Reply in ${LANG_NAME[lang]}.\n\nUser request: ${prompt}`,
+          imageDataUrl,
+          maxOutputTokens: 450,
+        },
+        signal,
+      ),
+    external,
   );
 }
 

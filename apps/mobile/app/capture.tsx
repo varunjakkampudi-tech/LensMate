@@ -4,6 +4,8 @@ import { aiErrorText, askVision } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
 import { memoryErrorText, saveItem } from "../src/memory/vault";
+import { createLiveSession } from "../src/vision/create-live-session";
+import type { LiveState, LiveVisionSession } from "../src/vision/live-session";
 import { SeeSession, type SeeAnswer, type SeeState } from "../src/see/session";
 import { useCapture } from "../src/ui/capture-session";
 import { Icon } from "../src/ui/icon";
@@ -92,15 +94,26 @@ export default function CaptureScreen() {
   }
   const session = sessionRef.current;
 
+  // Live Vision reads frames from the same camera preview. It has its own controller and never starts by itself.
+  const liveRef = useRef<LiveVisionSession | null>(null);
+  if (liveRef.current === null) {
+    liveRef.current = createLiveSession(() => camera.current?.capture() ?? Promise.resolve(null));
+  }
+  const liveSession = liveRef.current;
+
   const [see, setSee] = useState<SeeState>(session.state);
+  const [vision, setVision] = useState<LiveState>(liveSession.state);
+  const [visionEvery, setVisionEvery] = useState(5000);
   const [question, setQuestion] = useState("");
   const [saved, setSaved] = useState(false);
   const [more, setMore] = useState(false);
   const [checks, setChecks] = useState("Is the stove switched off?\nIs the door locked?");
 
   useEffect(() => session.subscribe(setSee), [session]);
-  // Leaving the screen stops speech and any request, and releases the camera.
+  useEffect(() => liveSession.subscribe(setVision), [liveSession]);
+  // Leaving the screen stops speech, any request, live analysis, and releases the camera.
   useEffect(() => () => session.end(), [session]);
+  useEffect(() => () => liveSession.stop(), [liveSession]);
 
   // The answer's own parse happens once per answer, not on every render.
   const answer: Answer | null = useMemo(() => {
@@ -124,6 +137,12 @@ export default function CaptureScreen() {
   const photo = see.photo;
   const live = see.phase === "previewing";
   const busy = see.phase === "thinking";
+  // Live Vision needs the open preview. Closing the preview (take photo, cancel, leave) stops it.
+  useEffect(() => {
+    if (!live) {
+      liveSession.stop();
+    }
+  }, [live, liveSession]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const error = see.message ?? saveError;
 
@@ -261,6 +280,82 @@ export default function CaptureScreen() {
           />
         ) : null}
       </View>
+
+      {live ? (
+        <Card style={{ gap: 10 }}>
+          <Text style={{ color: c.text, fontFamily: FONTS.display, fontWeight: "700" }}>
+            Live Vision
+          </Text>
+          <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 13, lineHeight: 19 }}>
+            Sends one still frame at a time while running. It stops after 2 minutes, 40 frames, a
+            spending limit, or when you press Stop. Nothing runs in the background.
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            {[3000, 5000, 10000].map((ms) => (
+              <Pressable
+                key={ms}
+                accessibilityRole="button"
+                accessibilityLabel={`Analyse every ${ms / 1000} seconds`}
+                testID={`live-interval-${ms / 1000}`}
+                disabled={vision.phase === "running"}
+                onPress={() => setVisionEvery(ms)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  backgroundColor: visionEvery === ms ? c.accent : c.surface,
+                  opacity: vision.phase === "running" ? 0.5 : 1,
+                }}
+              >
+                <Text
+                  style={{
+                    color: visionEvery === ms ? "#fff" : c.text,
+                    fontFamily: FONTS.body,
+                    fontSize: 13,
+                    fontWeight: "600",
+                  }}
+                >
+                  Every {ms / 1000} s
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Btn
+            testID="live-start-button"
+            label={vision.phase === "running" ? "Stop Live Vision" : "Start Live Vision"}
+            icon="camera"
+            tone={vision.phase === "running" ? "ghost" : "primary"}
+            onPress={() => {
+              if (vision.phase === "running") {
+                liveSession.stop();
+                return;
+              }
+              liveSession.start({
+                intervalMs: visionEvery,
+                question: "Describe what is in front of me in one or two short sentences.",
+              });
+            }}
+          />
+          <Text
+            testID="live-status"
+            style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 12 }}
+          >
+            {liveStatusText(vision)}
+          </Text>
+          {vision.answer === null ? null : (
+            <View testID="live-answer" style={{ gap: 4 }}>
+              <Text
+                style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 11, fontWeight: "700" }}
+              >
+                {vision.answer.source === "mock" ? "MOCK RESULT · NO AI CALLED" : "LIVE RESULT"}
+              </Text>
+              <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 }}>
+                {vision.answer.text}
+              </Text>
+            </View>
+          )}
+        </Card>
+      ) : null}
 
       <View
         style={{
@@ -440,4 +535,20 @@ export default function CaptureScreen() {
 /** Stops read-aloud on the phone and the web (the speech module decides which). */
 function stopSaying(): void {
   stopSpeaking();
+}
+
+/** One plain line for the Live Vision panel. It says what is happening and why it stopped. */
+function liveStatusText(state: LiveState): string {
+  switch (state.phase) {
+    case "idle":
+      return "Not running. The camera sends nothing until you press Start.";
+    case "running":
+      return `Running. ${state.framesAnalysed} analysed, ${state.invalidFrames} unusable frames skipped.`;
+    case "stopped":
+      return state.message ?? "Stopped. No more frames are sent.";
+    case "budget_reached":
+    case "timed_out":
+    case "error":
+      return state.message ?? "Stopped.";
+  }
 }
