@@ -311,16 +311,31 @@ describe("development-test cap", () => {
     expect(next.json()).toMatchObject({ code: "BUDGET_EXHAUSTED" });
   });
 
-  it("charges only the development bucket and leaves the monthly cap untouched", async () => {
+  it("charges both buckets, so the monthly cap still refuses when the development cap has room", async () => {
+    const cap = worstPaiseFor(GOOD_BODY, testConfig());
     const store = new InMemoryBudgetStore();
     const { app } = await harness(
-      { devTestCapPaise: 1_000_000, monthlyCapPaise: 1 },
+      { devTestCapPaise: 1_000_000, monthlyCapPaise: cap },
       new MockProvider(),
       store,
     );
     expect((await chat(app, GOOD_BODY)).statusCode).toBe(200);
     expect((await store.summary(DEV_TEST_BUCKET)).spentPaise).toBeGreaterThan(0);
-    expect((await store.summary(utcMonth(NOW))).spentPaise).toBe(0);
+    expect((await store.summary(utcMonth(NOW))).spentPaise).toBeGreaterThan(0);
+    expect((await chat(app, GOOD_BODY)).json()).toMatchObject({ code: "BUDGET_EXHAUSTED" });
+  });
+
+  it("refuses when the development cap is spent even though the monthly cap has room", async () => {
+    const cap = worstPaiseFor(GOOD_BODY, testConfig());
+    const store = new InMemoryBudgetStore();
+    const { app } = await harness(
+      { devTestCapPaise: cap, monthlyCapPaise: 1_000_000 },
+      new MockProvider(),
+      store,
+    );
+    expect((await chat(app, GOOD_BODY)).statusCode).toBe(200);
+    expect((await chat(app, GOOD_BODY)).json()).toMatchObject({ code: "BUDGET_EXHAUSTED" });
+    expect((await store.summary(utcMonth(NOW))).spentPaise).toBeGreaterThan(0);
   });
 });
 

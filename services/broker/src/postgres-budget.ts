@@ -1,16 +1,25 @@
 import type { Pool, PoolClient } from "pg";
 import {
+  DEV_TEST_BUCKET,
   ReservationError,
+  bucketsFor,
   type BudgetStore,
   type BudgetSummary,
   type ReserveInput,
   type ReserveResult,
 } from "./budget.js";
 
+interface BucketLock {
+  readonly spent: bigint;
+  readonly reserved: bigint;
+}
+
 /**
- * PostgreSQL implementation. Each reservation runs in one transaction. It locks the month row first and the
- * client's daily quota row second, always in that order, so concurrent reservations serialize on the database
- * rather than on stale in-process counters. Reads for the cap decision happen under the lock, never from a cache.
+ * PostgreSQL implementation. Each reservation runs in one transaction. It locks the monthly bucket first, then the
+ * development-test bucket (when configured), then the client's daily quota row, always in that order, so concurrent
+ * reservations serialize on the database rather than on stale in-process counters. Every paid attempt is charged to the
+ * monthly bucket; when a development-test cap is configured it is also charged to the cumulative bucket. An attempt is
+ * refused unless both caps have room, and a settlement or reaper charge updates every bucket the reservation holds.
  */
 export class PostgresBudgetStore implements BudgetStore {
   constructor(private readonly pool: Pool) {}
@@ -18,17 +27,15 @@ export class PostgresBudgetStore implements BudgetStore {
   async reserve(input: ReserveInput): Promise<ReserveResult> {
     assertPaise(input.amountPaise, "amount");
     assertPaise(input.capPaise, "cap");
+    if (input.devTestCapPaise !== undefined) {
+      assertPaise(input.devTestCapPaise, "development-test cap");
+    }
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query(
-        "INSERT INTO broker_budget_month (month) VALUES ($1) ON CONFLICT (month) DO NOTHING",
-        [input.month],
-      );
-      const month = await client.query<{ spent_paise: string; reserved_paise: string }>(
-        "SELECT spent_paise, reserved_paise FROM broker_budget_month WHERE month = $1 FOR UPDATE",
-        [input.month],
-      );
+      const monthly = await lockBucket(client, input.month);
+      const development =
+        input.devTestCapPaise === undefined ? undefined : await lockBucket(client, DEV_TEST_BUCKET);
       await client.query(
         "INSERT INTO broker_daily_quota (client_id, day) VALUES ($1, $2) ON CONFLICT (client_id, day) DO NOTHING",
         [input.clientId, input.day],
@@ -37,18 +44,24 @@ export class PostgresBudgetStore implements BudgetStore {
         "SELECT requests FROM broker_daily_quota WHERE client_id = $1 AND day = $2 FOR UPDATE",
         [input.clientId, input.day],
       );
-      const row = month.rows[0];
       const quotaRow = quota.rows[0];
-      if (row === undefined || quotaRow === undefined) {
-        throw new ReservationError("ledger row missing under lock");
+      if (quotaRow === undefined) {
+        throw new ReservationError("quota row missing under lock");
       }
       if (quotaRow.requests >= input.dailyRequestQuota) {
         await client.query("ROLLBACK");
         return { ok: false, reason: "QUOTA_EXCEEDED" };
       }
-      const spent = BigInt(row.spent_paise);
-      const reserved = BigInt(row.reserved_paise);
-      if (spent + reserved + BigInt(input.amountPaise) > BigInt(input.capPaise)) {
+      const amount = BigInt(input.amountPaise);
+      if (exceeds(monthly, amount, BigInt(input.capPaise))) {
+        await client.query("ROLLBACK");
+        return { ok: false, reason: "BUDGET_EXHAUSTED" };
+      }
+      if (
+        development !== undefined &&
+        input.devTestCapPaise !== undefined &&
+        exceeds(development, amount, BigInt(input.devTestCapPaise))
+      ) {
         await client.query("ROLLBACK");
         return { ok: false, reason: "BUDGET_EXHAUSTED" };
       }
@@ -56,13 +69,21 @@ export class PostgresBudgetStore implements BudgetStore {
         "UPDATE broker_daily_quota SET requests = requests + 1 WHERE client_id = $1 AND day = $2",
         [input.clientId, input.day],
       );
+      for (const bucket of bucketsFor(input)) {
+        await client.query(
+          "UPDATE broker_budget_month SET reserved_paise = reserved_paise + $2 WHERE month = $1",
+          [bucket, input.amountPaise],
+        );
+      }
       await client.query(
-        "UPDATE broker_budget_month SET reserved_paise = reserved_paise + $2 WHERE month = $1",
-        [input.month, input.amountPaise],
-      );
-      await client.query(
-        "INSERT INTO broker_reservation (reservation_id, client_id, month, amount_paise, state) VALUES ($1, $2, $3, $4, 'reserved')",
-        [input.reservationId, input.clientId, input.month, input.amountPaise],
+        "INSERT INTO broker_reservation (reservation_id, client_id, month, amount_paise, state, dev_test) VALUES ($1, $2, $3, $4, 'reserved', $5)",
+        [
+          input.reservationId,
+          input.clientId,
+          input.month,
+          input.amountPaise,
+          input.devTestCapPaise !== undefined,
+        ],
       );
       await client.query("COMMIT");
       return { ok: true };
@@ -102,7 +123,7 @@ export class PostgresBudgetStore implements BudgetStore {
 
   /**
    * Charges open reservations older than maxAgeSeconds at their worst case. These are attempts whose settlement
-   * never reached the ledger (a crash or a database failure mid-call). Charging them keeps the cap conservative.
+   * never reached the ledger (a crash or a database failure mid-call). Charging them keeps the caps conservative.
    * SKIP LOCKED lets several broker processes reap without waiting on each other. Returns the number charged.
    */
   async reapStale(maxAgeSeconds: number): Promise<number> {
@@ -113,15 +134,13 @@ export class PostgresBudgetStore implements BudgetStore {
         reservation_id: string;
         month: string;
         amount_paise: string;
+        dev_test: boolean;
       }>(
-        "SELECT reservation_id, month, amount_paise FROM broker_reservation WHERE state = 'reserved' AND created_at < now() - ($1::int * interval '1 second') ORDER BY created_at FOR UPDATE SKIP LOCKED",
+        "SELECT reservation_id, month, amount_paise, dev_test FROM broker_reservation WHERE state = 'reserved' AND created_at < now() - ($1::int * interval '1 second') ORDER BY created_at FOR UPDATE SKIP LOCKED",
         [maxAgeSeconds],
       );
       for (const row of stale.rows) {
-        await client.query(
-          "UPDATE broker_budget_month SET reserved_paise = reserved_paise - $2, spent_paise = spent_paise + $2 WHERE month = $1",
-          [row.month, row.amount_paise],
-        );
+        await chargeBuckets(client, row.dev_test, row.month, row.amount_paise, row.amount_paise);
         await client.query(
           "UPDATE broker_reservation SET state = 'settled', actual_paise = $2, closed_at = now() WHERE reservation_id = $1",
           [row.reservation_id, row.amount_paise],
@@ -145,24 +164,26 @@ export class PostgresBudgetStore implements BudgetStore {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const found = await client.query<{ month: string; amount_paise: string; state: string }>(
-        "SELECT month, amount_paise, state FROM broker_reservation WHERE reservation_id = $1 FOR UPDATE",
+      const found = await client.query<{
+        month: string;
+        amount_paise: string;
+        state: string;
+        dev_test: boolean;
+      }>(
+        "SELECT month, amount_paise, state, dev_test FROM broker_reservation WHERE reservation_id = $1 FOR UPDATE",
         [reservationId],
       );
       const row = found.rows[0];
       if (row === undefined || row.state !== "reserved") {
         throw new ReservationError("reservation is not open");
       }
-      await client.query(
-        "UPDATE broker_budget_month SET reserved_paise = reserved_paise - $2 WHERE month = $1",
-        [row.month, row.amount_paise],
+      await chargeBuckets(
+        client,
+        row.dev_test,
+        row.month,
+        row.amount_paise,
+        state === "settled" ? actualPaise : 0,
       );
-      if (state === "settled") {
-        await client.query(
-          "UPDATE broker_budget_month SET spent_paise = spent_paise + $2 WHERE month = $1",
-          [row.month, actualPaise],
-        );
-      }
       await client.query(
         "UPDATE broker_reservation SET state = $2, actual_paise = $3, closed_at = now() WHERE reservation_id = $1",
         [reservationId, state, state === "settled" ? actualPaise : null],
@@ -174,6 +195,48 @@ export class PostgresBudgetStore implements BudgetStore {
     } finally {
       client.release();
     }
+  }
+}
+
+/** Creates the bucket row if needed, then locks it. Callers lock buckets in the fixed order documented on the class. */
+async function lockBucket(client: PoolClient, bucket: string): Promise<BucketLock> {
+  await client.query(
+    "INSERT INTO broker_budget_month (month) VALUES ($1) ON CONFLICT (month) DO NOTHING",
+    [bucket],
+  );
+  const result = await client.query<{ spent_paise: string; reserved_paise: string }>(
+    "SELECT spent_paise, reserved_paise FROM broker_budget_month WHERE month = $1 FOR UPDATE",
+    [bucket],
+  );
+  const row = result.rows[0];
+  if (row === undefined) {
+    throw new ReservationError("ledger row missing under lock");
+  }
+  return { spent: BigInt(row.spent_paise), reserved: BigInt(row.reserved_paise) };
+}
+
+function exceeds(bucket: BucketLock, amount: bigint, cap: bigint): boolean {
+  return bucket.spent + bucket.reserved + amount > cap;
+}
+
+/**
+ * Moves one reservation out of reserved in every bucket it holds: the monthly bucket, and the development-test bucket
+ * when the reservation was flagged. `amount` is the reserved worst case; `spent` is what is billed (the worst case when
+ * reaping, the actual cost when settling, zero when released).
+ */
+async function chargeBuckets(
+  client: PoolClient,
+  devTest: boolean,
+  month: string,
+  amount: string,
+  spent: string | number,
+): Promise<void> {
+  const buckets = devTest ? [month, DEV_TEST_BUCKET] : [month];
+  for (const bucket of buckets) {
+    await client.query(
+      "UPDATE broker_budget_month SET reserved_paise = reserved_paise - $2, spent_paise = spent_paise + $3 WHERE month = $1",
+      [bucket, amount, spent],
+    );
   }
 }
 

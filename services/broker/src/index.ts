@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { loadConfig } from "./config.js";
-import { InMemoryBudgetStore, type BudgetStore } from "./budget.js";
+import { DEV_TEST_BUCKET, InMemoryBudgetStore, type BudgetStore } from "./budget.js";
 import { InMemoryDeviceStore, PostgresDeviceStore, type DeviceStore } from "./devices.js";
 import { PostgresBudgetStore } from "./postgres-budget.js";
 import { OpenRouterProvider, MockProvider, type ChatProvider } from "./provider.js";
@@ -72,7 +72,7 @@ async function main(): Promise<void> {
     await anchored.start();
     // The continuity check has passed, so the verified spend is recorded now. A crash before the first settlement
     // then leaves no unanchored spend behind.
-    for (const month of recentMonths(monthOf(Date.now()), 2)) {
+    for (const month of [...recentMonths(monthOf(Date.now()), 2), DEV_TEST_BUCKET]) {
       await anchored.refresh(month);
     }
     // The anchor now exists, so the genesis can be recorded. Recording it earlier would leave a stuck marker if the
@@ -93,7 +93,7 @@ async function main(): Promise<void> {
       await backupStore.purgeExpired(Date.now());
       const settled = await store.reapStale(REAP_AFTER_SECONDS);
       // The reaper can settle reservations from the previous month, so refresh both months it may touch.
-      for (const month of recentMonths(monthOf(Date.now()), 2)) {
+      for (const month of [...recentMonths(monthOf(Date.now()), 2), DEV_TEST_BUCKET]) {
         await anchored.refresh(month);
       }
       return settled;

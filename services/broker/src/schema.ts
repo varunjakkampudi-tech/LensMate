@@ -32,6 +32,7 @@ const REQUIRED_COLUMNS: Readonly<Record<(typeof LEDGER_TABLES)[number], readonly
     "actual_paise",
     "state",
     "closed_at",
+    "dev_test",
   ],
   broker_device: ["device_id", "label", "secret_sha256", "created_at", "revoked_at"],
   broker_enrolment_code: ["code_sha256", "created_at", "expires_at", "used_at"],
@@ -41,7 +42,7 @@ const REQUIRED_COLUMNS: Readonly<Record<(typeof LEDGER_TABLES)[number], readonly
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS broker_budget_month (
-  month text PRIMARY KEY CHECK (month ~ '^[0-9]{4}-[0-9]{2}$'),
+  month text PRIMARY KEY CHECK (month ~ '^([0-9]{4}-[0-9]{2}|DEV-TEST-CUMULATIVE)$'),
   spent_paise bigint NOT NULL DEFAULT 0 CHECK (spent_paise >= 0),
   reserved_paise bigint NOT NULL DEFAULT 0 CHECK (reserved_paise >= 0)
 );
@@ -59,7 +60,8 @@ CREATE TABLE IF NOT EXISTS broker_reservation (
   actual_paise bigint CHECK (actual_paise IS NULL OR actual_paise >= 0),
   state text NOT NULL CHECK (state IN ('reserved', 'settled', 'released')),
   created_at timestamptz NOT NULL DEFAULT now(),
-  closed_at timestamptz
+  closed_at timestamptz,
+  dev_test boolean NOT NULL DEFAULT false
 );
 CREATE TABLE IF NOT EXISTS broker_device (
   device_id text PRIMARY KEY CHECK (char_length(device_id) BETWEEN 1 AND 64),
@@ -202,8 +204,14 @@ REVOKE ALL ON FUNCTION broker_redeem_enrolment(text, text, text, text) FROM PUBL
  */
 const RESERVED_SQL = `
 CREATE OR REPLACE FUNCTION broker_check_reserved() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
+DECLARE
+  dev_reservation boolean := false;
 BEGIN
-  IF EXISTS (
+  IF TG_TABLE_NAME = 'broker_reservation' THEN
+    dev_reservation := NEW.dev_test;
+  END IF;
+  -- Monthly bucket: every reservation of the month counts against it, development-test ones included.
+  IF NEW.month <> 'DEV-TEST-CUMULATIVE' AND EXISTS (
     SELECT 1 FROM broker_budget_month b
     WHERE b.month = NEW.month
       AND b.reserved_paise <> (
@@ -211,6 +219,16 @@ BEGIN
         WHERE r.month = NEW.month AND r.state = 'reserved')
   ) THEN
     RAISE EXCEPTION 'reserved spend does not match the open reservations';
+  END IF;
+  -- Development-test bucket: only reservations flagged dev_test count against it.
+  IF (NEW.month = 'DEV-TEST-CUMULATIVE' OR dev_reservation) AND EXISTS (
+    SELECT 1 FROM broker_budget_month b
+    WHERE b.month = 'DEV-TEST-CUMULATIVE'
+      AND b.reserved_paise <> (
+        SELECT COALESCE(SUM(r.amount_paise), 0) FROM broker_reservation r
+        WHERE r.dev_test AND r.state = 'reserved')
+  ) THEN
+    RAISE EXCEPTION 'development-test reserved spend does not match the open reservations';
   END IF;
   RETURN NULL;
 END

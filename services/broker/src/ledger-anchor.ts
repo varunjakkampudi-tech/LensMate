@@ -13,7 +13,14 @@ import {
 } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { dirname } from "node:path";
-import type { BudgetStore, BudgetSummary, ReserveInput, ReserveResult } from "./budget.js";
+import {
+  DEV_TEST_BUCKET,
+  bucketsFor,
+  type BudgetStore,
+  type BudgetSummary,
+  type ReserveInput,
+  type ReserveResult,
+} from "./budget.js";
 
 /**
  * Spend continuity (BLOCKER-006, fail-closed restoration).
@@ -282,7 +289,7 @@ function parseAnchor(raw: string): AnchorState {
   const months: Record<string, number> = {};
   for (const [month, value] of Object.entries(candidate.months)) {
     if (
-      !/^\d{4}-\d{2}$/.test(month) ||
+      !(/^\d{4}-\d{2}$/.test(month) || month === DEV_TEST_BUCKET) ||
       typeof value !== "number" ||
       !Number.isSafeInteger(value) ||
       value < 0
@@ -344,7 +351,8 @@ export async function checkContinuity(
 ): Promise<boolean> {
   const anchored = await anchor.read();
   if (anchored === null) {
-    for (const month of recentMonths(monthOf(nowMs), LOOKBACK_MONTHS + 1)) {
+    // The development-test bucket is cumulative, so it is checked alongside the recent months.
+    for (const month of [...recentMonths(monthOf(nowMs), LOOKBACK_MONTHS + 1), DEV_TEST_BUCKET]) {
       const summary = await budget.summary(month);
       if (summary.spentPaise > 0 || summary.reservedPaise > 0) {
         throw new AnchorError("NO_ANCHOR_WITH_SPEND");
@@ -385,7 +393,7 @@ export class LedgerHaltedError extends Error {
  */
 export class AnchoredBudgetStore implements BudgetStore {
   private halted = false;
-  private readonly monthOfReservation = new Map<string, string>();
+  private readonly bucketsOfReservation = new Map<string, readonly string[]>();
   private anchored: Record<string, number> = {};
   private writeQueue: Promise<void> = Promise.resolve();
 
@@ -408,18 +416,21 @@ export class AnchoredBudgetStore implements BudgetStore {
       throw new LedgerHaltedError();
     }
     // Runtime continuity: recorded spend below the anchor means the ledger was changed under a running broker.
-    // Halt rather than admit a provider call against a lowered value.
-    const anchoredSpend = this.anchored[input.month] ?? 0;
-    if (anchoredSpend > 0) {
-      const summary = await this.inner.summary(input.month);
-      if (summary.spentPaise < anchoredSpend) {
-        this.halted = true;
-        throw new LedgerHaltedError();
+    // Halt rather than admit a provider call against a lowered value. Every bucket the attempt draws on is checked.
+    const buckets = bucketsFor(input);
+    for (const bucket of buckets) {
+      const anchoredSpend = this.anchored[bucket] ?? 0;
+      if (anchoredSpend > 0) {
+        const summary = await this.inner.summary(bucket);
+        if (summary.spentPaise < anchoredSpend) {
+          this.halted = true;
+          throw new LedgerHaltedError();
+        }
       }
     }
     const result = await this.inner.reserve(input);
     if (result.ok) {
-      this.monthOfReservation.set(input.reservationId, input.month);
+      this.bucketsOfReservation.set(input.reservationId, buckets);
     }
     return result;
   }
@@ -442,7 +453,7 @@ export class AnchoredBudgetStore implements BudgetStore {
     return this.inner.ping();
   }
 
-  /** Records the current spend of `month`. Used after the reaper settles stale reservations. */
+  /** Records the current spend of a bucket (a month, or the development-test bucket). Used after the reaper runs. */
   async refresh(month: string): Promise<void> {
     await this.writeMonth(month);
   }
@@ -453,10 +464,10 @@ export class AnchoredBudgetStore implements BudgetStore {
   }
 
   private async record(reservationId: string): Promise<void> {
-    const month = this.monthOfReservation.get(reservationId);
-    this.monthOfReservation.delete(reservationId);
-    if (month !== undefined) {
-      await this.writeMonth(month);
+    const buckets = this.bucketsOfReservation.get(reservationId);
+    this.bucketsOfReservation.delete(reservationId);
+    for (const bucket of buckets ?? []) {
+      await this.writeMonth(bucket);
     }
   }
 

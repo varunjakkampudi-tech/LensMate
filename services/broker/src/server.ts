@@ -6,12 +6,7 @@ import Fastify, {
   type RawServerDefault,
 } from "fastify";
 import type { BrokerConfig } from "./config.js";
-import {
-  DEV_TEST_BUCKET,
-  type BudgetStore,
-  type ReserveRefusal,
-  type ReserveResult,
-} from "./budget.js";
+import type { BudgetStore, ReserveRefusal, ReserveResult } from "./budget.js";
 import { ConcurrencyGuard, TokenBucket } from "./limits.js";
 import { authenticateDevice, redeemEnrolment, type DeviceStore } from "./devices.js";
 import {
@@ -450,18 +445,16 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
         const reservationId = `${requestId}-${String(attempt)}`;
         let reserved: ReserveResult;
         try {
-          // With a development-test cap, paid attempts draw only on that cumulative bucket; otherwise the monthly cap applies.
-          const bucket =
-            config.devTestCapPaise === undefined
-              ? { month: utcMonth(now()), capPaise: config.monthlyCapPaise }
-              : { month: DEV_TEST_BUCKET, capPaise: config.devTestCapPaise };
+          // Every paid attempt is charged to the monthly cap. With a development-test cap, it is also charged to the
+          // cumulative bucket, and is refused if either cap has no room.
           reserved = await budget.reserve({
             reservationId,
             clientId: plan.client,
-            month: bucket.month,
+            month: utcMonth(now()),
             day: utcDay(now()),
             amountPaise: worstPaise,
-            capPaise: bucket.capPaise,
+            capPaise: config.monthlyCapPaise,
+            devTestCapPaise: config.devTestCapPaise,
             dailyRequestQuota: config.dailyRequestQuotaPerClient,
           });
         } catch {
