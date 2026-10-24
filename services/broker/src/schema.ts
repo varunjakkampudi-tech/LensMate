@@ -74,14 +74,15 @@ CREATE TABLE IF NOT EXISTS broker_enrolment_code (
   expires_at timestamptz NOT NULL,
   used_at timestamptz
 );
--- One row, written once, when the owner starts an empty ledger with BROKER_LEDGER_GENESIS. It records that a ledger
--- has started, so a later start with a missing anchor refuses instead of starting a new ledger.
+-- One encrypted memory backup per device (OWNER-DECISION-004). The broker stores opaque ciphertext and deletes it at expiry.
 CREATE TABLE IF NOT EXISTS broker_memory_backup (
   device_id text PRIMARY KEY REFERENCES broker_device (device_id) ON DELETE CASCADE,
   ciphertext text NOT NULL CHECK (char_length(ciphertext) BETWEEN 1 AND 1000000),
   updated_at timestamptz NOT NULL,
   expires_at timestamptz NOT NULL CHECK (expires_at > updated_at)
 );
+-- One row, written once, when the owner starts an empty ledger with BROKER_LEDGER_GENESIS. It records that a ledger
+-- has started, so a later start with a missing anchor refuses instead of starting a new ledger.
 CREATE TABLE IF NOT EXISTS broker_ledger_genesis (
   id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   created_at timestamptz NOT NULL DEFAULT now()

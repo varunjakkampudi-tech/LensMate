@@ -694,3 +694,32 @@ describe("IPv4-mapped client addresses", () => {
     expect(enrolmentKey("::ffff:203.0.113.8")).not.toBe(enrolmentKey("::ffff:203.0.113.7"));
   });
 });
+
+describe("browser access for the web preview", () => {
+  const PREVIEW = "http://localhost:8081";
+
+  it("answers a preflight from a listed origin and nothing else", async () => {
+    const { app } = await harness({ corsOrigins: [PREVIEW] });
+    const allowed = await fetch(`${app.listeningOrigin}/v1/enrol`, {
+      method: "OPTIONS",
+      headers: { origin: PREVIEW, "access-control-request-method": "POST" },
+    });
+    expect(allowed.status).toBe(204);
+    expect(allowed.headers.get("access-control-allow-origin")).toBe(PREVIEW);
+    expect(allowed.headers.get("access-control-allow-headers")).toContain("Authorization");
+
+    const other = await fetch(`${app.listeningOrigin}/v1/enrol`, {
+      method: "OPTIONS",
+      headers: { origin: "https://evil.example", "access-control-request-method": "POST" },
+    });
+    expect(other.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("sends no cross-origin header when no origins are configured", async () => {
+    const { app } = await harness();
+    const response = await fetch(`${app.listeningOrigin}/healthz`, {
+      headers: { origin: PREVIEW },
+    });
+    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+  });
+});

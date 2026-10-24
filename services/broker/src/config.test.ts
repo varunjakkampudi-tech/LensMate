@@ -167,3 +167,23 @@ describe("first-start flag for the spend anchor", () => {
     );
   });
 });
+
+describe("BROKER_CORS_ORIGINS", () => {
+  it("defaults to no origins and parses a comma-separated list", () => {
+    expect(loadConfig(BASE_MOCK).corsOrigins).toEqual([]);
+    expect(
+      loadConfig({
+        ...BASE_MOCK,
+        BROKER_CORS_ORIGINS: " http://localhost:8081 , http://127.0.0.1:8081 ",
+      }).corsOrigins,
+    ).toEqual(["http://localhost:8081", "http://127.0.0.1:8081"]);
+  });
+
+  it("refuses wildcards, paths and non-web schemes", () => {
+    for (const bad of ["*", "http://localhost:8081/app", "ftp://example.com", "localhost:8081"]) {
+      expect(() => loadConfig({ ...BASE_MOCK, BROKER_CORS_ORIGINS: bad })).toThrow(
+        /BROKER_CORS_ORIGINS/,
+      );
+    }
+  });
+});

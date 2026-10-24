@@ -19,6 +19,8 @@ export interface BrokerConfig {
   readonly ledgerGenesis: boolean;
   /** Number of reverse-proxy hops in front of the broker, so per-client limits see the real client address. */
   readonly trustProxyHops: number;
+  /** Browser origins allowed to call the broker (the web preview only). Empty means no cross-origin access. */
+  readonly corsOrigins: readonly string[];
   readonly openRouterApiKey: string | undefined;
   readonly openRouterBaseUrl: string;
   /** Monthly cap in paise (integer). Owner-confirmed before any live call. */
@@ -72,6 +74,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
   const databaseUrl = readSecret(env, "BROKER_DATABASE_URL");
   const ledgerAnchorPath = env.BROKER_LEDGER_ANCHOR_FILE?.trim() || undefined;
   const trustProxyHops = optionalInt(env, "BROKER_TRUST_PROXY_HOPS") ?? 0;
+  const corsOrigins = parseOrigins(env.BROKER_CORS_ORIGINS);
   const genesisRaw = emptyToUndefined(env.BROKER_LEDGER_GENESIS);
   if (genesisRaw !== undefined && genesisRaw !== "yes") {
     throw new ConfigError("BROKER_LEDGER_GENESIS must be exactly yes when set");
@@ -110,6 +113,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
     ledgerAnchorPath,
     ledgerGenesis,
     trustProxyHops,
+    corsOrigins,
     openRouterApiKey,
     openRouterBaseUrl: baseUrl,
     monthlyCapPaise,
@@ -189,6 +193,35 @@ function optionalInt(
  * A secret from NAME, or from the file named by NAME_FILE (the Docker secrets convention). Both at once is an error,
  * so there is never doubt about which value is in use. The value is never echoed in an error message.
  */
+/**
+ * Comma-separated browser origins, each exactly "scheme://host[:port]". Wildcards and paths are refused, so a
+ * mis-typed value cannot open the broker to every site.
+ */
+function parseOrigins(raw: string | undefined): readonly string[] {
+  const items = (raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+  for (const item of items) {
+    let url: URL;
+    try {
+      url = new URL(item);
+    } catch {
+      throw new ConfigError("BROKER_CORS_ORIGINS must list origins such as http://localhost:8081");
+    }
+    const isOrigin =
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      url.pathname === "/" &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.origin === item.replace(/\/$/, "");
+    if (!isOrigin) {
+      throw new ConfigError("BROKER_CORS_ORIGINS must list origins such as http://localhost:8081");
+    }
+  }
+  return items;
+}
+
 function readSecret(
   env: Readonly<Record<string, string | undefined>>,
   name: string,

@@ -157,6 +157,24 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     config.maxConcurrentTotal,
   );
 
+  // Browser access for the web preview only. Origins come from configuration; with none set, no cross-origin call
+  // is allowed. Native phone builds do not use CORS and are unaffected.
+  const allowedOrigins = new Set(config.corsOrigins);
+  app.addHook("onRequest", async (request, reply) => {
+    const origin = request.headers.origin;
+    if (origin === undefined || !allowedOrigins.has(origin)) {
+      return;
+    }
+    reply.header("Access-Control-Allow-Origin", origin);
+    reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    reply.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    reply.header("Access-Control-Max-Age", "600");
+    reply.header("Vary", "Origin");
+    if (request.method === "OPTIONS") {
+      return reply.code(204).send();
+    }
+  });
+
   app.setErrorHandler((error: FastifyError, request, reply) => {
     const status = error.statusCode ?? 500;
     if (status >= 500) {
