@@ -415,3 +415,14 @@ Not in the owner's report, so still unverified on the phone:
   iPhone results are listed as reported, with no commit recorded and no status change (src/readiness/owner-reports.ts).
 - Not done: the simulator redesign, the Profile and Home simplification, live-vision analysis, screenshots in light and
   dark mode at iPhone size, and the secure broker route (decision 0003, owner approval needed).
+
+## ROUND 2026-10-25 (owner decisions on the HTTPS route, OpenRouter test budget and OCR fixtures)
+
+- Hostinger VPS audit (owner decision 1): needs access to the VPS (SSH or a terminal the owner runs). The agent has no
+  access to the server, so proxy, services, capacity, TLS and credentials cannot be audited from here. Owner action:
+  run the audit commands in docs/decisions/0003 or grant access. No deployment or exposure without the owner's review.
+- OpenRouter test budget (owner decision 2): a ₹50 development budget with its own hard limit needs a broker change
+  (spend ledger). Not built yet. The live test stays blocked until the owner authorizes it.
+- OCR and object tests (owner decision 3): synthetic fixtures and accuracy tests are authorized and not yet built.
+  Real iPhone photographs are the owner's test.
+- Done this round: simulator redesign, Profile reorganisation and the mock-mode live-vision controller (3a17c6a).
