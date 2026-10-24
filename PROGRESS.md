@@ -421,3 +421,10 @@ Verdict: APPROVE WITH CONDITIONS. Conditions and their handling in the following
 | Operators not warned about the genesis flag (F4)                                            | Runbook section added.                                                                                                                                                                                                                                                                                       |
 
 Not verified in this pass: a live restore of a pre-genesis backup; the backfill as a separate test; the failure-path Docker suite on this commit (to be re-run after push).
+
+### Checkpoint: P-1 voice-session controls, demonstration and matrices (2026-10-24)
+
+- Commits on dev (CI green on each head): `8f84fa8` voice commands, silence timer and translation screen (core and simulator tests at 100 percent branch coverage for the session and timer code); `b717692` FEATURE_MATRIX.md and reconciled GAP_MATRIX.md; `2da2240` manual Android emulator and Maestro configuration (not run; manual trigger only, runner minutes owner-gated); `034f6da` second re-review conditions for the broker (genesis after the first anchor write, revocation sync, first-line key check, migration backfill); `a0dae92` interactive SEE–HEAR–TALK demonstration.
+- The demonstration is reachable from the home screen ("Try the demo") and at /demo on the web preview. Verified in the browser on the preview server: choose a synthetic scene, take a simulated photo, ask a synthetic question, read the mock-labelled answer, and see the event-log summary (1 photo, 1 question, 1 answer). Synthetic scenes, transcripts, mock answers and simulated times are labelled in the UI.
+- Not real: no AI, no speech, no camera, no microphone, no provider. Cloud disclosure is not approved, so the demo makes no network calls and the broker path stays blocked.
+- BLOCKER-006 and BLOCKER-008 remain OPEN; the re-review of 034f6da is pending. The Docker failure-path suite is being re-run on 034f6da.
