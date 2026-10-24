@@ -52,3 +52,6 @@ services/broker/deploy/.env
 
 # Simulator dry-run output written by pnpm measure:dry-run (never evidence of a phone run)
 measurement-output/
+
+# Expo generated local cache
+.expo/

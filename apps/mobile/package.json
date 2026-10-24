@@ -4,7 +4,8 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start --dev-client",
+    "start": "node --env-file-if-exists=../../.env.development node_modules/expo/bin/cli start --dev-client",
+    "web": "node --env-file-if-exists=../../.env.development node_modules/expo/bin/cli start --web --port 8081",
     "typecheck": "tsc --noEmit",
     "test": "jest"
   },

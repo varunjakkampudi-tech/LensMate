@@ -14,8 +14,9 @@ sends the read-only inventory.
   application role `broker_app`. It is not superuser and owns nothing.
 - `backup/backup.sh` and `backup/restore.sh`: encrypted backup with verification and 14-day retention, and a restore
   that refuses to run without a confirmed target database.
-- `.env.development` and `.env.production`: Compose variables only, passed with `docker compose --env-file .env.<name>`.
-  They are git-ignored. Never commit them, and keep secrets in `secrets/` (see below), not in these files.
+- Environment: one root file per environment. Compose reads the production file with
+  `docker compose --env-file ../../../.env.production -f docker-compose.yml ...`. Both `.env.development` and
+  `.env.production` at the repository root are git-ignored: never commit them, and keep the provider key in `secrets/`.
 
 ## Database roles
 
