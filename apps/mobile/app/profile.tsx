@@ -3,13 +3,15 @@ import { useEffect, useState } from "react";
 import { Switch, Text, View } from "react-native";
 import { PROTOCOL_VERSION } from "@lensmate/protocol";
 import { latencyLog } from "../src/ai/assistant";
+import { AiConnectionCard } from "../src/ai/connection-card";
 import { canListen, canSpeak, hasVoiceFor } from "../src/ai/speech";
 import { rupees, useAiSetup } from "../src/ai/use-ai-setup";
 import { readBrokerConfig } from "../src/broker-config";
-import { STRINGS } from "../src/strings";
-import { Body, Btn, Card, Chip, H2, Notice, Page, Row } from "../src/ui/kit";
-import { AiConnectionCard } from "../src/ai/connection-card";
 import { NotificationTestCard } from "../src/notify/test-card";
+import { Disclosure } from "../src/profile/disclosure";
+import { DEFAULT_OPEN, PROFILE_SECTIONS, sectionTitle } from "../src/profile/sections";
+import { STRINGS } from "../src/strings";
+import { Body, Btn, Chip, Page, Row } from "../src/ui/kit";
 import { LangPicker } from "../src/ui/lang-picker";
 import { FEATURES, usePrefs, type FeatureKey, type Profile } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
@@ -72,7 +74,8 @@ function Toggle({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingVertical: 6,
+        minHeight: 44,
+        gap: 12,
       }}
     >
       <Text
@@ -127,10 +130,93 @@ export default function MoreScreen() {
       ? null
       : (sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.9))]?.latencyMs ?? null);
 
-  return (
-    <Page title="Profile & settings" kicker="PROFILES · DEVICE · PRIVACY">
-      <Card>
-        <H2>Profile</H2>
+  // Each section is rendered in the order defined in src/profile/sections.ts.
+  const body = {
+    appearance: (
+      <Body muted size={14}>
+        Light or dark follows your phone's setting.
+      </Body>
+    ),
+    voice: (
+      <>
+        <Toggle
+          testID="pref-autospeak"
+          label="Speak answers automatically"
+          value={prefs.autoSpeak}
+          onChange={(v) => update({ autoSpeak: v })}
+        />
+        <Body muted size={14}>
+          Speaking speed: {prefs.voiceRate.toFixed(1)}×
+        </Body>
+        <Row>
+          {[0.8, 1, 1.2, 1.5].map((r) => (
+            <Chip
+              key={r}
+              testID={`voice-rate-${r}`}
+              label={`${r}×`}
+              active={prefs.voiceRate === r}
+              onPress={() => update({ voiceRate: r })}
+            />
+          ))}
+        </Row>
+        <LangPicker
+          prefix="pref-lang"
+          value={prefs.language}
+          onChange={(l) => update({ language: l, profile: prefs.profile })}
+        />
+      </>
+    ),
+    permissions: (
+      <>
+        <Body size={14}>
+          The camera is asked for when you open See or the Simulator. The microphone is asked for
+          when you start a voice question. Nothing is recorded in the background.
+        </Body>
+        <Body size={14}>
+          Speech in: {canListen() ? "available" : "not available"} · Speech out:{" "}
+          {canSpeak() ? "available" : "not available"} · Telugu voice:{" "}
+          {hasVoiceFor("te") ? "yes" : "no"}
+        </Body>
+      </>
+    ),
+    ai: <AiConnectionCard />,
+    device: (
+      <>
+        <Body size={14}>Glasses: virtual glasses simulator (connect on Home)</Body>
+        <Body size={14}>Battery and temperature: not reported by the simulator</Body>
+        <Body size={14}>Link protocol: v{String(PROTOCOL_VERSION)}</Body>
+        <Body size={14}>
+          AI service: <Text testID="broker-health">{health}</Text>
+        </Body>
+        <Body size={14}>
+          This phone: {setup.enrolled ? "enrolled" : "not enrolled"} · cloud notice{" "}
+          {setup.accepted ? "accepted" : "not accepted"}
+        </Body>
+        <Btn
+          label={STRINGS.openEnrolment}
+          tone="ghost"
+          icon="shield"
+          onPress={() => router.push("/enrol")}
+        />
+      </>
+    ),
+    memory: (
+      <>
+        <Body muted size={14}>
+          Notes, saved captures and reminders stay on this phone, encrypted. Backup is optional and
+          set up in Memory.
+        </Body>
+        <Btn
+          label="Open memory and backup"
+          tone="ghost"
+          icon="note"
+          onPress={() => router.push("/memory")}
+        />
+      </>
+    ),
+    notifications: <NotificationTestCard />,
+    accessibility: (
+      <>
         <Row>
           {PROFILES.map((p) => (
             <Chip
@@ -145,84 +231,22 @@ export default function MoreScreen() {
         <Body muted size={14}>
           {PROFILES.find((p) => p.id === prefs.profile)?.line}
         </Body>
-      </Card>
-
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
-        <Card style={{ flexGrow: 1, flexBasis: 320 }}>
-          <H2>Features</H2>
-          {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (
-            <Toggle
-              key={k}
-              testID={`feature-${k}`}
-              label={FEATURES[k]}
-              value={prefs.features[k]}
-              onChange={(v) => update({ features: { ...prefs.features, [k]: v } })}
-            />
-          ))}
-        </Card>
-        <Card style={{ flexGrow: 1, flexBasis: 320 }}>
-          <H2>Voice and accessibility</H2>
-          <Toggle
-            testID="pref-autospeak"
-            label="Speak answers automatically"
-            value={prefs.autoSpeak}
-            onChange={(v) => update({ autoSpeak: v })}
-          />
-          <Toggle
-            testID="pref-captions"
-            label="Large captions"
-            value={prefs.largeCaptions}
-            onChange={(v) => update({ largeCaptions: v })}
-          />
-          <Toggle
-            testID="pref-detailed"
-            label="Detailed scene descriptions"
-            value={prefs.detailedDescriptions}
-            onChange={(v) => update({ detailedDescriptions: v })}
-          />
-          <Body muted size={14}>
-            Speaking speed: {prefs.voiceRate.toFixed(1)}×
-          </Body>
-          <Row>
-            {[0.8, 1, 1.2, 1.5].map((r) => (
-              <Chip
-                key={r}
-                testID={`voice-rate-${r}`}
-                label={`${r}×`}
-                active={prefs.voiceRate === r}
-                onPress={() => update({ voiceRate: r })}
-              />
-            ))}
-          </Row>
-          <LangPicker
-            prefix="pref-lang"
-            value={prefs.language}
-            onChange={(l) => update({ language: l, profile: prefs.profile })}
-          />
-        </Card>
-      </View>
-
-      <Card>
-        <H2>Agents & automations</H2>
-        <Body muted size={14}>
-          Multi-agent tasks, live web research and daily automations.
-        </Body>
-        <Btn
-          testID="open-tasks-button"
-          label="Open agents & automations"
-          tone="ghost"
-          icon="agent"
-          disabled={!prefs.features.tasks}
-          onPress={() => router.push("/tasks")}
+        <Toggle
+          testID="pref-captions"
+          label="Large captions"
+          value={prefs.largeCaptions}
+          onChange={(v) => update({ largeCaptions: v })}
         />
-      </Card>
-
-      <AiConnectionCard />
-
-      <NotificationTestCard />
-
-      <Card>
-        <H2>Diagnostics</H2>
+        <Toggle
+          testID="pref-detailed"
+          label="Detailed scene descriptions"
+          value={prefs.detailedDescriptions}
+          onChange={(v) => update({ detailedDescriptions: v })}
+        />
+      </>
+    ),
+    diagnostics: (
+      <>
         <Body muted size={14}>
           What this phone or browser can do right now: camera, spoken answers, voice input,
           notifications, broker address and encrypted notes.
@@ -234,11 +258,54 @@ export default function MoreScreen() {
           icon="chart"
           onPress={() => router.push("/diagnostics" as "/")}
         />
-      </Card>
-
-      <Card>
-        <H2>Interview practice</H2>
-        <Body muted size={14}>
+        <Body size={14}>
+          AI calls this session: {log.length} ({ok.length} answered)
+        </Body>
+        <Text
+          testID="latency-stats"
+          style={{ color: c.text, fontFamily: FONTS.mono, fontSize: 14 }}
+        >
+          avg {avg === null ? "–" : `${avg} ms`} · p90 {p90 === null ? "–" : `${p90} ms`}
+        </Text>
+        <Body size={14}>
+          Spend this month: {setup.spentPaise === null ? "–" : rupees(setup.spentPaise)} of{" "}
+          {setup.capPaise === null ? "₹500.00" : rupees(setup.capPaise)}
+        </Body>
+        <Btn
+          label={STRINGS.openMeasurement}
+          tone="ghost"
+          icon="chart"
+          onPress={() => router.push("/measure")}
+        />
+      </>
+    ),
+    advanced: (
+      <>
+        <Body muted size={13}>
+          Switch whole features on or off. Interview practice and agents are outside the current
+          phase and start off.
+        </Body>
+        {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (
+          <Toggle
+            key={k}
+            testID={`feature-${k}`}
+            label={FEATURES[k]}
+            value={prefs.features[k]}
+            onChange={(v) => update({ features: { ...prefs.features, [k]: v } })}
+          />
+        ))}
+        <Body muted size={13}>
+          Multi-agent tasks, live web research and daily automations.
+        </Body>
+        <Btn
+          testID="open-tasks-button"
+          label="Open agents & automations"
+          tone="ghost"
+          icon="agent"
+          disabled={!prefs.features.tasks}
+          onPress={() => router.push("/tasks")}
+        />
+        <Body muted size={13}>
           Mock questions, feedback and debriefs. Practice only: LensMate never helps during a live
           interview.
         </Body>
@@ -250,72 +317,17 @@ export default function MoreScreen() {
           disabled={!prefs.features.interview}
           onPress={() => router.push("/interview")}
         />
-      </Card>
-
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
-        <Card style={{ flexGrow: 1, flexBasis: 320 }}>
-          <H2>Device and diagnostics</H2>
-          <Body size={14}>Glasses: virtual glasses simulator (connect on Home)</Body>
-          <Body size={14}>Battery and temperature: not reported by the simulator</Body>
-          <Body size={14}>Link protocol: v{String(PROTOCOL_VERSION)}</Body>
-          <Body size={14}>
-            AI service: <Text testID="broker-health">{health}</Text>
-          </Body>
-          <Body size={14}>
-            Speech in: {canListen() ? "available" : "not available"} · Speech out:{" "}
-            {canSpeak() ? "available" : "not available"} · Telugu voice:{" "}
-            {hasVoiceFor("te") ? "yes" : "no"}
-          </Body>
-          <Body size={14}>
-            This phone: {setup.enrolled ? "enrolled" : "not enrolled"} · cloud notice{" "}
-            {setup.accepted ? "accepted" : "not accepted"}
-          </Body>
-          <Btn
-            label={STRINGS.openEnrolment}
-            tone="ghost"
-            icon="shield"
-            onPress={() => router.push("/enrol")}
-          />
-        </Card>
-        <Card style={{ flexGrow: 1, flexBasis: 320 }}>
-          <H2>Measurement</H2>
-          <Body size={14}>
-            AI calls this session: {log.length} ({ok.length} answered)
-          </Body>
-          <Text
-            testID="latency-stats"
-            style={{ color: c.text, fontFamily: FONTS.mono, fontSize: 14 }}
-          >
-            avg {avg === null ? "–" : `${avg} ms`} · p90 {p90 === null ? "–" : `${p90} ms`}
-          </Text>
-          <Body size={14}>
-            Spend this month: {setup.spentPaise === null ? "–" : rupees(setup.spentPaise)} of{" "}
-            {setup.capPaise === null ? "₹500.00" : rupees(setup.capPaise)}
-          </Body>
-          <Btn
-            label={STRINGS.openMeasurement}
-            tone="ghost"
-            icon="chart"
-            onPress={() => router.push("/measure")}
-          />
-        </Card>
-      </View>
-
-      <Card>
-        <H2>Privacy</H2>
-        {STRINGS.cloudDisclosure.map((line) => (
-          <Body key={line} size={14}>
-            {line}
-          </Body>
-        ))}
-        <Notice tone="info">
-          Never built, at any time: face or voice identification, identifying people, always-on
-          camera, background recording, covert interview help.
-        </Notice>
-      </Card>
-
-      <Card>
-        <H2>Later phases</H2>
+        <Text
+          style={{
+            color: c.text,
+            fontFamily: FONTS.display,
+            fontSize: 15,
+            fontWeight: "700",
+            marginTop: 4,
+          }}
+        >
+          Later phases
+        </Text>
         {LATER.map((l) => (
           <View key={l.name} testID="later-feature" style={{ gap: 2 }}>
             <Body>
@@ -326,7 +338,37 @@ export default function MoreScreen() {
             </Body>
           </View>
         ))}
-      </Card>
+      </>
+    ),
+    legal: (
+      <>
+        <Body muted size={14}>
+          What LensMate sends to the cloud, what stays on the phone, and what is never built.
+          Consent to cloud use is shown and accepted in the AI connection setup.
+        </Body>
+        <Btn
+          testID="open-legal-button"
+          label="Read legal and privacy details"
+          tone="ghost"
+          icon="shield"
+          onPress={() => router.push("/settings/legal" as "/")}
+        />
+      </>
+    ),
+  } as const;
+
+  return (
+    <Page title="Profile & settings" kicker="PROFILES · DEVICE · PRIVACY">
+      {PROFILE_SECTIONS.map((s) => (
+        <Disclosure
+          key={s.id}
+          testID={`profile-section-${s.id}`}
+          title={sectionTitle(s.id)}
+          defaultOpen={s.id === DEFAULT_OPEN}
+        >
+          {body[s.id]}
+        </Disclosure>
+      ))}
     </Page>
   );
 }
