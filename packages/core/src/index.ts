@@ -12,12 +12,15 @@ export type { SpendDecision } from "./spend-cap.js";
 export {
   IDLE_STATE,
   SILENCE_TIMEOUT_MS,
+  SPEECH_STOP_TARGET_MS,
   TRANSLATION_START_ANNOUNCEMENT,
   applyCutoff,
   applySilenceTimeout,
   captureSessionForEffect,
   isCapturing,
+  listeningSessionOf,
   onGesture,
+  onVoiceCommand,
   speechEnded,
   speechStarted,
   startListeningSession,
@@ -31,7 +34,17 @@ export type {
   GlassesTransition,
   ListeningSessionStart,
   ListeningSessionType,
+  VoiceCommand,
+  VoiceCommandResult,
 } from "./glasses-state.js";
+export {
+  checkSilenceTimer,
+  recordSpeech,
+  silenceRemainingMs,
+  silentForMs,
+  startSilenceTimer,
+} from "./silence-timer.js";
+export type { SilenceCheck, SilenceTimer } from "./silence-timer.js";
 export { ProviderGateway, ProviderTimeout } from "./provider-gateway.js";
 export type {
   GatewayErrorCode,

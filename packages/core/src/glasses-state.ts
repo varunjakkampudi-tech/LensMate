@@ -47,6 +47,20 @@ export const TRANSLATION_START_ANNOUNCEMENT =
 /** A translation or caption session stops after this much silence (v9 section 5.3, section 21; TARGET). */
 export const SILENCE_TIMEOUT_MS = 2 * 60 * 1000;
 
+/** Speech stops within this time of a press (v9 G19; TARGET, not a measured value). */
+export const SPEECH_STOP_TARGET_MS = 500;
+
+/** Voice phrases the glasses act on. Only inside a listening session the user started (v9 C02). */
+export type VoiceCommand =
+  "START_TRANSLATION" | "STOP_TRANSLATION" | "START_CAPTIONS" | "STOP_CAPTIONS";
+
+export interface VoiceCommandResult {
+  readonly state: GlassesState;
+  readonly accepted: boolean;
+  /** Spoken when a translation session starts (G15). Null otherwise. */
+  readonly announcement: string | null;
+}
+
 export const IDLE_STATE: GlassesState = { mode: "IDLE", speaking: false };
 
 /** A gesture from the glasses. Taps and holds are never consumed by a session that does not claim them. */
@@ -100,6 +114,42 @@ export function stopListeningSession(state: GlassesState): GlassesState {
 }
 
 /**
+ * The listening session a state is running, or null. Push-to-talk is a listening state too, but it is
+ * not a translation or caption session.
+ */
+export function listeningSessionOf(state: GlassesState): ListeningSessionType | null {
+  if (state.mode === "TRANSLATION") {
+    return "TRANSLATION";
+  }
+  if (state.mode === "CAPTION") {
+    return "CAPTION";
+  }
+  return null;
+}
+
+/**
+ * A voice command (v9 5.3, 21, C02). Voice is heard only inside a listening session the user started:
+ * a push-to-talk hold, or a translation or caption session that is already running. A voice start from
+ * idle is refused, because that would mean listening in the background. A voice start during a hold or
+ * another session switches to the new session. A voice stop works only on the session it names.
+ */
+export function onVoiceCommand(state: GlassesState, command: VoiceCommand): VoiceCommandResult {
+  if (state.mode === "CUTOFF") {
+    return refusedVoice(state);
+  }
+  switch (command) {
+    case "START_TRANSLATION":
+      return startByVoice(state, "TRANSLATION");
+    case "START_CAPTIONS":
+      return startByVoice(state, "CAPTION");
+    case "STOP_TRANSLATION":
+      return stopByVoice(state, "TRANSLATION");
+    case "STOP_CAPTIONS":
+      return stopByVoice(state, "CAPTION");
+  }
+}
+
+/**
  * Ends a translation or caption session once the time since the last speech reaches the silence limit.
  * The caller measures the silence. Other states are unchanged.
  */
@@ -147,6 +197,30 @@ export function captureSessionForEffect(effect: GlassesEffect): CaptureSessionTy
     default:
       return null;
   }
+}
+
+function startByVoice(state: GlassesState, type: ListeningSessionType): VoiceCommandResult {
+  const inUserStartedListening =
+    state.mode === "PUSH_TO_TALK" || state.mode === "TRANSLATION" || state.mode === "CAPTION";
+  if (!inUserStartedListening || state.mode === type) {
+    return refusedVoice(state);
+  }
+  return {
+    state: { mode: type, speaking: state.speaking },
+    accepted: true,
+    announcement: type === "TRANSLATION" ? TRANSLATION_START_ANNOUNCEMENT : null,
+  };
+}
+
+function stopByVoice(state: GlassesState, type: ListeningSessionType): VoiceCommandResult {
+  if (state.mode !== type) {
+    return refusedVoice(state);
+  }
+  return { state: { mode: "IDLE", speaking: state.speaking }, accepted: true, announcement: null };
+}
+
+function refusedVoice(state: GlassesState): VoiceCommandResult {
+  return { state, accepted: false, announcement: null };
 }
 
 function onPushToTalkGesture(state: GlassesState, gesture: Gesture): GlassesTransition {

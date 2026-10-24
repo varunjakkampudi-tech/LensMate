@@ -3,12 +3,16 @@ import {
   CaptureIndicator,
   IDLE_STATE,
   applyCutoff,
-  applySilenceTimeout,
   captureSessionForEffect,
+  checkSilenceTimer,
+  listeningSessionOf,
   onGesture,
+  onVoiceCommand,
+  recordSpeech,
   speechEnded,
   speechStarted,
   startListeningSession,
+  startSilenceTimer,
   stopListeningSession,
   type CaptureSessionType,
   type EnvelopeHandler,
@@ -18,7 +22,51 @@ import {
   type GlassesState,
   type LinkStatus,
   type ListeningSessionType,
+  type SilenceTimer,
+  type VoiceCommand,
 } from "@lensmate/core";
+
+/** SIMULATED: speech output lasts the text length times this many milliseconds. Nothing is measured. */
+export const SIMULATED_MS_PER_CHARACTER = 60;
+
+/** SIMULATED: the virtual glasses stop speech at once on a press. Nothing is measured (v9 G19). */
+export const SIMULATED_STOP_DELAY_MS = 0;
+
+export type SessionSource = "APP" | "VOICE";
+export type SessionEndCause = "APP" | "VOICE" | "SILENCE" | "CUTOFF";
+
+/**
+ * One entry in the simulator's event log, or one item fed to a subscriber. The log is the full record the
+ * tests check. Speech output entries are SIMULATED: the glasses are virtual, so their timing is a model.
+ */
+export type SimulatorEvent =
+  | { readonly kind: "BUTTON"; readonly action: string }
+  | {
+      readonly kind: "SESSION_STARTED";
+      readonly session: ListeningSessionType;
+      readonly source: SessionSource;
+      readonly atMs: number;
+    }
+  | {
+      readonly kind: "SESSION_ENDED";
+      readonly session: ListeningSessionType;
+      readonly cause: SessionEndCause;
+      readonly atMs: number;
+    }
+  | { readonly kind: "ANNOUNCEMENT"; readonly text: string }
+  | { readonly kind: "INDICATOR"; readonly on: boolean; readonly reason: string }
+  | { readonly kind: "SPEECH_ACTIVITY"; readonly atMs: number }
+  | {
+      readonly kind: "VOICE_COMMAND";
+      readonly phrase: string;
+      readonly command: VoiceCommand | null;
+      readonly accepted: boolean;
+    }
+  | { readonly kind: "CAPTION_TEXT"; readonly text: string }
+  | { readonly kind: "SPEECH_OUTPUT_SIMULATED"; readonly text: string; readonly durationMs: number }
+  | { readonly kind: "SPEECH_STOPPED_SIMULATED"; readonly delayMs: number };
+
+export type SimulatorEventHandler = (event: SimulatorEvent) => void;
 
 const GESTURE_BY_ACTION: Readonly<Record<string, Gesture>> = {
   BUTTON_ACTION_SINGLE_TAP: "SINGLE_TAP",
@@ -42,6 +90,21 @@ const CAPTURE_SESSION_TYPES: readonly CaptureSessionType[] = [
   "CAPTION",
 ];
 
+/** The phrases the scripted glasses recognise. Anything else is logged and ignored. */
+const VOICE_PHRASES: ReadonlyMap<string, VoiceCommand> = new Map([
+  ["start translation", "START_TRANSLATION"],
+  ["stop translation", "STOP_TRANSLATION"],
+  ["start captions", "START_CAPTIONS"],
+  ["stop captions", "STOP_CAPTIONS"],
+]);
+
+const SESSION_OF_COMMAND: Readonly<Record<VoiceCommand, ListeningSessionType>> = {
+  START_TRANSLATION: "TRANSLATION",
+  STOP_TRANSLATION: "TRANSLATION",
+  START_CAPTIONS: "CAPTION",
+  STOP_CAPTIONS: "CAPTION",
+};
+
 const SESSION_START_PHASES = new Set(["SESSION_PHASE_STARTING", "SESSION_PHASE_ACTIVE"]);
 const SESSION_END_PHASES = new Set(["SESSION_PHASE_ENDING", "SESSION_PHASE_ENDED"]);
 
@@ -59,21 +122,27 @@ function isListeningType(type: CaptureSessionType): type is ListeningSessionType
 /**
  * Virtual glasses: a GlassesLink that behaves like the glasses for the app (v9 section 13, Goal 7).
  * Every envelope passes through the protocol codec in both directions, so schema violations fail here
- * the same way they would on the real link. The indicator rule (G6) and the gesture precedence (v9 5.0)
- * are enforced here as on hardware.
+ * the same way they would on the real link. The indicator rule (G6), the gesture precedence (v9 5.0),
+ * the voice rules (C02) and the silence limit (v9 5.3) are enforced here as on hardware.
+ *
+ * Scripted input that has no wire message yet (speech activity, voice commands, caption text, speech
+ * output) goes through the event log and `subscribeEvents`. The protocol package is not changed for it.
  */
 export class VirtualGlasses implements GlassesLink {
   private connection: LinkStatus = "disconnected";
   private readonly handlers = new Set<EnvelopeHandler>();
+  private readonly eventHandlers = new Set<SimulatorEventHandler>();
+  private readonly events: SimulatorEvent[] = [];
   private readonly indicator = new CaptureIndicator();
   private readonly appMessages: EnvelopeMessage[] = [];
   private readonly spokenLines: string[] = [];
   private lastReason = "INDICATOR_REASON_IDLE";
+  private lastIndicatorKey: string | null = null;
   private sequence = 0;
   private gestureState: GlassesState = IDLE_STATE;
   private readonly effects: GlassesEffect[] = [];
-  /** Time of the most recent speech on the listening session, on `clock`. Drives the silence timeout. */
-  private lastSpeechMs = 0;
+  /** The silence timer for the running listening session. Speech resets it (v9 5.3). */
+  private silence: SilenceTimer = { lastSpeechMs: 0 };
 
   /** Time of the most recent button event, on `clock`, in milliseconds. Used by the phone-side measurement. */
   private lastButtonMs: number | undefined;
@@ -96,6 +165,11 @@ export class VirtualGlasses implements GlassesLink {
   /** Lines the glasses spoke, in order: session announcements and speech. */
   get spoken(): readonly string[] {
     return this.spokenLines;
+  }
+
+  /** Every simulator event so far, in order. Tests check whole sequences against this. */
+  get eventLog(): readonly SimulatorEvent[] {
+    return this.events;
   }
 
   get isSpeaking(): boolean {
@@ -144,6 +218,14 @@ export class VirtualGlasses implements GlassesLink {
     };
   }
 
+  /** Receives every simulator event as it happens, in the same order as the log. Returns the unsubscribe. */
+  subscribeEvents(handler: SimulatorEventHandler): () => void {
+    this.eventHandlers.add(handler);
+    return () => {
+      this.eventHandlers.delete(handler);
+    };
+  }
+
   /** Simulates a button event from the glasses. */
   pressButton(action: string, pressMs = 0): void {
     this.requireConnected();
@@ -153,16 +235,20 @@ export class VirtualGlasses implements GlassesLink {
       sequence: this.nextSequence(),
       button: { action, pressMs },
     });
+    this.record({ kind: "BUTTON", action });
     const gesture = GESTURE_BY_ACTION[action];
     if (gesture === undefined) {
       return;
     }
     const transition = onGesture(this.gestureState, gesture);
     this.gestureState = transition.state;
+    if (transition.effect === "STOP_SPEECH") {
+      this.record({ kind: "SPEECH_STOPPED_SIMULATED", delayMs: SIMULATED_STOP_DELAY_MS });
+    }
     this.applyEffect(transition.effect);
   }
 
-  /** The glasses start speaking a line. A press during speech stops it (G19). */
+  /** The glasses start speaking a line. A press during speech stops it (G19). Duration is SIMULATED. */
   speak(line: string): void {
     this.requireConnected();
     if (this.gestureState.mode === "CUTOFF") {
@@ -170,6 +256,11 @@ export class VirtualGlasses implements GlassesLink {
     }
     this.spokenLines.push(line);
     this.gestureState = speechStarted(this.gestureState);
+    this.record({
+      kind: "SPEECH_OUTPUT_SIMULATED",
+      text: line,
+      durationMs: line.length * SIMULATED_MS_PER_CHARACTER,
+    });
   }
 
   /** Speech finished on its own. */
@@ -177,29 +268,68 @@ export class VirtualGlasses implements GlassesLink {
     this.gestureState = speechEnded(this.gestureState);
   }
 
-  /** Speech heard on a listening session, from either speaker. Resets the silence timer. */
+  /** Speech heard on the listening session, from either speaker. Resets the silence timer (v9 5.3). */
   heardSpeech(): void {
-    this.lastSpeechMs = this.clock();
+    const atMs = this.clock();
+    this.silence = recordSpeech(atMs);
+    this.record({ kind: "SPEECH_ACTIVITY", atMs });
+  }
+
+  /**
+   * A scripted voice phrase. Accepted only inside a listening session the user started (C02). Anything
+   * else is logged as not accepted and changes nothing.
+   */
+  voiceCommand(phrase: string): void {
+    this.requireConnected();
+    const command = VOICE_PHRASES.get(phrase.trim().toLowerCase());
+    if (command === undefined) {
+      this.record({ kind: "VOICE_COMMAND", phrase, command: null, accepted: false });
+      return;
+    }
+    const result = onVoiceCommand(this.gestureState, command);
+    this.record({ kind: "VOICE_COMMAND", phrase, command, accepted: result.accepted });
+    if (!result.accepted) {
+      return;
+    }
+    const session = SESSION_OF_COMMAND[command];
+    if (command.startsWith("START_")) {
+      this.switchTo(result.state, session, "VOICE", result.announcement);
+    } else {
+      this.endListening(session, "VOICE", result.state);
+    }
+  }
+
+  /**
+   * A scripted caption line from the speaker. Shown only while a translation or caption session runs.
+   * Returns false, and records nothing, when no listening session is running.
+   */
+  deliverCaption(text: string): boolean {
+    this.requireConnected();
+    if (listeningSessionOf(this.gestureState) === null) {
+      return false;
+    }
+    this.record({ kind: "CAPTION_TEXT", text });
+    return true;
   }
 
   /** Ends a translation or caption session after two minutes without speech (v9 5.3, section 21). */
   checkSilence(): void {
-    const before = this.gestureState;
-    const after = applySilenceTimeout(before, this.clock() - this.lastSpeechMs);
-    if (after.mode === before.mode) {
+    const check = checkSilenceTimer(this.gestureState, this.silence, this.clock());
+    if (check.endedSession === null) {
       return;
     }
-    this.gestureState = after;
-    const ended: ListeningSessionType = before.mode === "CAPTION" ? "CAPTION" : "TRANSLATION";
-    this.indicator.endSession(ended);
-    this.emitIndicator();
+    this.endListening(check.endedSession, "SILENCE", check.state);
   }
 
   /** Thermal, battery or privacy cutoff (v9 5.0 precedence item 1): camera and radio off. */
   cutOff(): void {
+    const ended = listeningSessionOf(this.gestureState);
     this.gestureState = applyCutoff();
     for (const type of CAPTURE_SESSION_TYPES) {
       this.indicator.endSession(type);
+    }
+    if (ended !== null) {
+      this.record({ kind: "SESSION_ENDED", session: ended, cause: "CUTOFF", atMs: this.clock() });
     }
     this.emitIndicator();
   }
@@ -262,36 +392,82 @@ export class VirtualGlasses implements GlassesLink {
         this.emitAck(message.sequence, "ERROR_CODE_CAPTURE_ACTIVE");
         return;
       }
-      this.gestureState = started.state;
-      if (started.announcement !== null) {
-        this.spokenLines.push(started.announcement);
-      }
-      this.lastSpeechMs = this.clock();
-      this.indicator.startSession(type);
-      this.lastReason = INDICATOR_REASONS[type];
-      this.emitIndicator();
+      this.switchTo(started.state, type, "APP", started.announcement);
       return;
     }
     if (SESSION_END_PHASES.has(phase)) {
-      if (this.gestureState.mode === type) {
-        this.gestureState = stopListeningSession(this.gestureState);
-      }
-      this.indicator.endSession(type);
-      this.emitIndicator();
+      this.stopFromApp(type);
       return;
     }
     this.emitAck(message.sequence, "ERROR_CODE_MALFORMED");
   }
 
+  /**
+   * Starts a listening session from idle (app) or from a hold or another session (voice). The new session
+   * starts before the old one ends, so the indicator stays on through a switch. The announcement is
+   * recorded before the indicator turns on (G15).
+   */
+  private switchTo(
+    next: GlassesState,
+    type: ListeningSessionType,
+    source: SessionSource,
+    announcement: string | null,
+  ): void {
+    const previous = listeningSessionOf(this.gestureState);
+    this.gestureState = next;
+    this.indicator.startSession(type);
+    const atMs = this.clock();
+    if (previous !== null) {
+      this.indicator.endSession(previous);
+      this.record({ kind: "SESSION_ENDED", session: previous, cause: source, atMs });
+    }
+    this.indicator.endSession("PUSH_TO_TALK");
+    this.silence = startSilenceTimer(atMs);
+    this.lastReason = INDICATOR_REASONS[type];
+    this.record({ kind: "SESSION_STARTED", session: type, source, atMs });
+    if (announcement !== null) {
+      this.spokenLines.push(announcement);
+      this.record({ kind: "ANNOUNCEMENT", text: announcement });
+    }
+    this.emitIndicator();
+  }
+
+  /** Ends a listening session and turns the indicator off unless something else is capturing. */
+  private endListening(
+    type: ListeningSessionType,
+    cause: SessionEndCause,
+    next: GlassesState,
+  ): void {
+    this.gestureState = next;
+    this.indicator.endSession(type);
+    this.record({ kind: "SESSION_ENDED", session: type, cause, atMs: this.clock() });
+    this.emitIndicator();
+  }
+
+  /** An app request to end a session. Only the session that is running ends; the rest is ignored. */
+  private stopFromApp(type: ListeningSessionType): void {
+    if (this.gestureState.mode === type) {
+      this.endListening(type, "APP", stopListeningSession(this.gestureState));
+      return;
+    }
+    this.indicator.endSession(type);
+    this.emitIndicator();
+  }
+
   private emitIndicator(): void {
+    const on = this.indicator.isOn;
+    const reason = on ? this.lastReason : "INDICATOR_REASON_IDLE";
     this.emit({
       protocolVersion: PROTOCOL_VERSION,
       sequence: this.nextSequence(),
-      indicator: {
-        on: this.indicator.isOn,
-        reason: this.indicator.isOn ? this.lastReason : "INDICATOR_REASON_IDLE",
-      },
+      indicator: { on, reason },
     });
+    // The event log records a change only, so a repeated state is not logged twice.
+    const key = on ? reason : "OFF";
+    if (key !== this.lastIndicatorKey) {
+      this.lastIndicatorKey = key;
+      this.record({ kind: "INDICATOR", on, reason });
+    }
   }
 
   private emitAck(ackedSequence: number, error: string): void {
@@ -306,6 +482,13 @@ export class VirtualGlasses implements GlassesLink {
     const wire = this.codec.decode(this.codec.encode(message));
     for (const handler of this.handlers) {
       handler(wire);
+    }
+  }
+
+  private record(event: SimulatorEvent): void {
+    this.events.push(event);
+    for (const handler of this.eventHandlers) {
+      handler(event);
     }
   }
 
