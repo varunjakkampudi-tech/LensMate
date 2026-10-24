@@ -489,3 +489,13 @@ decisions above are the current source.
   by GitHub at the database job).
 - EAS: one Android development build finished (56ae896b, commit b02a98b). Not installed or run. Expo created an Android
   keystore during the build; the owner should review it. See blocker.txt.
+
+## Round 2026-10-24 (free iPhone testing route)
+
+- Web export works again (expo-sqlite web stub). Single-page output kept: static output dropped the bundle script and
+  the app could not respond, so it was reverted.
+- PWA: manifest, icons, runtime Home Screen tags, update prompt, offline banner, service worker with a strict cache
+  policy (tests load the real public/sw.js). Desktop Chrome verified; iPhone Safari not verified.
+- Native speech input: expo-speech-recognition 58.0.0 added and wired behind a disabled flag. 15 mocked tests.
+- Shell: top and bottom safe-area spacers (native measured insets, web env() values).
+- Not verified: anything on an iPhone. No Mac or Xcode here, so no iPhone build was attempted.

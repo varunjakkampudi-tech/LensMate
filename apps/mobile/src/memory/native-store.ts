@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { MemoryStoreError } from "./memory-error";
 
 /**
  * Encrypted native memory (owner decision 0001, approved 2026-10-24).
@@ -14,16 +15,6 @@ import * as SecureStore from "expo-secure-store";
  * never deletes the file or writes a new key over it. The only way back is "delete everything", which removes the file
  * and the key together.
  */
-
-export type MemoryStoreFailure = "UNAVAILABLE" | "NOT_ENCRYPTED" | "KEY_LOST" | "FAILED";
-
-/** A storage failure. The message is a fixed code, never a row, a key or platform error text. */
-export class MemoryStoreError extends Error {
-  constructor(readonly failure: MemoryStoreFailure) {
-    super(failure);
-    this.name = "MemoryStoreError";
-  }
-}
 
 /** The subset of expo-sqlite this store uses. Injected in tests. */
 export interface SqlDatabase {

@@ -1,6 +1,11 @@
 import * as Speech from "expo-speech";
 import { Platform } from "react-native";
 import { LANGS, type Lang } from "../ui/prefs";
+import {
+  nativeListenErrorText,
+  startNativeListening,
+  type NativeListenError,
+} from "./native-listen";
 
 /**
  * HEAR and TALK on the free platform speech engines (owner choice, 2026-10-24). Listening runs only while the user
@@ -78,6 +83,10 @@ export function listen(
     onEnd: () => void;
   },
 ): Listening {
+  if (isNative()) {
+    stopSpeaking();
+    return { stop: startNativeListening(lang, handlers) };
+  }
   const Recognition = recognitionClass();
   if (Recognition === undefined) {
     handlers.onError("UNSUPPORTED");
@@ -166,6 +175,9 @@ export function stopSpeaking(): void {
 }
 
 export function listenErrorText(code: string): string {
+  if (isNative()) {
+    return nativeListenErrorText(code as NativeListenError);
+  }
   switch (code) {
     case "UNSUPPORTED":
       return "This browser has no speech recognition. Use Chrome or Edge, or type instead.";

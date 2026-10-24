@@ -40,3 +40,6 @@ claim of device readiness.
   notice instead of their controls; the home tiles and profile buttons are hidden or disabled while off. Not counted as
   current-phase work.
 - No screen has device evidence (emulator, Android phone, iPhone). Native behaviour is not claimed for any screen.
+
+Round 2026-10-24 (iPhone route): web layout checked at 375x812 in the built-in browser; desktop Chrome checks for the
+PWA (service worker, offline start, offline banner). No screen has iPhone Safari or device evidence yet.

@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
-import { MemoryStoreError, nativeMemory } from "./native-store";
+import { MemoryStoreError } from "./memory-error";
+import { nativeMemory } from "./native-store";
 
 /**
  * On-phone memory (F4 to F6): notes, saved captures, answers and reminders. Only items the user chooses to save are

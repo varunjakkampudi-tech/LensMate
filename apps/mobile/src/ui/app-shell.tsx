@@ -1,6 +1,7 @@
 import { router, usePathname } from "expo-router";
 import { createElement, useEffect, type ReactNode } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { runDueAutomations } from "../ai/automations";
 import { listItems, saveItem } from "../memory/vault";
 import { useCapture } from "./capture-session";
@@ -195,9 +196,18 @@ function useTicker() {
   }, []);
 }
 
+/**
+ * Height that clears a screen edge (notch, home indicator). Phones use the measured inset. On web, the browser reports
+ * the inset as a CSS env() value, which react-native-web passes through unchanged; the cast reflects that.
+ */
+function safeHeight(edge: "top" | "bottom", measured: number): number {
+  return Platform.OS === "web" ? (`env(safe-area-inset-${edge})` as unknown as number) : measured;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { c } = useTheme();
   const path = usePathname();
+  const insets = useSafeAreaInsets();
   useTicker();
   const immersive = path.startsWith("/simulator");
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
@@ -205,6 +215,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, alignItems: "center" }}>
       <View style={{ flex: 1, width: "100%", maxWidth: 560, backgroundColor: c.bg }}>
+        <View
+          testID="safe-top"
+          style={{ height: safeHeight("top", insets.top), backgroundColor: c.bg }}
+        />
         <IndicatorBar />
         {immersive ? null : <Header />}
         <View style={{ flex: 1 }}>{children}</View>
@@ -245,6 +259,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </View>
+        <View
+          testID="safe-bottom"
+          style={{ height: safeHeight("bottom", insets.bottom), backgroundColor: c.surface }}
+        />
       </View>
     </View>
   );

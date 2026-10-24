@@ -2,6 +2,8 @@ import * as Speech from "expo-speech";
 import { LANGS } from "../ui/prefs";
 import { canSpeak, listen, speak, stopSpeaking } from "./speech";
 
+jest.mock("expo-speech-recognition", () => ({ ExpoSpeechRecognitionModule: {} }));
+
 // Phones speak through the device engine; these tests stand in for it and check what LensMate asks it to do.
 jest.mock("expo-speech", () => ({
   speak: jest.fn(),
@@ -70,13 +72,13 @@ describe("native speech output", () => {
     expect(engineSpeak).not.toHaveBeenCalled();
   });
 
-  it("does not open a microphone: native listening reports unsupported", () => {
+  it("does not open a microphone while native speech input is switched off in this build", () => {
     const onError = jest.fn();
     const onEnd = jest.fn();
 
     listen("en", { onPartial: jest.fn(), onFinal: jest.fn(), onError, onEnd });
 
-    expect(onError).toHaveBeenCalledWith("UNSUPPORTED");
+    expect(onError).toHaveBeenCalledWith("DISABLED");
     expect(onEnd).toHaveBeenCalledTimes(1);
   });
 });

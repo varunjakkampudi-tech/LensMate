@@ -244,3 +244,30 @@ Nothing is ever committed that should not be public, because history stays publi
 - CI for this round: b02a98b run 40114850353 failed only at the format check (APP_SCREEN_MATRIX.md edited after the format
   pass). fa2ca86 run 40114999918 (format fix) was cancelled by GitHub at the broker-integration job with no newer push;
   the re-run completed successfully (quality, broker-integration and secret-scan all passed).
+
+## ROUND 2026-10-24 (free iPhone testing route): web app, PWA, speech input switch, safe areas
+
+- iPhone native build (route C, Apple Personal Team): BLOCKED, exact reason: this machine runs Windows 11 (no macOS, no
+  Xcode, `xcodebuild` not found). A free Apple Account can sign a local build only through Xcode on macOS. A Windows-only
+  iOS signing workaround is not used. The EAS iOS build needs Apple signing credentials (BLOCKER-001), so it is also not
+  attempted. Owner action: a Mac with Xcode, or a Mac-hosted runner, is needed for any iPhone build from this repo.
+- Route A (iPhone Safari web preview): the app builds for web and the layout was checked at 375x812 in the built-in
+  browser (no horizontal scroll). Safari itself was NOT tested: there is no iPhone here. Safe-area spacers now use
+  the browser's env() values on web. Not verified on an iPhone.
+- Route B (installable PWA): public/manifest.json, icons, Home Screen tags added at runtime (src/pwa/web-head.ts), a
+  service worker (public/sw.js) that caches only the public shell and static bundle, an update prompt the user must tap,
+  and an offline banner. Verified in desktop Chrome: the worker registers, the shell and bundle are cached, the app
+  opens with the server stopped, and the offline banner shows on the offline event. NOT verified in iPhone Safari.
+  Safari needs HTTPS for a service worker; a LAN address over HTTP gets no worker (by design; see service-worker.ts).
+  Browser push: NOT implemented (no approved push backend or notification scope).
+- Speech input (owner's conditional approval): expo-speech-recognition 58.0.0 added (MIT, published 2026-10-16). Native
+  listening is wired through src/ai/native-listen.ts and is OFF (NATIVE_LISTENING_ENABLED = false). When on, it requests
+  on-device recognition only and refuses if the device cannot do it. No cloud fallback. Tested with an injected recogniser
+  (15 tests). Not run on a phone.
+- Web build regression found and fixed in this round: the web export failed because expo-sqlite's web build needs a
+  WebAssembly file that Metro cannot resolve. Fixed by a web stub (native-store.web.ts) and a shared error module
+  (memory-error.ts). CI did not catch it because CI does not run `expo export`.
+- Not built in this round: native camera (no camera package approved in this round; see PROGRESS.md), native local
+  notifications (no notifications package approved), premium visual redesign, backup warnings and purge design.
+- Gates (local): format, lint, knip, typecheck, check:schema, check:expo pass. Root tests: 483 broker and core pass; mobile
+  305 pass. audit:high: unchanged node-forge finding (BLOCKER-010).
