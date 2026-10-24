@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { readBrokerConfig } from "../src/broker-config";
+import { DEMO } from "../src/demo/demo-strings";
 import { EnrolmentScreen } from "../src/enrolment-screen";
 import { MeasurementScreen } from "../src/measurement-screen";
 import { STRINGS } from "../src/strings";
@@ -71,6 +73,23 @@ export default function HomeScreen() {
         }}
       >
         <Text style={{ color: "#1f4e79", textAlign: "center" }}>{STRINGS.openEnrolment}</Text>
+      </Pressable>
+      <Text style={{ fontSize: 14 }}>{DEMO.openHint}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={DEMO.openButton}
+        style={{
+          minHeight: 48,
+          padding: 12,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: "#1f4e79",
+        }}
+        onPress={() => {
+          router.push("/demo");
+        }}
+      >
+        <Text style={{ color: "#1f4e79", textAlign: "center" }}>{DEMO.openButton}</Text>
       </Pressable>
     </View>
   );
