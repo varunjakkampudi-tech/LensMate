@@ -77,6 +77,15 @@ describe("provenanceProblems", () => {
     ]);
   });
 
+  it("blocks real phone evidence that carries the dry-run commit marker or run ID prefix", () => {
+    expect(provenanceProblems({ ...COMPLETE_REAL_PHONE, appCommit: "local-dry-run" })).toEqual([
+      "Real phone evidence cannot come from a dry run; change the run ID and app commit",
+    ]);
+    expect(provenanceProblems({ ...COMPLETE_REAL_PHONE, runId: "dryrun-owner-1" })).toEqual([
+      "Real phone evidence cannot come from a dry run; change the run ID and app commit",
+    ]);
+  });
+
   it("blocks a real phone claim that names a simulator or emulator device", () => {
     expect(
       provenanceProblems({ ...COMPLETE_REAL_PHONE, deviceModel: "iPhone 15 Simulator" }),

@@ -22,14 +22,14 @@ The screen shows each measure with its status and target. Anything not instrumen
 
 Each measure is listed with the tries the documents require. Nothing here is a decided value beyond what Goal 14.2 and v9 state.
 
-| Measure                           | Tries and target (source)                                                                                        | Status                                           |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `capture_to_phone`                | One try per single tap. Reported only; the documents set no pass rule for this stage (v9 6.4 gives 0.3 seconds). | Instrumented (simulator). Not yet run on a phone |
-| `latency_total`                   | 50 requests per language; 90 percent under 2.5 seconds (Goal 14.2, v9 6.4)                                       | NOT INSTRUMENTED                                 |
-| `interruption`                    | Stop within 0.5 seconds in 95 percent of tries (Goal 14.2, G19). The documents set no minimum number of tries    | NOT INSTRUMENTED                                 |
-| Speech accuracy (word error rate) | Recorded sets in English, Telugu, Hindi and mixed speech (v9 6.1). Set size is not decided                       | NOT INSTRUMENTED                                 |
-| Translation                       | v9 section 12 scripts for each language pair; native-speaker scoring by the owner                                | NOT INSTRUMENTED                                 |
-| Spend                             | Cost per request type and projected monthly cost against the cap                                                 | NOT INSTRUMENTED (needs approved provider calls) |
+| Measure                           | Tries and target (source)                                                                                        | Status                                                                                                         |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `capture_to_phone`                | One try per single tap. Reported only; the documents set no pass rule for this stage (v9 6.4 gives 0.3 seconds). | Instrumented (simulator). Not yet run on a phone                                                               |
+| `latency_total`                   | 50 requests per language; 90 percent under 2.5 seconds (Goal 14.2, v9 6.4)                                       | NOT INSTRUMENTED                                                                                               |
+| `interruption`                    | Stop within 0.5 seconds in 95 percent of tries (Goal 14.2, G19). The documents set no minimum number of tries    | NOT INSTRUMENTED                                                                                               |
+| Speech accuracy (word error rate) | Recorded sets in English, Telugu, Hindi and mixed speech (v9 6.1). Set size is not decided                       | NOT INSTRUMENTED                                                                                               |
+| Translation                       | v9 section 12 scripts for each language pair; native-speaker scoring by the owner                                | NOT INSTRUMENTED                                                                                               |
+| Spend                             | Cost per request type and projected monthly cost against the cap                                                 | CALCULATED by `calculateSpend` (not measured). Measured spend NOT INSTRUMENTED (needs approved provider calls) |
 
 Owner questions. The agent does not choose these; the owner decides and records the answer in `blocker.txt`:
 
@@ -40,7 +40,7 @@ Owner questions. The agent does not choose these; the owner decides and records 
 
 ## Simulator workflow (executable now)
 
-1. Build and run the app in a development environment, or run the mobile tests: `pnpm -F @lensmate/mobile test`. The end-to-end test in `measurement-screen-e2e.test.tsx` drives this exact workflow. For the simulator dry run alone, run `pnpm measure:dry-run`: 50 scripted tries in English and 50 in Telugu, labelled SIMULATOR evidence. It rehearses the procedure and is not a measurement.
+1. Build and run the app in a development environment, or run the mobile tests: `pnpm -F @lensmate/mobile test`. The end-to-end test in `measurement-screen-e2e.test.tsx` drives this exact workflow. For the simulator dry run alone, run `pnpm measure:dry-run`: 50 scripted tries in English and 50 in Telugu, labelled SIMULATOR evidence. It writes `measurement-output/SIMULATOR-dry-run-capture_to_phone.csv` (git-ignored). The validator refuses that file's rows as real phone evidence, so a relabelled copy cannot pass. It rehearses the procedure and is not a measurement.
 2. Open the measurement screen from the home screen.
 3. Connect the virtual glasses.
 4. Fill in the provenance:

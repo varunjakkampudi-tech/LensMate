@@ -30,6 +30,14 @@ export type ImportableEvidenceLevel = (typeof IMPORTABLE_EVIDENCE_LEVELS)[number
 export const IMPORTABLE_TIMING_SOURCES = ["same_clock_simulator"] as const;
 export type TimingSource = (typeof IMPORTABLE_TIMING_SOURCES)[number];
 
+/**
+ * Reserved marker for dry runs. A dry run writes this as its app_commit and a run ID that starts with the prefix,
+ * so a rehearsal can never pass as real phone evidence even if its evidence_level is edited. The validator and the
+ * screen both refuse real phone rows that carry either marker.
+ */
+export const DRY_RUN_COMMIT_MARKER = "local-dry-run";
+export const DRY_RUN_RUN_ID_PREFIX = "dryrun-";
+
 /** Measures this version can record and import. Each one is instrumented in the app or the simulator. */
 export const SUPPORTED_MEASURES = ["capture_to_phone", "latency_total", "interruption"] as const;
 export type SupportedMeasure = (typeof SUPPORTED_MEASURES)[number];

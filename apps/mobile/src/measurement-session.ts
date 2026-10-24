@@ -1,4 +1,6 @@
 import {
+  DRY_RUN_COMMIT_MARKER,
+  DRY_RUN_RUN_ID_PREFIX,
   LANGUAGES,
   type ImportableEvidenceLevel,
   type Language,
@@ -119,6 +121,14 @@ export function provenanceProblems(form: ProvenanceForm): string[] {
     }
     if (/simulator|emulator|virtual/i.test(form.deviceModel)) {
       problems.push("Real phone evidence cannot use a simulator or emulator device name");
+    }
+    if (
+      form.appCommit.trim() === DRY_RUN_COMMIT_MARKER ||
+      form.runId.trim().startsWith(DRY_RUN_RUN_ID_PREFIX)
+    ) {
+      problems.push(
+        "Real phone evidence cannot come from a dry run; change the run ID and app commit",
+      );
     }
   }
   if (!isValidBattery(form.batteryStartPct.trim())) {

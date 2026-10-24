@@ -50,3 +50,6 @@ Thumbs.db
 # Broker deployment secrets and local env (never commit)
 services/broker/deploy/secrets/
 services/broker/deploy/.env
+
+# Simulator dry-run output written by pnpm measure:dry-run (never evidence of a phone run)
+measurement-output/

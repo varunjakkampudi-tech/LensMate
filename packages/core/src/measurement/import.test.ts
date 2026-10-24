@@ -7,6 +7,7 @@ import {
   serializeMeasurementCsv,
   summarizeEvidence,
 } from "./import.js";
+import { DRY_RUN_COMMIT_MARKER } from "./targets.js";
 
 type Fields = Partial<Record<(typeof MEASUREMENT_COLUMNS)[number], string>>;
 
@@ -194,6 +195,27 @@ describe("evidence-level claims", () => {
     expect(reasonsFor({ ...VALID_REAL_CAPTURE, device_model: "iPhone 15 Simulator" })).toEqual(
       expect.arrayContaining([expect.stringMatching(/contradicts device_model/)]),
     );
+  });
+
+  it("rejects a real phone row that carries the dry-run commit marker, even with edited evidence", () => {
+    expect(reasonsFor({ ...VALID_REAL_CAPTURE, app_commit: DRY_RUN_COMMIT_MARKER })).toEqual([
+      expect.stringMatching(/cannot come from a dry run/),
+    ]);
+  });
+
+  it("rejects a real phone row whose run ID carries the dry-run prefix", () => {
+    expect(
+      reasonsFor({ ...VALID_REAL_CAPTURE, measurement_id: "dryrun-sim-001-en-cap-001" }),
+    ).toEqual([expect.stringMatching(/cannot come from a dry run/)]);
+  });
+
+  it("keeps a dry run row that is labelled simulator, the only label a dry run may carry", () => {
+    const simulatorDryRun = {
+      ...VALID_SIM_CAPTURE,
+      measurement_id: "dryrun-sim-001-en-cap-001",
+      app_commit: DRY_RUN_COMMIT_MARKER,
+    };
+    expect(importMeasurementCsv(csvOf([simulatorDryRun])).accepted).toHaveLength(1);
   });
 
   it("rejects a real phone row without the EAS build that produced the app", () => {

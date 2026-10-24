@@ -13,6 +13,8 @@ import {
 } from "./evaluate.js";
 import {
   ALL_EVIDENCE_LEVELS,
+  DRY_RUN_COMMIT_MARKER,
+  DRY_RUN_RUN_ID_PREFIX,
   IMPORTABLE_EVIDENCE_LEVELS,
   IMPORTABLE_TIMING_SOURCES,
   LANGUAGES,
@@ -274,6 +276,11 @@ function checkEvidence(raw: Record<string, string>): string[] {
     }
     if ((raw.eas_build_id ?? "") === "") {
       reasons.push("real phone evidence needs eas_build_id");
+    }
+    if (isDryRunRow(raw)) {
+      reasons.push(
+        "real phone evidence cannot come from a dry run (app_commit or measurement_id carries the dry-run marker)",
+      );
     }
   }
   return reasons;
@@ -552,6 +559,14 @@ function criterionFor(measure: SupportedMeasure, report: LanguageReport): boolea
 
 function isSupportedMeasure(value: string): value is SupportedMeasure {
   return (SUPPORTED_MEASURES as readonly string[]).includes(value);
+}
+
+/** True when a row carries the reserved dry-run commit marker or a dry-run run ID prefix. */
+function isDryRunRow(raw: Readonly<Record<string, string>>): boolean {
+  return (
+    (raw.app_commit ?? "") === DRY_RUN_COMMIT_MARKER ||
+    (raw.measurement_id ?? "").startsWith(DRY_RUN_RUN_ID_PREFIX)
+  );
 }
 
 function isOneOf<T extends string>(value: string, allowed: readonly T[]): value is T {
