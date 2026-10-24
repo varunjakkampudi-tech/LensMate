@@ -436,3 +436,26 @@ Not verified in this pass: a live restore of a pre-genesis backup; the backfill 
 - Lesson recorded: schema checks must run with the least privilege the broker uses, and the Docker suite is the only place that exercises that path end to end.
 - Broker unit and PostgreSQL tests on 4ad5fc1: 185 of 185 passed. Lint of services/broker passed.
 - Fresh-context re-review of 034f6da and 4ad5fc1: requested; result to be recorded when it returns. BLOCKER-006 and BLOCKER-008 remain OPEN until that review is complete.
+
+## Checkpoint 2026-10-24 (after f4caa63)
+
+Scope: independent self-review of the AI, vision, translation, agent, automation, memory and backup code; fixes; tests for
+failure paths; decision records; dependency advisory check. Broker stayed in mock mode by default. No Hostinger deploy,
+no change to main, no waiver.
+
+Evidence (local, this checkpoint):
+- Gates: format, knip, lint, build, mobile typecheck, schema, Expo config and tests all exit 0.
+- Tests: broker and core 523 passed (35 suites); mobile 259 passed (25 suites). New in this checkpoint: 2 broker backup
+  tests (revoked device refused; new device cannot read the replaced device's backup), 2 session-timing tests, plus the
+  notes-matching and enrolment-removal tests from f4caa63 follow-up.
+- Dependency audit (pnpm audit, high): zod advisory resolved by override to 4.6.7. node-forge advisory open: no patched
+  release on the registry.
+- Live (owner-approved dev key): translation, assistant, agents (planner, memory keeper, writer), live research (:online),
+  vision (one test image), notes Q&A, encrypted backup upload, wrong-passphrase refusal, restore, automation run, device
+  enrolment, revocation refusal, removal and re-enrolment, usage meter. Ledger: 13 settled reservations, 253 paise.
+- Browser (mock and live): all 13 screens load with no console errors; microphone calls: zero during tab navigation.
+
+Not verified: native speech and speech output on devices, native encrypted storage, camera capture, photo upload, the
+translation announcement audio on a device, Telugu and Hindi voice quality, interruption timing, and all device
+measurements. Matrices (FEATURE_MATRIX.md, GAP_MATRIX.md) were not fully reconciled in this checkpoint; the review and
+decisions above are the current source.

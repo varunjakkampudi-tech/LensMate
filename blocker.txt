@@ -51,6 +51,24 @@ Nothing is ever committed that should not be public, because history stays publi
 - Scope additions requested by the owner beyond P-1: multi-agent tasks, live internet research, automations, phone actions, interview practice, profiles. Implemented only where they need no camera or microphone outside a user-started session, and phone actions only as proposals the user taps. Not built: computer (PC) control, payments, background capture, scene-watching companion mode (Locked list and G26) — READY_FOR_OWNER if the owner wants a written design.
 - Preview owner code helper: /api/owner/enrol-code issues a single-use code when given LENSMATE_OWNER_PASSPHRASE (server secret, not yet set).
 
+## CHECKPOINT 2026-10-24 — owner approvals requested and live evidence (agent, this checkpoint)
+- Owner approvals requested (none assumed): (1) expo-speech for on-device speech output; (2) expo-speech-recognition for
+  on-device speech input, only after the on-device-only setting is verified on a device; (3) expo-sqlite with an
+  expo-secure-store key for encrypted native notes, after SDK 58 encryption support is confirmed; (4) one EAS
+  development build to test native speech and storage on a device. See docs/decisions/0001-native-speech-and-storage.md.
+- Backup after revocation (docs/decisions/0002): owner decision needed on purging a revoked device backup (option B),
+  on whether recovery is wanted (option C requires a threat-model review), and on the wording shown after re-enrolment.
+- Vision image ceiling: 1600 tokens is the agent estimate in the dev env only; owner measurement still due.
+- Dependency advisories: zod high advisory resolved by a pnpm override to >=4.6.6 (installed 4.6.7). node-forge high
+  advisory (GHSA for RSA PKCS#1 v1.5 digest handling, reached through Expo tooling) has no patched release in the npm
+  registry (latest 1.4.0). Status OPEN; it cannot be waived by the agent. Owner decision under BLOCKER-010.
+- Live evidence (owner-approved dev key, cap INR 500, mock by default): the local dev ledger holds 13 settled
+  reservations totalling 253 paise (INR 2.53). Settled amounts are the broker estimate per call, and some rows are mock-mode
+  settlements, so the real provider spend is lower. Live calls went to google/gemini-3.1-flash-lite, its :online variant,
+  and google/gemini-3.5-flash-lite. No other billable calls were made.
+- Review record: docs/reviews/2026-10-24-ai-memory-review.md (13 findings; 6 fixed in this checkpoint or earlier).
+- Status: READY_FOR_OWNER for the four approvals above. No native code added. No Hostinger deployment. main untouched.
+
 ## BLOCKER-001 — Apple Developer Program membership (iPhone builds and TestFlight)
 - Priority: high. Module: apps/mobile (iOS). Requirement: G46; Engineering Standards 1 and 6; Goal 14.2.
 - Status: DEFERRED (2026-10-24). Owner action required before real-iPhone testing or TestFlight distribution. Not resolved: Apple Developer Program membership has not been verified. Development continues on simulator, emulator and Android. Reopen this item when iPhone 15 testing or TestFlight distribution is scheduled.
@@ -151,6 +169,7 @@ Nothing is ever committed that should not be public, because history stays publi
 
 ## BLOCKER-010 — Two high-severity advisories with no published fix (owner waiver decision)
 - Priority: high. Module: dependency tree (dev and build tooling only). Requirement: Standards 5 (high or critical blocks integration unless the owner waives in writing with a date); Global 22.
+- Checkpoint 2026-10-24: the zod advisory is fixed by a pnpm override. The node-forge advisory is still open and has no patched release (see CHECKPOINT section). Agent still cannot waive it.
 - Status: READY_FOR_OWNER (re-checked 2026-10-24 by an agent session; no code change made). The agent cannot grant a waiver.
 - Re-check results (2026-10-24, HEAD 6b6ea5e): `pnpm audit --audit-level=high` exit 1 with 2 high findings: node-forge (GHSA-86w9-cpqp-85rv; no patched version on the registry; newest is 1.4.0) and zod (GHSA-mrhx-c7xc-m3w5). `pnpm audit --prod --audit-level=high` exit 1, same findings through @expo/cli. The braces finding no longer appears in the audit output, and braces 3.0.3 is still the newest version on the registry; not verified why it dropped out. zod: the patched line is zod 4.6.6 (published 2026-10-11) and 4.6.7 (published 2026-10-12). Both are inside the two-week release-age cooldown until 2026-10-25 and 2026-10-26. @expo/cli 58.1.15 still requires zod ^3.25.76, so an override to zod 4 is a breaking change for the Expo CLI and was not tested.
 - Pre-existing, separate: `expo install --check` in apps/mobile exits 1 (expo 58.0.17, expo-dev-client 58.0.14, expo-router 58.0.25 are behind versions published 2026-10-23, which are inside the cooldown). Not caused by this work; not changed.

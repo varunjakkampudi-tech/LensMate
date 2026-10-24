@@ -22,11 +22,11 @@ async function setup(clock: { now: number }) {
   });
   await app.listen({ host: "127.0.0.1", port: 0 });
   const base = app.listeningOrigin;
-  const call = async (method: string, body?: unknown, auth = true) => {
+  const call = async (method: string, body?: unknown, auth: boolean | string = true) => {
     const res = await fetch(`${base}/v1/backup`, {
       method,
       headers: {
-        ...(auth ? { authorization: TEST_AUTH_HEADER } : {}),
+        ...(auth === false ? {} : { authorization: auth === true ? TEST_AUTH_HEADER : auth }),
         ...(body === undefined ? {} : { "content-type": "application/json" }),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -35,7 +35,7 @@ async function setup(clock: { now: number }) {
     return { statusCode: res.status, json: () => JSON.parse(text) as unknown };
   };
   opened.push(app);
-  return { call, backups };
+  return { call, backups, devices, base };
 }
 
 const opened: { close(): Promise<unknown> }[] = [];
@@ -87,5 +87,33 @@ describe("encrypted memory backup", () => {
         .statusCode,
     ).toBe(400);
     expect((await call("PUT", { ciphertext: "<script>", retentionDays: 7 })).statusCode).toBe(400);
+  });
+
+  it("a revoked device can neither read, replace nor delete its backup", async () => {
+    const { call, devices } = await setup({ now: 1_000 });
+    expect(
+      (await call("PUT", { ciphertext: "v1.c2FsdA.aXY.Y2lwaGVy", retentionDays: 30 })).statusCode,
+    ).toBe(200);
+    await devices.revokeDevice(TEST_DEVICE_ID);
+    expect((await call("GET")).statusCode).toBe(401);
+    expect(
+      (await call("PUT", { ciphertext: "v1.c2FsdA.aXY.Y2lwaGVy", retentionDays: 30 })).statusCode,
+    ).toBe(401);
+    expect((await call("DELETE")).statusCode).toBe(401);
+  });
+
+  it("a newly enrolled device cannot see the backup of the device it replaces", async () => {
+    const { call, devices } = await setup({ now: 1_000 });
+    devices.seedDevice(
+      "22222222-2222-4222-8222-222222222222",
+      "replacement-device-secret-".repeat(2),
+    );
+    expect(
+      (await call("PUT", { ciphertext: "v1.c2FsdA.aXY.Y2lwaGVy", retentionDays: 30 })).statusCode,
+    ).toBe(200);
+    await devices.revokeDevice(TEST_DEVICE_ID);
+    const replacement =
+      "Bearer 22222222-2222-4222-8222-222222222222.replacement-device-secret-replacement-device-secret-";
+    expect((await call("GET", undefined, replacement)).statusCode).toBe(404);
   });
 });
