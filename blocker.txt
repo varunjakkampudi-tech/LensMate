@@ -32,15 +32,15 @@ Nothing is ever committed that should not be public, because history stays publi
 - Other products: not migrated by this decision. Each is migrated only when separately authorized.
 
 ## OWNER-DECISION-004 — Memory backup, owner passphrase, languages (2026-10-24, owner chat instructions, ACTIVE)
-- Decided by: Varun (owner), Emergent chat, 2026-10-24.
+- Decided by: Varun (owner), owner chat, 2026-10-24.
 - Optional encrypted memory backup: approved. Encrypted on the phone (PBKDF2-SHA-256 310,000 rounds + AES-GCM, user passphrase); the broker stores only ciphertext per device (broker_memory_backup) with a user-chosen retention of 7, 30, 90 or 365 days; expired rows are purged by the reaper and on read. Photos are excluded unless the user includes them. Cloud notice text bumped to version 2026-10-24.2 to disclose it.
 - Owner passphrase for issuing enrolment codes in the preview: LENSMATE_OWNER_PASSPHRASE server secret (requested via the secrets card; minimum 12 characters; 5 tries a minute per address).
 - Languages: owner asked for "all languages". Implemented 20 languages for answers, speech and any-to-any translation; quality depends on the model and the device's speech engine, so "perfect" cannot be guaranteed. Telugu-English remains the measured pair (F20 measurement still open).
 - Legacy demo, measurement and enrolment screens restyled to the mock-up palette.
 
-## OWNER-DECISION-003 — Emergent preview with real AI, scope additions (2026-10-24, owner chat instructions, ACTIVE for the preview)
-- Decided by: Varun (owner), in the Emergent chat on 2026-10-24. Recorded by the agent; wording summarised, not invented.
-- Real AI in the Emergent web preview: approved, through the existing broker in live mode with the hard server-side cap of INR 500 a month (BROKER_MONTHLY_CAP_PAISE=50000, owner confirmation equal). Broker runs in the preview container with a local PostgreSQL 15 ledger; this is NOT the Hostinger deployment (BLOCKER-006 hosting stays open).
+## OWNER-DECISION-003 — web preview with real AI, scope additions (2026-10-24, owner chat instructions, ACTIVE for the preview)
+- Decided by: Varun (owner), in the owner chat on 2026-10-24. Recorded by the agent; wording summarised, not invented.
+- Real AI in the web preview: approved, through the existing broker in live mode with the hard server-side cap of INR 500 a month (BROKER_MONTHLY_CAP_PAISE=50000, owner confirmation equal). Broker runs in the preview container with a local PostgreSQL 15 ledger; this is NOT the Hostinger deployment (BLOCKER-006 hosting stays open).
 - Exchange rate set by the agent conservatively at BROKER_FX_PAISE_PER_USD=9000 (overstates cost). Owner to confirm.
 - Models: the 2.5 Gemini models had no zero-data-retention endpoint for this account, so the allowlist moved to google/gemini-3.1-flash-lite (text), google/gemini-3.1-flash-lite:online (web research, flat 25,000 micro-USD worst case per call) and google/gemini-3.5-flash-lite (vision), priced at the highest listed ZDR tier. zdr and data_collection deny stay on every request. Vision image ceiling set to 1600 tokens (agent estimate; owner measurement still due).
 - Cloud disclosure text version 2026-10-24.1 (STRINGS.cloudDisclosure) approved for the preview (owner decision (e)).
