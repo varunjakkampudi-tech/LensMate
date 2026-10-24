@@ -473,3 +473,14 @@ decisions above are the current source.
 - Not done in this round: the directive's native speech, native storage, premium visual redesign, advanced vision,
   live research expansion, multi-agent, mobile actions, proactive automation and desktop interfaces. Each needs an owner
   decision, a device build, or a later phase under the Goal (sections 2A.3, 8 and 9). See blocker.txt.
+
+## Round 2026-10-24 (owner approvals batch)
+
+- Native speech output (expo-speech 58.0.3) is wired. Unit tests only; not run on a phone.
+- Encrypted native memory (expo-sqlite 58.0.13 with SQLCipher, key in secure storage). The store refuses to write unless
+  SQLCipher is active, reports a lost key without overwriting it, and deletes the file and key together. Unit tests with
+  a fake keyed database only. Not verified on a phone.
+- Interview practice and agents and automations are switched off by default and gated in the UI.
+- Not built: native speech input (waits for on-device verification), native camera and photo integration, premium
+  visual design system, advanced OCR. Each is listed in blocker.txt.
+- EAS development build: see the result recorded in blocker.txt under this round.

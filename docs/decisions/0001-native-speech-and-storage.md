@@ -1,6 +1,8 @@
 # 0001 — Native speech, speech output and encrypted storage
 
-Status: PROPOSED. Needs owner approval of each new dependency before it is added (Goal section 3 and the approval
+Status: APPROVED in part by the owner 2026-10-24 (expo-speech, expo-sqlite, one EAS development build). expo-speech-recognition is conditional on on-device verification and is NOT added. Implemented in this round; device verification pending. (Original proposal text follows.)
+
+Original: PROPOSED. Needs owner approval of each new dependency before it is added (Goal section 3 and the approval
 rule used for expo-secure-store). Nothing here is installed or built. No native build has been run.
 
 ## Context

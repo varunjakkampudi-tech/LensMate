@@ -9,6 +9,7 @@ import {
   type Automation,
 } from "../src/ai/automations";
 import { saveItem } from "../src/memory/vault";
+import { FeatureOff } from "../src/ui/feature-off";
 import { Body, Btn, Card, Field, H2, Notice, Page, Row } from "../src/ui/kit";
 import { usePrefs } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
@@ -76,6 +77,10 @@ export default function TasksScreen() {
       setBusy(false);
     }
   };
+
+  if (!prefs.features.tasks) {
+    return <FeatureOff title="Agents & automations" name="Agents and automations" />;
+  }
 
   return (
     <Page title="Agents & automations" kicker="AUTONOMOUS TASKS">

@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { speak } from "../src/ai/speech";
 import { useConversation, useMicSession } from "../src/ai/use-voice";
 import { saveItem } from "../src/memory/vault";
+import { FeatureOff } from "../src/ui/feature-off";
 import { Body, Btn, Card, Chip, Field, H2, Notice, Page, Row } from "../src/ui/kit";
 import { usePrefs } from "../src/ui/prefs";
 import { useTheme } from "../src/ui/theme";
@@ -42,6 +43,10 @@ export default function InterviewScreen() {
       await saveItem({ kind: "debrief", title: `Interview practice: ${role}`, text: reply });
     }
   };
+
+  if (!prefs.features.interview) {
+    return <FeatureOff title="Interview practice" name="Interview practice" />;
+  }
 
   return (
     <Page title="Interview practice" kicker="PRACTICE ONLY">

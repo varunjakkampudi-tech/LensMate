@@ -16,7 +16,13 @@ const config: ExpoConfig = {
     package: "com.viswatra.lensmate",
     allowBackup: false,
   },
-  plugins: ["expo-router", "expo-dev-client", "expo-secure-store"],
+  plugins: [
+    "expo-router",
+    "expo-dev-client",
+    "expo-secure-store",
+    // Encrypts the memory database (native-store.ts). Applies only to a native build made after this change.
+    ["expo-sqlite", { useSQLCipher: true }],
+  ],
   experiments: {
     typedRoutes: true,
   },

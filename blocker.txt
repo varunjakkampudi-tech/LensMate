@@ -208,3 +208,30 @@ Nothing is ever committed that should not be public, because history stays publi
 - Impact: the scheduled audit workflow (.github/workflows/audit.yml) reports them. The blocking CI job does not run the audit yet, so pushes are not blocked by them.
 - Owner options: (a) waive in writing with an expiry date and a re-check date, recorded in RISK_EXCEPTIONS.md, or (b) ask the agent to replace the Expo CLI and Jest toolchain paths (large change, may need a new SDK), or (c) accept the risk until patches exist and re-check at the audit schedule.
 - Exact owner action: choose (a), (b) or (c) and write the decision in this file with date and approver. Only then move the audit into the blocking quality job.
+
+## ROUND 2026-10-24 (owner approvals): native speech output, encrypted native memory, feature gating
+
+- Owner decisions applied (docs/decisions/0001 items 1 and 3; directive items 6 and 7 of the owner message):
+  - expo-speech 58.0.3: native speech output is wired (apps/mobile/src/ai/speech.ts). Unit tests use a mocked engine
+    (speech.test.ts, 6 tests). Not run on a phone.
+  - expo-sqlite 58.0.13 (not 58.0.14): pnpm's release-age policy rejected 58.0.14 (published 2026-10-23). The exclusion
+    pnpm proposed was NOT added; an older release is used instead.
+  - Encrypted native memory (apps/mobile/src/memory/native-store.ts): SQLCipher is enabled through the expo-sqlite plugin
+    option (app.config.ts). The 256-bit key comes from SQLite's random source, is stored in expo-secure-store, and is
+    applied before any statement. Before any write the store checks `PRAGMA cipher_version`; if SQLCipher is not active
+    it refuses rather than writing plaintext. A key that is lost or wrong is reported as KEY_LOST and is never overwritten.
+    Delete-all removes the file and the key together. Unit tests use a fake keyed database (native-store.test.ts, 9 tests).
+  - NOT verified: that the development build links SQLCipher, what is on disk, restart on a phone, and key loss on a
+    phone. Those need the EAS development build and a device.
+- Not built in this round (owner decision still open or later work):
+  - expo-speech-recognition (owner condition: on-device verification on a phone first). Native listening reports
+    UNSUPPORTED, and the test checks that.
+  - Native camera and photo integration, premium visual design system, advanced OCR and assistant tooling.
+- Feature gating (owner decision 6): interview practice and agents and automations are OFF by default
+  (ACTIVE_PHASE in apps/mobile/src/ui/prefs.tsx). Their code is kept. Home tiles are hidden while off, the profile
+  buttons are disabled, and the screens show FeatureOff. Tests: src/ui/feature-gates.test.ts (3 tests).
+- EAS: apps/mobile/eas.json added with one development profile (developmentClient, internal, Android APK). The EAS CLI is
+  signed in as the owner's account; the build attempt and its result are recorded in PROGRESS.md.
+- Gates (2026-10-24, local): format:check, lint, knip, typecheck, check:schema, check:expo all exit 0. Root tests: 483
+  broker and core pass, 40 database tests skipped locally (run in CI with PostgreSQL 17); mobile 279 pass.
+  audit:high: one high finding, node-forge (BLOCKER-010). Unchanged by this round.

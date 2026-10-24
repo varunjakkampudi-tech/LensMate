@@ -1,3 +1,4 @@
+import * as Speech from "expo-speech";
 import { Platform } from "react-native";
 import { LANGS, type Lang } from "../ui/prefs";
 
@@ -5,8 +6,12 @@ import { LANGS, type Lang } from "../ui/prefs";
  * HEAR and TALK on the free platform speech engines (owner choice, 2026-10-24). Listening runs only while the user
  * holds a microphone session; speaking can be interrupted at any time (G18, G19).
  * Chrome's recognition sends audio to Google for transcription; the cloud notice says so.
+ * Native phones speak through expo-speech, which uses the device's own text-to-speech engine (no cloud route).
+ * Native listening is not built: it needs an on-device recogniser verified on a phone (see docs/decisions/0001).
  */
 const locale = (lang: Lang) => LANGS[lang].locale;
+
+const isNative = () => Platform.OS !== "web";
 
 /** Installed voices for a language. Browsers report tags as "en-US" or "en_US"; both match. */
 function voicesFor(lang: Lang): SpeechSynthesisVoice[] {
@@ -57,7 +62,7 @@ export function canListen(): boolean {
 }
 
 export function canSpeak(): boolean {
-  return Platform.OS === "web" && typeof speechSynthesis !== "undefined";
+  return isNative() || (Platform.OS === "web" && typeof speechSynthesis !== "undefined");
 }
 
 export interface Listening {
@@ -109,13 +114,31 @@ export function listen(
   return { stop: () => rec.stop() };
 }
 
+/**
+ * On a phone the installed voices are listed asynchronously, so this cannot be checked here. The engine reports a
+ * missing voice through onError when speaking, and the caller's onDone still runs (see speak).
+ */
 export function hasVoiceFor(lang: Lang): boolean {
+  if (isNative()) {
+    return canSpeak();
+  }
   return canSpeak() && voicesFor(lang).length > 0;
 }
 
 export function speak(text: string, lang: Lang, rate: number, onDone?: () => void): void {
   if (!canSpeak()) {
     onDone?.();
+    return;
+  }
+  if (isNative()) {
+    void Speech.stop();
+    Speech.speak(text.slice(0, Speech.maxSpeechInputLength), {
+      language: locale(lang),
+      rate,
+      onDone: () => onDone?.(),
+      onStopped: () => onDone?.(),
+      onError: () => onDone?.(),
+    });
     return;
   }
   speechSynthesis.cancel();
@@ -133,6 +156,10 @@ export function speak(text: string, lang: Lang, rate: number, onDone?: () => voi
 
 /** Interruption: stops speech output at once. */
 export function stopSpeaking(): void {
+  if (isNative()) {
+    void Speech.stop();
+    return;
+  }
   if (canSpeak()) {
     speechSynthesis.cancel();
   }

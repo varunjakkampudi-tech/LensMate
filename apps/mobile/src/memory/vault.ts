@@ -1,9 +1,10 @@
 import { Platform } from "react-native";
+import { MemoryStoreError, nativeMemory } from "./native-store";
 
 /**
  * On-phone memory (F4 to F6): notes, saved captures, answers and reminders. Only items the user chooses to save are
  * kept. On web each item is encrypted with AES-GCM under a non-extractable key that never leaves this browser.
- * Native builds keep items in memory until the encrypted native store is added with the development build.
+ * On a phone items are stored in an SQLCipher database whose key sits in device secure storage (native-store.ts).
  */
 export type MemoryKind = "note" | "capture" | "answer" | "reminder" | "debrief";
 
@@ -21,7 +22,23 @@ export interface MemoryItem {
 const DB = "lensmate-vault";
 const STORE = "items";
 const KEYS = "keys";
-const memoryOnly = new Map<string, MemoryItem>();
+
+/** Why memory could not be read or saved, as a short code the screen can show. */
+export function memoryErrorText(error: unknown): string {
+  if (error instanceof MemoryStoreError) {
+    switch (error.failure) {
+      case "KEY_LOST":
+        return "Saved memory cannot be opened: its key is missing. Delete everything to start again.";
+      case "NOT_ENCRYPTED":
+        return "Memory is off because this build cannot encrypt it. Nothing was saved.";
+      case "UNAVAILABLE":
+        return "Memory is unavailable on this device right now.";
+      case "FAILED":
+        return "Memory could not complete that. Try again.";
+    }
+  }
+  return "Memory is unavailable in this browser.";
+}
 
 function isWeb(): boolean {
   return (
@@ -91,15 +108,24 @@ async function loadOrCreateKey(db: IDBDatabase): Promise<CryptoKey> {
 export async function saveItem(
   item: Omit<MemoryItem, "id" | "createdAt"> & { id?: string; createdAt?: number },
 ): Promise<MemoryItem> {
+  if (Platform.OS !== "web") {
+    const store = nativeMemory();
+    const full: MemoryItem = {
+      ...item,
+      id: item.id ?? (await store.newId()),
+      createdAt: item.createdAt ?? Date.now(),
+    };
+    await store.save({ id: full.id, createdAt: full.createdAt, body: JSON.stringify(full) });
+    return full;
+  }
+  if (!isWeb()) {
+    throw new MemoryStoreError("UNAVAILABLE");
+  }
   const full: MemoryItem = {
     ...item,
     id: item.id ?? crypto.randomUUID(),
     createdAt: item.createdAt ?? Date.now(),
   };
-  if (!isWeb()) {
-    memoryOnly.set(full.id, full);
-    return full;
-  }
   const db = await open();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = await crypto.subtle.encrypt(
@@ -112,8 +138,19 @@ export async function saveItem(
 }
 
 export async function listItems(): Promise<MemoryItem[]> {
+  if (Platform.OS !== "web") {
+    const items: MemoryItem[] = [];
+    for (const body of await nativeMemory().list()) {
+      try {
+        items.push(JSON.parse(body) as MemoryItem);
+      } catch {
+        // A row that is not valid JSON is skipped, never shown.
+      }
+    }
+    return items;
+  }
   if (!isWeb()) {
-    return [...memoryOnly.values()].sort((a, b) => b.createdAt - a.createdAt);
+    throw new MemoryStoreError("UNAVAILABLE");
   }
   const db = await open();
   const k = await key(db);
@@ -136,16 +173,22 @@ export async function listItems(): Promise<MemoryItem[]> {
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  if (!isWeb()) {
-    memoryOnly.delete(id);
+  if (Platform.OS !== "web") {
+    await nativeMemory().remove(id);
     return;
+  }
+  if (!isWeb()) {
+    throw new MemoryStoreError("UNAVAILABLE");
   }
   await run(await open(), STORE, "readwrite", (s) => s.delete(id));
 }
 
 /** Deletes every item and the key itself (data rights: delete all). */
 export async function deleteAll(): Promise<void> {
-  memoryOnly.clear();
+  if (Platform.OS !== "web") {
+    await nativeMemory().removeAll();
+    return;
+  }
   if (!isWeb()) {
     return;
   }

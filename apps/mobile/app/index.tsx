@@ -8,6 +8,7 @@ import { STRINGS } from "../src/strings";
 import { useGlasses } from "../src/ui/glasses";
 import { Icon, type IconName } from "../src/ui/icon";
 import { Body, Btn, Card, H2, Notice, Row } from "../src/ui/kit";
+import { usePrefs, type FeatureKey } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
 type Tint = "tintBlue" | "tintRed" | "tintIndigo" | "tintAmber";
@@ -57,9 +58,11 @@ const TOOLS: {
   href: "/tasks" | "/interview" | "/measure" | "/demo" | "/enrol";
   label: string;
   icon: IconName;
+  /** Set for a feature outside the active phase: the tile is hidden while that feature is switched off. */
+  feature?: FeatureKey;
 }[] = [
-  { href: "/tasks", label: "Agents & automations", icon: "agent" },
-  { href: "/interview", label: "Interview practice", icon: "user" },
+  { href: "/tasks", label: "Agents & automations", icon: "agent", feature: "tasks" },
+  { href: "/interview", label: "Interview practice", icon: "user", feature: "interview" },
   { href: "/measure", label: STRINGS.openMeasurement, icon: "chart" },
   { href: "/demo", label: DEMO.openButton, icon: "spark" },
   { href: "/enrol", label: STRINGS.openEnrolment, icon: "shield" },
@@ -217,6 +220,7 @@ function SetupCard({ setup }: { setup: AiSetup }) {
 
 export default function HomeScreen() {
   const { c } = useTheme();
+  const { prefs } = usePrefs();
   const setup = useAiSetup();
   const [due, setDue] = useState<MemoryItem[]>([]);
   useEffect(() => {
@@ -298,7 +302,7 @@ export default function HomeScreen() {
         <Body muted size={13}>
           {DEMO.openHint}
         </Body>
-        {TOOLS.map((t) => (
+        {TOOLS.filter((t) => t.feature === undefined || prefs.features[t.feature]).map((t) => (
           <Pressable
             key={t.href}
             accessibilityRole="button"

@@ -7,6 +7,7 @@ import {
   deleteItem,
   exportAll,
   listItems,
+  memoryErrorText,
   saveItem,
   type MemoryItem,
   type MemoryKind,
@@ -42,7 +43,7 @@ export default function MemoryScreen() {
   const refresh = useCallback(() => {
     void listItems()
       .then(setItems)
-      .catch(() => setMessage("Memory is unavailable in this browser."));
+      .catch((error: unknown) => setMessage(memoryErrorText(error)));
   }, []);
   useEffect(refresh, [refresh]);
 

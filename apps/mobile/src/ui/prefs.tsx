@@ -45,17 +45,23 @@ export const FEATURES = {
   reminders: "Reminders",
   checks: "Mistake checks",
   interview: "Interview practice",
+  tasks: "Agents and automations",
 } as const;
 export type FeatureKey = keyof typeof FEATURES;
 
-const ALL_ON = {
+/**
+ * The features the Goal places in the active phase are on by default. Interview practice and agents and automations are
+ * outside the active phase: their code stays, but they are off until the user turns them on in Profile → Features.
+ */
+export const ACTIVE_PHASE: Record<FeatureKey, boolean> = {
   vision: true,
   talk: true,
   translate: true,
   memory: true,
   reminders: true,
   checks: true,
-  interview: true,
+  interview: false,
+  tasks: false,
 };
 
 const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "profile">> = {
@@ -64,21 +70,21 @@ const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "prof
     largeCaptions: false,
     detailedDescriptions: false,
     voiceRate: 1,
-    features: ALL_ON,
+    features: ACTIVE_PHASE,
   },
   blind: {
     autoSpeak: true,
     largeCaptions: false,
     detailedDescriptions: true,
     voiceRate: 1.1,
-    features: { ...ALL_ON, interview: false },
+    features: ACTIVE_PHASE,
   },
   hearing: {
     autoSpeak: false,
     largeCaptions: true,
     detailedDescriptions: false,
     voiceRate: 1,
-    features: { ...ALL_ON, interview: false },
+    features: ACTIVE_PHASE,
   },
 };
 

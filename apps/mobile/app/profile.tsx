@@ -210,6 +210,7 @@ export default function MoreScreen() {
           label="Open agents & automations"
           tone="ghost"
           icon="agent"
+          disabled={!prefs.features.tasks}
           onPress={() => router.push("/tasks")}
         />
       </Card>
