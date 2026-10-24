@@ -66,3 +66,10 @@ the reason.
 - The ledger is reset with `TRUNCATE ... CASCADE` between scenarios. It is the owner role's only way to lower recorded
   spend in a test, and it bypasses the row trigger on purpose. It stands in for a restore from an old backup.
 - The run leaves no containers or volumes behind; a second run needs no manual cleanup.
+
+## Revocation and the anchor volume (scenarios h and i)
+
+- **h:** `revoke` runs with the anchor directory on the container's writable layer (a tmpfs on the same device as its
+  parent). The command must refuse, and the device must still be active in the database.
+- **i:** `revoke` runs in the admin container with the real anchor volume mounted. It must succeed, and the anchor must
+  list the revoked device.

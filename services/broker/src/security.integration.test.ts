@@ -300,12 +300,12 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
   });
 
   it("the genesis is recorded once, and the application role cannot write it directly", async () => {
+    // The owner clears the marker so the first call is a real first call, not a call after the migration backfill.
+    await owner.query("DELETE FROM broker_ledger_genesis");
     const first = await app.query<{ recorded: boolean }>(
       "SELECT broker_record_genesis() AS recorded",
     );
-    // This database already has budget rows from earlier tests, so the migration backfill may have recorded it. Either
-    // way, the record must exist afterwards and a second call must not record it again.
-    expect(first.rows[0]?.recorded).toEqual(expect.any(Boolean));
+    expect(first.rows[0]?.recorded).toBe(true);
     const second = await app.query<{ recorded: boolean }>(
       "SELECT broker_record_genesis() AS recorded",
     );

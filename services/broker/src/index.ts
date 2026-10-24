@@ -44,7 +44,7 @@ async function main(): Promise<void> {
     const store = new PostgresBudgetStore(pool);
     // Refuses to start when recorded spend is below what the broker itself anchored (a restored or altered ledger).
     // The owner must raise recorded spend to the anchored value, or to the provider-billed amount if higher.
-    const anchor = new FileAnchor(config.ledgerAnchorPath ?? "");
+    const anchor = new FileAnchor(config.ledgerAnchorPath ?? "", { requireMount: true });
     await probeAnchor(anchor);
     // The database's genesis record: once the ledger has started, a missing anchor always refuses.
     const ledgerPool: Pool = pool;
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
           )
         ).rows[0]?.recorded === true,
     };
-    const genesisPending = await checkContinuity(store, anchor, Date.now(), {
+    await checkContinuity(store, anchor, Date.now(), {
       genesis: config.ledgerGenesis,
       marker: genesisMarker,
     });
@@ -75,9 +75,9 @@ async function main(): Promise<void> {
     }
     // The anchor now exists, so the genesis can be recorded. Recording it earlier would leave a stuck marker if the
     // anchor write failed.
-    if (genesisPending) {
-      await genesisMarker.record();
-    }
+    // Once the anchor exists the ledger has started. Recording is idempotent, so this also repairs a marker that a
+    // previous start could not record.
+    await genesisMarker.record();
     budget = anchored;
     const registered = new PostgresDeviceStore(pool);
     // A restore can bring back devices that were revoked after the backup. Refuse until they are revoked again.

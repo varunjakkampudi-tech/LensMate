@@ -345,3 +345,30 @@ describe("revocation record and mount checks", () => {
     expect(await anchor.revokedDevices()).toEqual([revokedInDb]);
   });
 });
+
+describe("separate-mount requirement and the cross-process lock", () => {
+  it("refuses a revocation when the anchor directory shares a device with its parent (not a volume)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-requiremount-"));
+    try {
+      const anchor = new FileAnchor(join(dir, "anchor.json"), { requireMount: true });
+      expect(
+        await errorCodeOf(anchor.recordRevocation("11111111-2222-4333-8444-555555555555")),
+      ).toBe("ANCHOR_WRITE_FAILED");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a write while another writer holds the lock, and never writes unlocked", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-lock-"));
+    try {
+      const path = join(dir, "anchor.json");
+      writeFileSync(`${path}.lock`, "held");
+      const anchor = new FileAnchor(path, { requireMount: false, lockTimeoutMs: 100 });
+      expect(await errorCodeOf(anchor.write({ "2026-10": 1 }))).toBe("ANCHOR_WRITE_FAILED");
+      expect(existsSync(path)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

@@ -48,10 +48,15 @@ process.stdout.write(c.createHmac("sha256", key).update(f.readFileSync(process.a
 
 # The encryption key and the integrity key must be different. Reusing one key defeats the separation the tag relies on.
 require_distinct_keys() {
-  # openssl reads the first line of the encryption key file and the HMAC key is the whole file, trimmed. Two files that
-  # share either form are the same secret for one of the two uses, so both forms are compared.
-  if [ "$(head -n 1 "$1" | tr -d ' \t\r\n')" = "$(head -n 1 "$2" | tr -d ' \t\r\n')" ] ||
-    [ "$(tr -d ' \t\r\n' < "$1")" = "$(tr -d ' \t\r\n' < "$2")" ]; then
+  # openssl reads the first line of the encryption key file; the HMAC key is the whole file, trimmed the way node's
+  # String.prototype.trim does (every Unicode whitespace). Two files that share either form are the same secret for one
+  # of the two uses, so both forms are compared. Node does the trim so the rule matches the HMAC exactly.
+  local first_a first_b all_a all_b
+  first_a="$(head -n 1 "$1" | tr -d '[:space:]')"
+  first_b="$(head -n 1 "$2" | tr -d '[:space:]')"
+  all_a="$(node -e 'process.stdout.write(require("fs").readFileSync(process.argv[1], "utf8").trim())' "$1")"
+  all_b="$(node -e 'process.stdout.write(require("fs").readFileSync(process.argv[1], "utf8").trim())' "$2")"
+  if [ "$first_a" = "$first_b" ] || [ "$all_a" = "$all_b" ]; then
     die "$3" "the encryption key and the integrity key must be different files"
   fi
 }

@@ -2,6 +2,7 @@ import {
   closeSync,
   existsSync,
   fsyncSync,
+  statSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -71,8 +72,21 @@ export async function probeAnchor(anchor: { probe?: () => Promise<void> }): Prom
 }
 
 /** Writes JSON through a temporary file, flushed before the rename, so a crash never leaves a partial anchor. */
+export interface FileAnchorOptions {
+  /**
+   * Refuse to use the anchor unless its directory is a separate mount (a volume) rather than part of the container's
+   * writable layer. A revocation written to the writable layer would be lost on a restore without any signal.
+   */
+  readonly requireMount: boolean;
+  /** How long a write waits for the lock file before it refuses. Tests use a short value. */
+  readonly lockTimeoutMs?: number;
+}
+
 export class FileAnchor implements AnchorFile {
-  constructor(private readonly path: string) {}
+  constructor(
+    private readonly path: string,
+    private readonly options: FileAnchorOptions = { requireMount: false },
+  ) {}
 
   read(): Promise<Record<string, number> | null> {
     return settle(() => {
@@ -87,13 +101,12 @@ export class FileAnchor implements AnchorFile {
 
   recordRevocation(deviceId: string): Promise<void> {
     return settle(() => {
-      // Refuse when the anchor directory is not there: a mount that is missing must not look like a recorded revocation.
-      if (!existsSync(dirname(this.path))) {
-        throw new AnchorError("ANCHOR_WRITE_FAILED");
-      }
-      const state = this.readState();
-      const revoked = [...new Set([...(state?.revoked ?? []), deviceId])];
-      this.persist({ months: state?.months ?? {}, revoked });
+      this.checkMount();
+      this.locked(() => {
+        const state = this.readState();
+        const revoked = [...new Set([...(state?.revoked ?? []), deviceId])];
+        this.persist({ months: state?.months ?? {}, revoked });
+      });
     });
   }
 
@@ -112,9 +125,50 @@ export class FileAnchor implements AnchorFile {
 
   write(months: Readonly<Record<string, number>>): Promise<void> {
     return settle(() => {
-      const revoked = this.readState()?.revoked ?? [];
-      this.persist({ months, revoked });
+      this.locked(() => {
+        const revoked = this.readState()?.revoked ?? [];
+        this.persist({ months, revoked });
+      });
     });
+  }
+
+  /** Refuses when the anchor directory is missing, or (with requireMount) is not a separate mount from its parent. */
+  private checkMount(): void {
+    const directory = dirname(this.path);
+    if (!existsSync(directory)) {
+      throw new AnchorError("ANCHOR_WRITE_FAILED");
+    }
+    if (this.options.requireMount && statSync(directory).dev === statSync(dirname(directory)).dev) {
+      throw new AnchorError("ANCHOR_WRITE_FAILED");
+    }
+  }
+
+  /**
+   * Runs a read-modify-write under an exclusive lock file, so the broker and the admin CLI cannot interleave their
+   * writes. A lock left behind by a crash blocks writes until the owner removes it (see the runbook); it never
+   * allows an unlocked write.
+   */
+  private locked(operation: () => void): void {
+    const lockPath = `${this.path}.lock`;
+    const deadline = Date.now() + (this.options.lockTimeoutMs ?? 5000);
+    mkdirSync(dirname(this.path), { recursive: true });
+    for (;;) {
+      try {
+        closeSync(openSync(lockPath, "wx", 0o600));
+        break;
+      } catch (error) {
+        // Only a lock that is already held is worth waiting for. Any other failure refuses at once.
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST" || Date.now() > deadline) {
+          throw new AnchorError("ANCHOR_WRITE_FAILED");
+        }
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+      }
+    }
+    try {
+      operation();
+    } finally {
+      rmSync(lockPath, { force: true });
+    }
   }
 
   private readState(): AnchorState | null {
@@ -133,7 +187,7 @@ export class FileAnchor implements AnchorFile {
   private persist(state: AnchorState): void {
     try {
       mkdirSync(dirname(this.path), { recursive: true });
-      const temporary = `${this.path}.tmp`;
+      const temporary = `${this.path}.${String(process.pid)}.tmp`;
       const descriptor = openSync(temporary, "w", 0o600);
       try {
         writeSync(descriptor, JSON.stringify({ version: 1, ...state }));

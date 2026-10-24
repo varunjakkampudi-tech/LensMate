@@ -18,7 +18,9 @@ async function main(): Promise<void> {
     // Revoke also records on the anchor volume. Without that mount the revocation could be undone by a restore.
     const anchorPath = process.env.BROKER_LEDGER_ANCHOR_FILE?.trim();
     const anchor =
-      anchorPath === undefined || anchorPath === "" ? undefined : new FileAnchor(anchorPath);
+      anchorPath === undefined || anchorPath === ""
+        ? undefined
+        : new FileAnchor(anchorPath, { requireMount: true });
     const output = await runAdmin(
       process.argv.slice(2),
       new PostgresDeviceStore(pool),
