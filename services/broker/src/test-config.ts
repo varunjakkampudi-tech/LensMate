@@ -32,6 +32,8 @@ export function testConfig(overrides: Partial<BrokerConfig> = {}): BrokerConfig 
     maxImageBytes: 1_048_576,
     imageTokenCeiling: undefined,
     ownerCapConfirmation: undefined,
+    paidCalls: false,
+    devTestCapPaise: undefined,
     ...overrides,
   };
 }

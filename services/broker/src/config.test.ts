@@ -100,6 +100,36 @@ describe("loadConfig", () => {
     ).toThrow(/BROKER_DATABASE_URL is required in live mode/);
   });
 
+  it("refuses live mode while paid calls are off, even with the cap confirmed", () => {
+    const base = {
+      ...BASE_MOCK,
+      BROKER_MODE: "live",
+      OPENROUTER_API_KEY: LIVE_SECRET,
+      BROKER_DATABASE_URL: "postgres://db",
+      BROKER_LEDGER_ANCHOR_FILE: "/anchor/ledger-anchor.json",
+      BROKER_OWNER_CAP_CONFIRMATION_PAISE: "50000",
+      BROKER_MONTHLY_CAP_PAISE: "50000",
+    };
+    expect(() => loadConfig(base)).toThrow(/BROKER_PAID_CALLS is off/);
+    expect(() => loadConfig({ ...base, BROKER_PAID_CALLS: "off" })).toThrow(
+      /BROKER_PAID_CALLS is off/,
+    );
+    expect(loadConfig({ ...base, BROKER_PAID_CALLS: "on" }).paidCalls).toBe(true);
+  });
+
+  it("rejects an unknown paid-calls value rather than guessing", () => {
+    expect(() => loadConfig({ ...BASE_MOCK, BROKER_PAID_CALLS: "yes" })).toThrow(/on or off/);
+  });
+
+  it("refuses a development-test cap above the owner's 50 rupee limit", () => {
+    expect(() => loadConfig({ ...BASE_MOCK, BROKER_DEV_TEST_CAP_PAISE: "5001" })).toThrow(
+      /50 rupee/,
+    );
+    expect(loadConfig({ ...BASE_MOCK, BROKER_DEV_TEST_CAP_PAISE: "5000" }).devTestCapPaise).toBe(
+      5000,
+    );
+  });
+
   it("refuses live mode until the owner confirms the cap", () => {
     const base = {
       ...BASE_MOCK,
@@ -107,6 +137,7 @@ describe("loadConfig", () => {
       OPENROUTER_API_KEY: LIVE_SECRET,
       BROKER_DATABASE_URL: "postgres://db",
       BROKER_LEDGER_ANCHOR_FILE: "/anchor/ledger-anchor.json",
+      BROKER_PAID_CALLS: "on",
     };
     expect(() => loadConfig(base)).toThrow(/owner confirmation of the cap/);
     expect(() => loadConfig({ ...base, BROKER_OWNER_CAP_CONFIRMATION_PAISE: "40000" })).toThrow(

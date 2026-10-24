@@ -40,7 +40,17 @@ export interface BrokerConfig {
   /** Owner-measured worst-case image token count for the vision model. Vision is off until it is set. */
   readonly imageTokenCeiling: number | undefined;
   readonly ownerCapConfirmation: number | undefined;
+  /** Owner switch for paid provider calls. Off by default; live mode is refused until it is "on". */
+  readonly paidCalls: boolean;
+  /**
+   * Cumulative development-test cap in paise, kept apart from the monthly cap. When set, paid attempts are charged to
+   * this bucket instead of the monthly one. Undefined means the monthly cap applies.
+   */
+  readonly devTestCapPaise: number | undefined;
 }
+
+/** Highest development-test cap the owner has approved: ₹50, in paise. Enforced in code, not only in configuration. */
+const DEV_TEST_MAX_PAISE = 5_000;
 
 const DEFAULTS = {
   port: 8080,
@@ -70,6 +80,13 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
   const monthlyCapPaise = requiredInt(env, "BROKER_MONTHLY_CAP_PAISE", 0);
   const paisePerUsd = requiredInt(env, "BROKER_FX_PAISE_PER_USD", 1);
   const ownerCapConfirmation = optionalInt(env, "BROKER_OWNER_CAP_CONFIRMATION_PAISE");
+  const paidCalls = parsePaidCalls(env.BROKER_PAID_CALLS);
+  const devTestCapPaise = optionalInt(env, "BROKER_DEV_TEST_CAP_PAISE");
+  if (devTestCapPaise !== undefined && devTestCapPaise > DEV_TEST_MAX_PAISE) {
+    throw new ConfigError(
+      "BROKER_DEV_TEST_CAP_PAISE is above the owner's 50 rupee development-test limit",
+    );
+  }
   const openRouterApiKey = readSecret(env, "OPENROUTER_API_KEY");
   const databaseUrl = readSecret(env, "BROKER_DATABASE_URL");
   const ledgerAnchorPath = env.BROKER_LEDGER_ANCHOR_FILE?.trim() || undefined;
@@ -92,6 +109,11 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
     }
     if (databaseUrl === undefined) {
       throw new ConfigError("BROKER_DATABASE_URL is required in live mode");
+    }
+    if (!paidCalls) {
+      throw new ConfigError(
+        "live mode is refused while BROKER_PAID_CALLS is off (paid calls need the owner's explicit authorisation)",
+      );
     }
     if (ownerCapConfirmation !== monthlyCapPaise) {
       throw new ConfigError(
@@ -135,7 +157,20 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
     maxImageBytes: optionalInt(env, "BROKER_MAX_IMAGE_BYTES") ?? DEFAULTS.maxImageBytes,
     imageTokenCeiling: optionalInt(env, "BROKER_VISION_IMAGE_TOKEN_CEILING"),
     ownerCapConfirmation,
+    paidCalls,
+    devTestCapPaise,
   };
+}
+
+function parsePaidCalls(value: string | undefined): boolean {
+  const raw = emptyToUndefined(value);
+  if (raw === undefined || raw === "off") {
+    return false;
+  }
+  if (raw === "on") {
+    return true;
+  }
+  throw new ConfigError("BROKER_PAID_CALLS must be on or off");
 }
 
 function parseMode(value: string | undefined): BrokerMode {

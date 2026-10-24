@@ -1,6 +1,6 @@
 import { Writable } from "node:stream";
 import type { FastifyInstance } from "fastify";
-import { InMemoryBudgetStore, type BudgetStore } from "./budget.js";
+import { DEV_TEST_BUCKET, InMemoryBudgetStore, type BudgetStore } from "./budget.js";
 import { buildServer, enrolmentKey, utcMonth } from "./server.js";
 import { findModel, microUsdToPaise, worstCaseMicroUsd } from "./pricing.js";
 import {
@@ -291,6 +291,36 @@ describe("spend cap boundary", () => {
     await chat(app, GOOD_BODY);
     const second = await chat(app, GOOD_BODY);
     expect(second.json()).toMatchObject({ code: "BUDGET_EXHAUSTED" });
+  });
+});
+
+describe("development-test cap", () => {
+  it("keeps spending against one cumulative bucket, so a new month does not reset it", async () => {
+    const cap = worstPaiseFor(GOOD_BODY, testConfig());
+    const store = new InMemoryBudgetStore();
+    let clock = NOW;
+    const { app } = await harness(
+      { devTestCapPaise: cap, monthlyCapPaise: 1_000_000 },
+      new MockProvider(),
+      store,
+      () => clock,
+    );
+    expect((await chat(app, GOOD_BODY)).statusCode).toBe(200);
+    clock += 40 * 24 * 60 * 60 * 1000;
+    const next = await chat(app, GOOD_BODY);
+    expect(next.json()).toMatchObject({ code: "BUDGET_EXHAUSTED" });
+  });
+
+  it("charges only the development bucket and leaves the monthly cap untouched", async () => {
+    const store = new InMemoryBudgetStore();
+    const { app } = await harness(
+      { devTestCapPaise: 1_000_000, monthlyCapPaise: 1 },
+      new MockProvider(),
+      store,
+    );
+    expect((await chat(app, GOOD_BODY)).statusCode).toBe(200);
+    expect((await store.summary(DEV_TEST_BUCKET)).spentPaise).toBeGreaterThan(0);
+    expect((await store.summary(utcMonth(NOW))).spentPaise).toBe(0);
   });
 });
 

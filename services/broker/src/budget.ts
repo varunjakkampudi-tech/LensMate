@@ -8,6 +8,12 @@
  */
 export type ReserveRefusal = "BUDGET_EXHAUSTED" | "QUOTA_EXCEEDED";
 
+/**
+ * Bucket key for the development-test cap. It is not a calendar month, so the spend never resets: the cap is
+ * cumulative until the owner changes the configuration.
+ */
+export const DEV_TEST_BUCKET = "DEV-TEST-CUMULATIVE";
+
 export type ReserveResult =
   { readonly ok: true } | { readonly ok: false; readonly reason: ReserveRefusal };
 
