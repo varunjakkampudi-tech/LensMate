@@ -324,8 +324,12 @@ export async function verifySchema(pool: Pool): Promise<void> {
       problems.push(`missing table ${table}`);
       continue;
     }
+    // The catalog, not information_schema: information_schema lists only the columns the current role may use, so the
+    // application role would see no columns of a table it has no privilege on, and the schema would look missing.
     const columns = await pool.query<{ column_name: string }>(
-      "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",
+      "SELECT a.attname AS column_name FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid " +
+        "JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = $1 " +
+        "AND a.attnum > 0 AND NOT a.attisdropped",
       [table],
     );
     const present = new Set(columns.rows.map((row) => row.column_name));

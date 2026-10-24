@@ -319,6 +319,10 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     );
   });
 
+  it("the schema guard passes when the broker runs it as the application role, which has no rights on every table", async () => {
+    await expect(verifySchema(app)).resolves.toBeUndefined();
+  });
+
   it("the schema guard refuses a database whose immutability trigger was dropped or disabled", async () => {
     await owner.query("DROP TRIGGER broker_budget_spend_monotonic ON broker_budget_month");
     await expect(verifySchema(owner)).rejects.toThrow(/broker_budget_spend_monotonic/);
