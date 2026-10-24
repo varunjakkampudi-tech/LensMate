@@ -460,3 +460,16 @@ Not verified: native speech and speech output on devices, native encrypted stora
 translation announcement audio on a device, Telugu and Hindi voice quality, interruption timing, and all device
 measurements. Matrices (FEATURE_MATRIX.md, GAP_MATRIX.md) were not fully reconciled in this checkpoint; the review and
 decisions above are the current source.
+
+## Round 2026-10-24 (directive P0): baseline recovery and navigation
+
+- Baseline: dev head before this round was b314c26. Its GitHub CI run failed at the format check on the checkpoint
+  Markdown files. Fixed in 1132662 (format only). Prior run f4caa63 passed CI.
+- Demo "Back to home" now navigates to the home route explicitly (`src/navigation.ts`, unit tested). Before, it went
+  back in history when it could, so the result depended on the path taken. Browser check: home, demo, back to home
+  (exact route `/`); direct load of `/demo`, back to home (exact route `/`).
+- `APP_SCREEN_MATRIX.md` created from the real routes. Interview practice and tasks/automations are marked as built
+  ahead of their phase, and are not counted as current-phase work.
+- Not done in this round: the directive's native speech, native storage, premium visual redesign, advanced vision,
+  live research expansion, multi-agent, mobile actions, proactive automation and desktop interfaces. Each needs an owner
+  decision, a device build, or a later phase under the Goal (sections 2A.3, 8 and 9). See blocker.txt.
