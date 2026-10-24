@@ -383,3 +383,22 @@ Not in the owner's report, so still unverified on the phone:
 - Expo Go: fresh iOS bundle compiles (1,487 modules, HTTP 200) on the tree that includes these changes.
 - Gates: format, lint, knip, typecheck, schema, Expo config and tests pass. Mobile 377; root 483 broker and core.
 - Not verified on a phone: the wired screen (preview, capture, ask, speech stop) on the iPhone. The owner run is pending.
+
+## ROUND 2026-10-25 (home readiness tracker, native icons, AI connection, memory refusal)
+
+- Feature readiness registry: generated from FEATURE_MATRIX.md by tools/readiness/generate.mjs into
+  apps/mobile/src/readiness/registry.ts (132 rows: 54 features, 24 Part B/H/U, 54 checklist). A test compares the
+  registry with the matrix row by row, and --check reports drift.
+- Scoring policy v1 (apps/mobile/src/readiness/model.ts): percentages are implementation estimates by matrix status
+  (Specified 5, Unverified 25, Implemented 50, Tested 70, READY_FOR_OWNER 75, Hardware-pending 80, Measured 90,
+  Integrated 95). No row reaches 100. NOT_DUE rows have no percentage and show as Future.
+- State: nothing is Ready. The matrix records no owner-run device evidence for any row. A row becomes Ready only when
+  its evidence names a real phone or device and its status is Integrated.
+- Home: the Product readiness section sits below the primary actions, collapsed by default, with P-1, Features,
+  Checklist, Future and All filters, expandable rows, and the matrix date and commit.
+- Native icons draw the same SVG paths as the web (react-native-svg, included in Expo Go).
+- Memory: a lasting refusal (no SQLCipher, lost key) is remembered, so later calls fail at once without reopening the
+  database. Delete-all clears it.
+- AI connection panel on Profile: states reported separately; reachability check sends no credential and calls no AI.
+- Not done: the premium redesign of the other screens, the assistant redesign, the simulator redesign, live-vision
+  analysis and screenshot validation in light and dark modes. The owner's iPhone run of this build is pending.
