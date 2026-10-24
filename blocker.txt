@@ -235,3 +235,12 @@ Nothing is ever committed that should not be public, because history stays publi
 - Gates (2026-10-24, local): format:check, lint, knip, typecheck, check:schema, check:expo all exit 0. Root tests: 483
   broker and core pass, 40 database tests skipped locally (run in CI with PostgreSQL 17); mobile 279 pass.
   audit:high: one high finding, node-forge (BLOCKER-010). Unchanged by this round.
+
+- EAS development build (the one approved build), 2026-10-24: build 56ae896b-282e-4187-ab75-f1acbe095e64, Android APK,
+  profile development, commit b02a98b, SDK 58.0.0, status FINISHED. The build log says EAS created a remote Android
+  keystore for com.viswatra.lensmate during this non-interactive run. That keystore is a signing credential: the owner
+  should review it in the Expo dashboard (Credentials) and confirm it is wanted. The APK has NOT been installed or run on
+  a device or emulator. iOS was not built: the approval covered one build, and iOS signing depends on BLOCKER-001.
+- CI for this round: b02a98b run 40114850353 failed only at the format check (APP_SCREEN_MATRIX.md edited after the format
+  pass). fa2ca86 run 40114999918 (format fix) was cancelled by GitHub at the broker-integration job with no newer push;
+  the re-run completed successfully (quality, broker-integration and secret-scan all passed).

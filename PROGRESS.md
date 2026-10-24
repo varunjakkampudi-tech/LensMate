@@ -484,3 +484,8 @@ decisions above are the current source.
 - Not built: native speech input (waits for on-device verification), native camera and photo integration, premium
   visual design system, advanced OCR. Each is listed in blocker.txt.
 - EAS development build: see the result recorded in blocker.txt under this round.
+
+- Commits: b02a98b (feature), fa2ca86 (format fix). CI on fa2ca86 passed after one re-run (the first run was cancelled
+  by GitHub at the database job).
+- EAS: one Android development build finished (56ae896b, commit b02a98b). Not installed or run. Expo created an Android
+  keystore during the build; the owner should review it. See blocker.txt.
