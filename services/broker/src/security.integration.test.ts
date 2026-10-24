@@ -269,6 +269,25 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     ).rejects.toThrow(/reserved spend does not match/);
   });
 
+  it("the application role cannot reopen a settled reservation or change its charged amount", async () => {
+    await owner.query(
+      "INSERT INTO broker_budget_month (month) VALUES ('2030-05') ON CONFLICT DO NOTHING",
+    );
+    await owner.query(
+      "INSERT INTO broker_reservation (reservation_id, client_id, month, amount_paise, actual_paise, state, closed_at) VALUES ('closed-final-1', 'app-1', '2030-05', 10, 10, 'settled', now())",
+    );
+    await expect(
+      app.query(
+        "UPDATE broker_reservation SET state = 'reserved' WHERE reservation_id = 'closed-final-1'",
+      ),
+    ).rejects.toThrow(/closed reservation cannot change/);
+    await expect(
+      app.query(
+        "UPDATE broker_reservation SET actual_paise = 0 WHERE reservation_id = 'closed-final-1'",
+      ),
+    ).rejects.toThrow(/closed reservation cannot change/);
+  });
+
   it("the schema guard refuses a database whose immutability trigger was dropped or disabled", async () => {
     await owner.query("DROP TRIGGER broker_budget_spend_monotonic ON broker_budget_month");
     await expect(verifySchema(owner)).rejects.toThrow(/broker_budget_spend_monotonic/);

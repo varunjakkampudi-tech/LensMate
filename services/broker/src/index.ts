@@ -46,6 +46,11 @@ async function main(): Promise<void> {
     await checkContinuity(store, anchor, Date.now());
     const anchored = new AnchoredBudgetStore(store, anchor);
     await anchored.start();
+    // The continuity check has passed, so the verified spend is recorded now. A crash before the first settlement
+    // then leaves no unanchored spend behind.
+    for (const month of recentMonths(monthOf(Date.now()), 2)) {
+      await anchored.refresh(month);
+    }
     budget = anchored;
     devices = new PostgresDeviceStore(pool);
     reaper = async () => {

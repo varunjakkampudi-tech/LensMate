@@ -171,7 +171,13 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
           required: ["code", "label"],
           properties: {
             code: { type: "string", minLength: 8, maxLength: 40 },
-            label: { type: "string", minLength: 1, maxLength: 64 },
+            // Same pattern as the table CHECK. Checked here so a bad label is refused before the code is redeemed.
+            label: {
+              type: "string",
+              minLength: 1,
+              maxLength: 64,
+              pattern: "^[A-Za-z0-9 ._-]{1,64}$",
+            },
           },
         },
       },

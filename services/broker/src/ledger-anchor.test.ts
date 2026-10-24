@@ -207,3 +207,18 @@ describe("startup write probe", () => {
     }
   });
 });
+
+describe("anchor writes under concurrency", () => {
+  it("ends with the anchor at the final recorded spend when settlements finish out of order", async () => {
+    const anchor = new MemoryAnchor();
+    const inner = new InMemoryBudgetStore();
+    const store = new AnchoredBudgetStore(inner, anchor);
+    await store.start();
+    for (const id of ["a", "b", "c"]) {
+      await store.reserve(reserveInput(id, 100));
+    }
+    await Promise.all([store.settle("a", 100), store.settle("b", 100), store.settle("c", 100)]);
+    expect(await anchor.read()).toEqual({ "2026-10": 300 });
+    expect((await inner.summary("2026-10")).spentPaise).toBe(300);
+  });
+});

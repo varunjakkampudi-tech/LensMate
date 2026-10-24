@@ -23,8 +23,14 @@ refuse_password_in_url() {
   local url="$1" label="$2"
   # A colon in the userinfo (user:password@host) or a password query parameter is refused. user@host and host-only
   # URLs are allowed. Only PGPASSFILE may carry the password.
-  local userinfo='://[^@]*:[^@]*@' query='[?&][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]='
-  if [[ "$url" =~ $userinfo ]] || [[ "$url" =~ $query ]]; then
+  # Only postgres:// or postgresql:// URLs are accepted. The libpq keyword form (host=... password=...) is refused,
+  # because it would put the password on the command line.
+  local scheme='^postgres(ql)?://' userinfo='://[^@]*:[^@]*@'
+  local keyword='(^|[[:space:]])[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][[:space:]]*=' query='[?&][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]='
+  if [[ ! "$url" =~ $scheme ]]; then
+    die "$label" "the connection must be a postgres:// URL with no password; use PGPASSFILE instead"
+  fi
+  if [[ "$url" =~ $userinfo ]] || [[ "$url" =~ $query ]] || [[ "$url" =~ $keyword ]]; then
     die "$label" "the connection URL contains a password; use PGPASSFILE instead"
   fi
 }

@@ -639,3 +639,25 @@ describe("enrolment rate-limit key", () => {
     expect(enrolmentKey("2001:db8::ffff")).toBe(enrolmentKey("2001:db8::1"));
   });
 });
+
+describe("enrolment label validation", () => {
+  it("refuses a bad label before redeeming, so the code stays usable for a correct request", async () => {
+    const devices = new InMemoryDeviceStore();
+    const { app } = await harnessWithDevices(devices);
+    const code = await issueEnrolmentCode(devices, NOW);
+    const bad = await request(app, {
+      method: "POST",
+      url: "/v1/enrol",
+      headers: { "x-test-client": "label-check" },
+      payload: { code, label: "bad<label>" },
+    });
+    expect(bad.statusCode).toBe(400);
+    const good = await request(app, {
+      method: "POST",
+      url: "/v1/enrol",
+      headers: { "x-test-client": "label-check" },
+      payload: { code, label: "owner phone" },
+    });
+    expect(good.statusCode).toBe(200);
+  });
+});

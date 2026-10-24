@@ -115,7 +115,27 @@ const TRIGGERS = [
   "broker_budget_spend_monotonic",
   "broker_budget_reserved_consistent",
   "broker_reservation_reserved_consistent",
+  "broker_reservation_closed_final",
 ];
+
+/**
+ * A reservation moves once: from reserved to settled or released. After that its state, actual spend and close time are
+ * fixed, so the application role cannot reopen a billed call or release one that was charged.
+ */
+const CLOSED_FINAL_SQL = `
+CREATE OR REPLACE FUNCTION broker_forbid_reservation_reopen() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+  IF OLD.state <> 'reserved'
+    AND (NEW.state, NEW.actual_paise, NEW.closed_at) IS DISTINCT FROM (OLD.state, OLD.actual_paise, OLD.closed_at) THEN
+    RAISE EXCEPTION 'a closed reservation cannot change';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+DROP TRIGGER IF EXISTS broker_reservation_closed_final ON broker_reservation;
+CREATE TRIGGER broker_reservation_closed_final BEFORE UPDATE ON broker_reservation
+  FOR EACH ROW EXECUTE FUNCTION broker_forbid_reservation_reopen();
+`;
 
 const REDEEM_SQL = `
 CREATE OR REPLACE FUNCTION broker_redeem_enrolment(p_code_sha256 text, p_device_id text, p_label text, p_secret_sha256 text)
@@ -204,6 +224,7 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
     await client.query(SCHEMA_SQL);
     await client.query(REDEEM_SQL);
     await client.query(RESERVED_SQL);
+    await client.query(CLOSED_FINAL_SQL);
     await client.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
     await client.query(`REVOKE ALL ON ${LEDGER_TABLES.join(", ")} FROM ${app}, ${admin}`);
     await client.query(`GRANT USAGE ON SCHEMA public TO ${app}, ${admin}`);

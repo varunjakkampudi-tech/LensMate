@@ -1,4 +1,14 @@
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { dirname } from "node:path";
 import type { BudgetStore, BudgetSummary, ReserveInput, ReserveResult } from "./budget.js";
 
@@ -75,7 +85,14 @@ export class FileAnchor implements AnchorFile {
     try {
       mkdirSync(dirname(this.path), { recursive: true });
       const temporary = `${this.path}.tmp`;
-      writeFileSync(temporary, JSON.stringify({ version: 1, months }), { mode: 0o600, flag: "w" });
+      // Flush the data to disk before the rename, so a power loss cannot leave an empty or partial anchor in place.
+      const descriptor = openSync(temporary, "w", 0o600);
+      try {
+        writeSync(descriptor, JSON.stringify({ version: 1, months }));
+        fsyncSync(descriptor);
+      } finally {
+        closeSync(descriptor);
+      }
       renameSync(temporary, this.path);
       return Promise.resolve();
     } catch {
@@ -209,6 +226,7 @@ export class AnchoredBudgetStore implements BudgetStore {
   private halted = false;
   private readonly monthOfReservation = new Map<string, string>();
   private anchored: Record<string, number> = {};
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly inner: BudgetStore,
@@ -281,8 +299,16 @@ export class AnchoredBudgetStore implements BudgetStore {
     }
   }
 
-  private async writeMonth(month: string): Promise<void> {
+  /** Writes are queued, so two settlements never race to publish older values over newer ones. */
+  private writeMonth(month: string): Promise<void> {
+    const write = this.writeQueue.then(() => this.writeMonthNow(month));
+    this.writeQueue = write.catch(() => undefined);
+    return write;
+  }
+
+  private async writeMonthNow(month: string): Promise<void> {
     const summary = await this.inner.summary(month);
+    // The maximum is taken after the read and after any earlier queued write, never from a stale copy.
     const next = {
       ...this.anchored,
       [month]: Math.max(this.anchored[month] ?? 0, summary.spentPaise),

@@ -376,3 +376,12 @@ Enrolment rate limiting: each client address has its own bucket (5 burst, then o
 Test evidence (2026-10-24, PostgreSQL 17 on a throwaway local instance): `pnpm test` with `BROKER_TEST_DATABASE_URL` set passed 29 of 29 root suites (360 tests) and 12 of 12 mobile suites (97 tests). Coverage gates passed. Typecheck, lint, format, knip, build, `check:expo` and `check:schema` passed. A local gitleaks binary is not installed, so the secret scan is run by CI; a local pattern scan of the diff found no secret-shaped strings.
 
 Still open (owner or external): the reverse-proxy TLS, body and rate limits and `trustProxy` hop count; the Docker build and the compose stack (not run here); the disclosure text and version approval (owner decision (e)); live mode stays disabled; BLOCKER-006 remains OPEN.
+
+### BLOCKER-006 and BLOCKER-008: review conditions, local Docker validation (2026-10-24)
+
+- Independent review of 6b6ea5e (fresh context, read-only): APPROVE WITH CONDITIONS, no critical or high finding. Conditions and their fixes in this change set: backup guard refuses the libpq keyword form and any non-postgres URL (tested by running the real `lib.sh`); anchor writes serialised and fsynced, and the maximum taken after the read (concurrency test); enrolment label validated before redemption (test: a bad label is refused and the code stays usable).
+- Also fixed from the same review: a closed reservation cannot change state, actual spend or close time (database trigger, PostgreSQL test); the verified spend is written to the anchor at start-up.
+- Still open from that review: label-level gaps are closed; the state-transition guard covers the application role's reopen path; owner-trust residual (the owner role can disable triggers; the anchor catches spend lowering at the next reservation, reserved lowering does not). Start-up does not yet verify function bodies or grants; recorded as a residual.
+- Local Docker validation (mock mode only; project `lensmate-broker-local`; no Hostinger, no provider call, no real key): see blocker.txt BLOCKER-006 for the step table. Other products' containers were recorded before and after and were not changed.
+- Test evidence for this change set: `pnpm test` with PostgreSQL 17 on a throwaway instance: root 370 tests and mobile 98 tests passed; coverage gates passed; typecheck, lint, format, knip and build passed.
+- BLOCKER-006 remains OPEN. Re-review of this change set is PENDING.
