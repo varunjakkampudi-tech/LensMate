@@ -1,7 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { Linking, View } from "react-native";
 import { Btn, Notice } from "../ui/kit";
 
@@ -19,7 +19,11 @@ export interface CameraHandle {
 const MAX_SIDE = 1024;
 
 /** Resizes a photo so its long side is at most MAX_SIDE, and returns it as a JPEG data URL. */
-async function toJpegDataUrl(uri: string, width: number, height: number): Promise<string | null> {
+export async function toJpegDataUrl(
+  uri: string,
+  width: number,
+  height: number,
+): Promise<string | null> {
   if (width === 0 || height === 0) {
     return null;
   }
@@ -32,6 +36,46 @@ async function toJpegDataUrl(uri: string, width: number, height: number): Promis
     base64: true,
   });
   return out.base64 === undefined ? null : `data:image/jpeg;base64,${out.base64}`;
+}
+
+export interface CaptureGateDeps {
+  /** True only when the preview is mounted and the camera permission is granted. */
+  ready(): boolean;
+  /** Takes the photo. Throws if the camera fails. */
+  takePicture(): Promise<{ uri: string; width: number; height: number }>;
+  /** Resizes and encodes a photo. Returns null when the image cannot be encoded. */
+  encode(uri: string, width: number, height: number): Promise<string | null>;
+  /** True while the component is still mounted. Results after unmount are discarded. */
+  isMounted(): boolean;
+  /** Shows a short user-facing message. Never receives device or library error text. */
+  onError(message: string): void;
+}
+
+/**
+ * One capture at a time. A second call while a capture runs returns null without taking a second photo. Capture returns
+ * null when the camera is not ready, when the component has gone, or when taking or encoding the photo fails; a failure
+ * is also reported through onError.
+ */
+export function createCaptureGate(deps: CaptureGateDeps): () => Promise<string | null> {
+  let inFlight = false;
+  return async () => {
+    if (inFlight || !deps.ready()) {
+      return null;
+    }
+    inFlight = true;
+    try {
+      const photo = await deps.takePicture();
+      const dataUrl = await deps.encode(photo.uri, photo.width, photo.height);
+      return deps.isMounted() ? dataUrl : null;
+    } catch {
+      if (deps.isMounted()) {
+        deps.onError("The photo could not be taken. Try again, or upload a photo instead.");
+      }
+      return null;
+    } finally {
+      inFlight = false;
+    }
+  };
 }
 
 export function pickImageFile(onPicked: (dataUrl: string | null) => void): void {
@@ -61,20 +105,37 @@ export const CameraPreview = forwardRef<CameraHandle, { onError: (message: strin
   function CameraPreview({ onError }, ref) {
     const [permission, requestPermission] = useCameraPermissions();
     const view = useRef<CameraView | null>(null);
+    const granted = useRef(false);
+    const mounted = useRef(true);
+    const reportError = useRef(onError);
+    reportError.current = onError;
+    granted.current = permission?.granted === true;
 
-    useImperativeHandle(ref, () => ({
-      capture: async () => {
-        if (view.current === null) {
-          return null;
-        }
-        try {
-          const photo = await view.current.takePictureAsync({ quality: 1, skipProcessing: true });
-          return await toJpegDataUrl(photo.uri, photo.width, photo.height);
-        } catch {
-          return null;
-        }
-      },
-    }));
+    useEffect(() => {
+      mounted.current = true;
+      return () => {
+        mounted.current = false;
+      };
+    }, []);
+
+    const gate = useMemo(
+      () =>
+        createCaptureGate({
+          ready: () => view.current !== null && granted.current,
+          takePicture: async () => {
+            if (view.current === null) {
+              throw new Error("CAMERA_NOT_READY");
+            }
+            return view.current.takePictureAsync({ quality: 1, skipProcessing: true });
+          },
+          encode: toJpegDataUrl,
+          isMounted: () => mounted.current,
+          onError: (message) => reportError.current(message),
+        }),
+      [],
+    );
+
+    useImperativeHandle(ref, () => ({ capture: gate }), [gate]);
 
     if (permission === null) {
       return null;

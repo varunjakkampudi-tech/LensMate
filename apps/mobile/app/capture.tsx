@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { aiErrorText, askVision } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
@@ -236,7 +236,7 @@ export default function CaptureScreen() {
             }}
           />
         )}
-        {Platform.OS === "web" && !live ? (
+        {!live ? (
           <Btn
             testID="upload-photo-button"
             label="Upload"
