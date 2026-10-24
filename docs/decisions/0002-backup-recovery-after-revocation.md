@@ -22,16 +22,16 @@ user also cannot be sure that the revoked phone's backup is deleted.
 A. Keep per-device backups (current). Simple, no broadening. The user loses the backup on re-enrolment.
 
 B. Purge the device's backup when the owner revokes the device. Privacy-positive. Needs the admin role to be granted
-   DELETE on `broker_memory_backup` (a migration change) and the revoke path to call it. It also needs an owner
-   decision because it destroys data the user may still want.
+DELETE on `broker_memory_backup` (a migration change) and the revoke path to call it. It also needs an owner
+decision because it destroys data the user may still want.
 
 C. Recovery identity: derive a backup identifier from the backup passphrase on the phone (a hash, not the passphrase)
-   and key backups to it, so a new device with the passphrase can restore. This broadens access: anyone with the
-   passphrase and the identifier can fetch the ciphertext. It also means the server keeps data tied to a
-   user-held secret. Not recommended without a threat-model review and owner authorization.
+and key backups to it, so a new device with the passphrase can restore. This broadens access: anyone with the
+passphrase and the identifier can fetch the ciphertext. It also means the server keeps data tied to a
+user-held secret. Not recommended without a threat-model review and owner authorization.
 
 D. User-initiated migration: before revocation the user (still on the old phone) copies the backup to the new phone
-   by a visible step. Not possible for a lost phone.
+by a visible step. Not possible for a lost phone.
 
 ## 4. Recommendation
 

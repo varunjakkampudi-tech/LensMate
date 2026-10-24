@@ -444,6 +444,7 @@ failure paths; decision records; dependency advisory check. Broker stayed in moc
 no change to main, no waiver.
 
 Evidence (local, this checkpoint):
+
 - Gates: format, knip, lint, build, mobile typecheck, schema, Expo config and tests all exit 0.
 - Tests: broker and core 523 passed (35 suites); mobile 259 passed (25 suites). New in this checkpoint: 2 broker backup
   tests (revoked device refused; new device cannot read the replaced device's backup), 2 session-timing tests, plus the

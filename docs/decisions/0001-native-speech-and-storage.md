@@ -12,12 +12,12 @@ platforms (Goal section 12).
 
 ## Candidate packages (checked on the npm registry, 2026-10-24)
 
-| Need | Package | Version | Licence | Route | Notes |
-|---|---|---|---|---|---|
-| Speech output | `expo-speech` | 58.0.3 | MIT | Platform text-to-speech (on device) | Fits the on-device rule. Voice quality depends on the device. Telugu and Hindi voices depend on the device. |
-| Speech input | `expo-speech-recognition` | 58.0.0 | MIT | Platform recogniser (on-device option available) | Community package, not Expo's own. Its on-device mode must be confirmed on device before use. The recogniser setting must not send audio to a cloud service by default. |
-| Encrypted notes | `expo-sqlite` | 58.0.14 | MIT | SQLite on device | Expo-maintained. Encryption needs confirming for SDK 58 (SQLCipher option). If unavailable, store encrypted rows as the browser vault does, using AES-GCM with a key in `expo-secure-store`. |
-| Key storage | `expo-secure-store` | 58.0.2 | MIT | Keychain or Keystore | Already approved and in use for the device credential. |
+| Need            | Package                   | Version | Licence | Route                                            | Notes                                                                                                                                                                                        |
+| --------------- | ------------------------- | ------- | ------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Speech output   | `expo-speech`             | 58.0.3  | MIT     | Platform text-to-speech (on device)              | Fits the on-device rule. Voice quality depends on the device. Telugu and Hindi voices depend on the device.                                                                                  |
+| Speech input    | `expo-speech-recognition` | 58.0.0  | MIT     | Platform recogniser (on-device option available) | Community package, not Expo's own. Its on-device mode must be confirmed on device before use. The recogniser setting must not send audio to a cloud service by default.                      |
+| Encrypted notes | `expo-sqlite`             | 58.0.14 | MIT     | SQLite on device                                 | Expo-maintained. Encryption needs confirming for SDK 58 (SQLCipher option). If unavailable, store encrypted rows as the browser vault does, using AES-GCM with a key in `expo-secure-store`. |
+| Key storage     | `expo-secure-store`       | 58.0.2  | MIT     | Keychain or Keystore                             | Already approved and in use for the device credential.                                                                                                                                       |
 
 ## Recommendation
 
