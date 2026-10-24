@@ -72,11 +72,12 @@ describe("native speech output", () => {
     expect(engineSpeak).not.toHaveBeenCalled();
   });
 
-  it("does not open a microphone while native speech input is switched off in this build", () => {
+  it("does not open a microphone while native speech input is switched off in this build", async () => {
     const onError = jest.fn();
     const onEnd = jest.fn();
 
     listen("en", { onPartial: jest.fn(), onFinal: jest.fn(), onError, onEnd });
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(onError).toHaveBeenCalledWith("DISABLED");
     expect(onEnd).toHaveBeenCalledTimes(1);

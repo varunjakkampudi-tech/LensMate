@@ -60,6 +60,15 @@ describe("native speech input", () => {
     expect(recognizer.start).not.toHaveBeenCalled();
   });
 
+  it("reports unavailable, not a crash, when the module is missing (Expo Go has no speech recogniser)", () => {
+    const h = handlers();
+
+    startNativeListening("en", h, undefined, true);
+
+    expect(h.onError).toHaveBeenCalledWith("UNAVAILABLE");
+    expect(h.onEnd).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses when the phone has no recogniser", () => {
     const { recognizer } = fakeRecognizer({ available: false });
     const h = handlers();

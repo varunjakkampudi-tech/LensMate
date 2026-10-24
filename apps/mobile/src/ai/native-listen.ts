@@ -1,5 +1,18 @@
-import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
 import { LANGS, type Lang } from "../ui/prefs";
+
+/**
+ * Loads the recogniser only when it is needed. The package is a custom native module: Expo Go does not contain it, and
+ * importing it there throws at load time, which would stop the whole app from starting. A failed load means
+ * "unavailable", and the caller shows that message.
+ */
+export async function loadNativeRecognizer(): Promise<NativeRecognizer | undefined> {
+  try {
+    const mod = await import("expo-speech-recognition");
+    return mod.ExpoSpeechRecognitionModule as unknown as NativeRecognizer;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Native speech input (owner decision, 2026-10-24: conditional approval of expo-speech-recognition 58.0.0).
@@ -55,7 +68,7 @@ const DEFAULT_LOCALES: Record<Lang, string> = Object.fromEntries(
 export function startNativeListening(
   lang: Lang,
   handlers: NativeListenHandlers,
-  recognizer: NativeRecognizer = ExpoSpeechRecognitionModule as unknown as NativeRecognizer,
+  recognizer: NativeRecognizer | undefined,
   enabled: boolean = NATIVE_LISTENING_ENABLED,
 ): () => void {
   const refuse = (code: NativeListenError) => {
@@ -66,7 +79,7 @@ export function startNativeListening(
   if (!enabled) {
     return refuse("DISABLED");
   }
-  if (!recognizer.isRecognitionAvailable()) {
+  if (recognizer === undefined || !recognizer.isRecognitionAvailable()) {
     return refuse("UNAVAILABLE");
   }
   if (!recognizer.supportsOnDeviceRecognition()) {

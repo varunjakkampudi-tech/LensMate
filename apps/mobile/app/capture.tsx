@@ -202,14 +202,16 @@ export default function CaptureScreen() {
               label="Take photo"
               icon="camera"
               onPress={() => {
-                const s = camera.current?.capture() ?? null;
-                setLive(false);
-                capture.end(token.current);
-                if (s === null) {
-                  setError("The camera was not ready. Try again.");
-                } else {
-                  setNewPhoto(s);
-                }
+                void (async () => {
+                  const s = (await camera.current?.capture()) ?? null;
+                  setLive(false);
+                  capture.end(token.current);
+                  if (s === null) {
+                    setError("The camera was not ready. Try again.");
+                  } else {
+                    setNewPhoto(s);
+                  }
+                })();
               }}
             />
             <Btn

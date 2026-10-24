@@ -8,6 +8,7 @@ import { rupees, useAiSetup } from "../src/ai/use-ai-setup";
 import { readBrokerConfig } from "../src/broker-config";
 import { STRINGS } from "../src/strings";
 import { Body, Btn, Card, Chip, H2, Notice, Page, Row } from "../src/ui/kit";
+import { NotificationTestCard } from "../src/notify/test-card";
 import { LangPicker } from "../src/ui/lang-picker";
 import { FEATURES, usePrefs, type FeatureKey, type Profile } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
@@ -214,6 +215,8 @@ export default function MoreScreen() {
           onPress={() => router.push("/tasks")}
         />
       </Card>
+
+      <NotificationTestCard />
 
       <Card>
         <H2>Interview practice</H2>

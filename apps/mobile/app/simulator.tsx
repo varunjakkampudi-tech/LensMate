@@ -72,12 +72,14 @@ export default function SimulatorScreen() {
       token.current = capture.begin("camera", "Virtual glasses camera", stopCam);
       return;
     }
-    const shot = camera.current?.capture() ?? null;
-    setLive(false);
-    capture.end(token.current);
-    if (shot !== null) {
-      void analyse(shot);
-    }
+    void (async () => {
+      const shot = (await camera.current?.capture()) ?? null;
+      setLive(false);
+      capture.end(token.current);
+      if (shot !== null) {
+        void analyse(shot);
+      }
+    })();
   };
 
   return (

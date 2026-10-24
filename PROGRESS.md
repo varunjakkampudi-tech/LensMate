@@ -499,3 +499,21 @@ decisions above are the current source.
 - Native speech input: expo-speech-recognition 58.0.0 added and wired behind a disabled flag. 15 mocked tests.
 - Shell: top and bottom safe-area spacers (native measured insets, web env() values).
 - Not verified: anything on an iPhone. No Mac or Xcode here, so no iPhone build was attempted.
+
+## Round 2026-10-25 (Expo Go compatibility)
+
+Expo Go compatibility, as built. "Bundle" means the iOS bundle compiles. "Device" means a phone run; none done yet.
+
+| Feature                       | Expo Go                                      | Status                                                        |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------------------------- |
+| Home, navigation, screens     | Yes (JS only)                                | Bundle compiles; device not run                               |
+| SEE: camera preview and photo | Yes (expo-camera)                            | Bundle; device not run                                        |
+| SEE: photo library            | Yes (expo-image-picker)                      | Bundle; device not run                                        |
+| TALK: speech output           | Yes (expo-speech)                            | Bundle; device not run                                        |
+| HEAR: speech input            | No (custom native module)                    | Shows "not available"; needs development build and owner flag |
+| Translation (text)            | Yes; broker needed                           | Mock by default; no billable calls                            |
+| Notes and memory              | No: encrypted SQLite needs development build | Refuses and says so; no plain-text writes                     |
+| Local notifications and test  | Yes (expo-notifications)                     | Bundle; arrival and tap not verified                          |
+| Simulator                     | Yes (JS only)                                | Bundle; device not run                                        |
+| Credentials (SecureStore)     | Yes                                          | Unchanged                                                     |
+| Broker (AI)                   | Needs network and LAN base URL               | Mock by default                                               |

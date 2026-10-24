@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import { LANGS, type Lang } from "../ui/prefs";
 import {
   nativeListenErrorText,
+  loadNativeRecognizer,
   startNativeListening,
   type NativeListenError,
 } from "./native-listen";
@@ -85,7 +86,20 @@ export function listen(
 ): Listening {
   if (isNative()) {
     stopSpeaking();
-    return { stop: startNativeListening(lang, handlers) };
+    // The recogniser loads asynchronously; stopping before it loads cancels the session.
+    let stopped = false;
+    let stopSession: () => void = () => undefined;
+    void loadNativeRecognizer().then((recognizer) => {
+      if (!stopped) {
+        stopSession = startNativeListening(lang, handlers, recognizer);
+      }
+    });
+    return {
+      stop: () => {
+        stopped = true;
+        stopSession();
+      },
+    };
   }
   const Recognition = recognitionClass();
   if (Recognition === undefined) {

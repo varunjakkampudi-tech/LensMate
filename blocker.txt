@@ -271,3 +271,21 @@ Nothing is ever committed that should not be public, because history stays publi
   notifications (no notifications package approved), premium visual redesign, backup warnings and purge design.
 - Gates (local): format, lint, knip, typecheck, check:schema, check:expo pass. Root tests: 483 broker and core pass; mobile
   305 pass. audit:high: unchanged node-forge finding (BLOCKER-010).
+
+## ROUND 2026-10-25 (Expo Go on iPhone with a QR code)
+
+- `pnpm exec expo start --go --lan` runs from apps/mobile. Metro started; the Expo manifest is served; the iOS launch
+  bundle compiles (HTTP 200, about 6.8 MB). The QR code is printed by Expo to the terminal: it was not captured here,
+  because this check ran through a pipe. Port 8081 was busy on this machine, so Expo chose another port.
+- Startup crash fixed: the speech-recognition package is a custom native module that Expo Go does not contain, and
+  importing it stopped the app from starting. It is now loaded on demand; if missing, speech input reports UNAVAILABLE.
+- Added for Expo Go: expo-camera 58.0.12 (live preview and photo), expo-image-picker 58.0.10 (photo library),
+  expo-image-manipulator 58.0.15 (1024 px JPEG, same limit as the web path), expo-notifications 58.1.6 (local
+  notifications and a test control in Profile).
+- Notes: the encrypted store needs the development build. Expo Go cannot open the SQLCipher database, so the store refuses
+  and says so; nothing is written in plain text.
+- Not verified on an iPhone in this round: camera preview and capture, photo picking, speech output, local notification
+  arrival, tap-through, and the whole Expo Go session. The bundle compiles; no device has run it.
+- Gates (local): format, lint, knip, typecheck, check:schema, check:expo pass; root tests 483 broker and core, 312 mobile.
+- Not checked: `npx expo install --check` (reports newer patch versions available). Expo Go on the App Store must support
+  SDK 58; if it does not, the QR code will say the project is incompatible.

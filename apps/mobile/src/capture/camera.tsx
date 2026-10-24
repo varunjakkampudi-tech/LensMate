@@ -1,9 +1,11 @@
 import { createElement, forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { Platform, Text, View } from "react-native";
-import { useTheme } from "../ui/theme";
 
+/**
+ * Browser camera (web). The phone build uses camera.native.tsx, which has the same exports. Both return a JPEG data
+ * URL of at most 1024 px on the long side, so the broker's image limit holds on either platform.
+ */
 export interface CameraHandle {
-  capture(): string | null;
+  capture(): Promise<string | null>;
 }
 
 const MAX_SIDE = 1024;
@@ -57,11 +59,10 @@ export function pickImageFile(onPicked: (dataUrl: string | null) => void): void 
  */
 export const CameraPreview = forwardRef<CameraHandle, { onError: (message: string) => void }>(
   function CameraPreview({ onError }, ref) {
-    const { c } = useTheme();
     const video = useRef<HTMLVideoElement | null>(null);
 
     useImperativeHandle(ref, () => ({
-      capture: () =>
+      capture: async () =>
         video.current === null
           ? null
           : toJpeg(video.current, video.current.videoWidth, video.current.videoHeight),
@@ -72,9 +73,6 @@ export const CameraPreview = forwardRef<CameraHandle, { onError: (message: strin
     reportError.current = onError;
 
     useEffect(() => {
-      if (Platform.OS !== "web") {
-        return;
-      }
       let stream: MediaStream | null = null;
       let cancelled = false;
       navigator.mediaDevices
@@ -101,15 +99,6 @@ export const CameraPreview = forwardRef<CameraHandle, { onError: (message: strin
       };
     }, []);
 
-    if (Platform.OS !== "web") {
-      return (
-        <View style={{ padding: 16 }}>
-          <Text style={{ color: c.muted }}>
-            The phone camera needs the development build (native camera module).
-          </Text>
-        </View>
-      );
-    }
     return createElement("video", {
       ref: video,
       playsInline: true,

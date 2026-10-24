@@ -31,7 +31,7 @@ export function memoryErrorText(error: unknown): string {
       case "KEY_LOST":
         return "Saved memory cannot be opened: its key is missing. Delete everything to start again.";
       case "NOT_ENCRYPTED":
-        return "Memory is off because this build cannot encrypt it. Nothing was saved.";
+        return "Notes need the LensMate development build: Expo Go cannot open the encrypted database, so nothing was saved here.";
       case "UNAVAILABLE":
         return "Memory is unavailable on this device right now.";
       case "FAILED":
