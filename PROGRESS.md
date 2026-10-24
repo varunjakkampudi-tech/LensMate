@@ -523,3 +523,8 @@ Expo Go compatibility, as built. "Bundle" means the iOS bundle compiles. "Device
 - Added: SEE session state machine and integrated mock-mode tests; notification lifecycle tests; the iPhone HTTPS route decision
   record (docs/decisions/0003-iphone-broker-https-route.md).
 - Verified here: gates, tests, the iOS bundle, and the Expo dependency check. Not verified here: anything on a phone.
+
+## Round 2026-10-25 (session wiring and diagnostics)
+
+- Capture screen runs on the SEE session module; diagnostics screen added; Expo Go bundle compiles.
+- Not verified here: the wired screen on an iPhone. Owner run pending.

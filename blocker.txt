@@ -366,3 +366,20 @@ Not in the owner's report, so still unverified on the phone:
 - Memory on Expo Go: the encrypted-storage message appears and nothing is saved (expected; verify).
 - Permission denial recovery on the phone (camera and notifications), and network loss.
 - Speech input (HEAR): expected unavailable in Expo Go.
+
+## ROUND 2026-10-25 (session wiring, diagnostics, Expo Go bundle)
+
+- SEE screen (app/capture.tsx) now drives its photo, answer, speech and camera lifecycle through src/see/session.ts.
+  The screen keeps its parse, mock-label and mistake-check logic. One state machine owns the phases. Camera cleanup
+  happens on Cancel, after a photo is taken, on error, and when the screen is left.
+- Spoken answers: a "Stop" control replaces "Read Aloud" while speech plays. Speech is interrupted at once.
+- Session tests: 17 (src/see/session.test.ts), mock broker and mock speech engine; no physical camera or speaker.
+- Diagnostics screen (app/diagnostics.tsx, opened from Profile): broker address, camera, spoken answers, voice input,
+  notifications, encrypted notes. Each row says what the check measures. "Configured (not tested here)" means the
+  setting exists but nothing was called, started or sent. Checks: 10 (src/diagnostics/checks.test.ts).
+- Browser check (desktop Chrome, web export): the capture screen renders; Camera opens a preview; Cancel removes it;
+  Diagnostics renders all six checks. In this browser the camera delivered no frames, so Take photo correctly reports
+  "The camera was not ready". Not a phone result.
+- Expo Go: fresh iOS bundle compiles (1,487 modules, HTTP 200) on the tree that includes these changes.
+- Gates: format, lint, knip, typecheck, schema, Expo config and tests pass. Mobile 377; root 483 broker and core.
+- Not verified on a phone: the wired screen (preview, capture, ask, speech stop) on the iPhone. The owner run is pending.
