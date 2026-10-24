@@ -31,7 +31,7 @@ export const STRINGS = {
     submitting: "Enrolling",
     enrolled: "This phone is enrolled as device {id}.",
     alreadyEnrolled:
-      "This phone already has a credential (device {id}). Ask the owner to revoke it before enrolling again.",
+      "This phone already has a credential (device {id}). If the owner has revoked it, remove it below, then enrol again.",
     invalidCredential:
       "The stored credential on this phone is damaged. The app will not delete it on its own. Ask the owner to revoke this phone’s old device, then enrol again.",
     rejected:
@@ -60,7 +60,8 @@ export const STRINGS = {
       DELETE_FAILED: "This phone could not remove the stored credential. Try again.",
     },
     removeInvalid: "Remove the damaged credential from this phone",
-    removeConfirm: "Tap again to remove the damaged credential. This cannot be undone.",
+    removeEnrolled: "Remove this phone’s credential",
+    removeConfirm: "Tap again to remove the credential from this phone. This cannot be undone.",
     removed: "The stored credential was removed. You can enrol this phone again.",
     reinstallNote:
       "If this phone was enrolled before it was reinstalled or its data was cleared, that old device may still be active. Ask the owner to revoke it before enrolling this phone again.",

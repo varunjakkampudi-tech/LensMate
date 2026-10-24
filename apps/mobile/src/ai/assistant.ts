@@ -138,6 +138,12 @@ export function research(question: string, lang: Lang): Promise<AiAnswer> {
 }
 
 /** Removes markdown emphasis and headings that some replies still contain. */
+/** Cost line for a reply. A mock reply makes no provider call, so its figure is only an estimate, and it says so. */
+export function costNote(source: "openrouter" | "mock", costPaise: number): string {
+  const rupees = `₹${(costPaise / 100).toFixed(2)}`;
+  return source === "mock" ? `Mock estimate ${rupees}, no provider call` : `Cost ${rupees}`;
+}
+
 export function plain(text: string): string {
   return text.replace(/\*\*|__|^#+\s*/gm, "").replace(/^\s*[-*]\s+/gm, "• ");
 }
@@ -197,7 +203,8 @@ const REFUSED: Record<string, string> = {
   RATE_LIMITED: "Too many requests at once. Wait a moment and try again.",
   BUSY: "The AI service is busy. Try again in a moment.",
   TIMEOUT: "The AI took too long and was stopped. Try again.",
-  UNAUTHORIZED: "The AI service no longer accepts this phone. Ask the owner to enrol it again.",
+  UNAUTHORIZED:
+    "The AI service no longer accepts this phone. Remove its credential on the enrolment screen, then enrol again with a new code from the owner.",
   NETWORK: "No connection to the AI service.",
   IMAGE_REJECTED: "The photo was refused (too large or not a JPEG or PNG).",
   FEATURE_UNAVAILABLE: "Vision is switched off on the AI service.",

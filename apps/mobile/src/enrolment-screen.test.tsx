@@ -236,6 +236,23 @@ describe("EnrolmentScreen", () => {
     expect(storage.values.has(DEVICE_CREDENTIAL_KEY)).toBe(false);
   });
 
+  it("lets the user remove a stored credential, after a second tap, so a revoked phone can enrol again", async () => {
+    const storage = memoryStorage();
+    storage.values.set(
+      DEVICE_CREDENTIAL_KEY,
+      JSON.stringify({ deviceId: DEVICE_ID, deviceSecret: SECRET }),
+    );
+    await render(<EnrolmentScreen config={CONFIG} onClose={jest.fn()} storage={storage} />);
+    expect(await screen.findByText(T.alreadyEnrolled.replace("{id}", DEVICE_ID))).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole("button", { name: T.removeEnrolled }));
+    expect(storage.values.has(DEVICE_CREDENTIAL_KEY)).toBe(true);
+
+    await fireEvent.press(screen.getByRole("button", { name: T.removeConfirm }));
+    expect(await screen.findByText(T.removed)).toBeTruthy();
+    expect(storage.values.has(DEVICE_CREDENTIAL_KEY)).toBe(false);
+  });
+
   it("calls back when closed", async () => {
     const onClose = jest.fn();
     await render(<EnrolmentScreen config={CONFIG} onClose={onClose} storage={memoryStorage()} />);

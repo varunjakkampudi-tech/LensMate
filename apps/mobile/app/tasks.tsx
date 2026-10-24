@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Switch, Text, View } from "react-native";
 import { confirmAction, runAgentTask, type AgentResult, type AgentStep } from "../src/ai/agent";
-import { aiErrorText, research } from "../src/ai/assistant";
+import { aiErrorText, costNote, research } from "../src/ai/assistant";
 import {
   loadAutomations,
   runAutomation,
@@ -68,7 +68,7 @@ export default function TasksScreen() {
     try {
       const a = await research(query.trim(), prefs.language);
       setFound(
-        `${a.text}\n\n(₹${(a.costPaise / 100).toFixed(2)} · ${(a.latencyMs / 1000).toFixed(1)} s)`,
+        `${a.text}\n\n(${costNote(a.source, a.costPaise)} · ${(a.latencyMs / 1000).toFixed(1)} s)`,
       );
     } catch (e) {
       setFound(aiErrorText(e));
@@ -124,7 +124,7 @@ export default function TasksScreen() {
               <Body>{result.answer}</Body>
             </View>
             <Body muted size={12}>
-              Cost ₹{(result.costPaise / 100).toFixed(2)}
+              {costNote(result.source, result.costPaise)}
             </Body>
             {result.actions.map((a) => (
               <Btn

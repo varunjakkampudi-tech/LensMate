@@ -1,5 +1,6 @@
 import { Linking } from "react-native";
 import { askText, research, translate, type AiAnswer } from "./assistant";
+import { relevantNotes } from "../memory/search";
 import { listItems, saveItem } from "../memory/vault";
 import { LANGS, type Lang } from "../ui/prefs";
 
@@ -35,6 +36,8 @@ export interface AgentResult {
   readonly answer: string;
   readonly actions: readonly PhoneAction[];
   readonly costPaise: number;
+  /** "mock" when any step was answered by the mock provider, so no provider was paid. */
+  readonly source: "openrouter" | "mock";
 }
 
 type ToolCall = { tool: string; input: Record<string, unknown> };
@@ -113,12 +116,16 @@ export async function runAgentTask(
   const actions: PhoneAction[] = [];
   const findings: string[] = [];
   let cost = 0;
+  let source: AgentResult["source"] = "openrouter";
   const step = (s: AgentStep) => {
     steps.push(s);
     onStep(s);
   };
   const charge = (a: AiAnswer) => {
     cost += a.costPaise;
+    if (a.source === "mock") {
+      source = "mock";
+    }
     return a.text;
   };
 
@@ -142,16 +149,8 @@ export async function runAgentTask(
         findings.push(`Web research: ${text}`);
         step({ agent: "Researcher", summary: text.slice(0, 160), status: "done" });
       } else if (call.tool === "recall_memory") {
-        const q = str(input.query)
-          .toLowerCase()
-          .split(/\s+/)
-          .filter((w) => w.length > 2);
-        const all = await listItems();
-        const matched = all.filter((i) =>
-          q.some((w) => `${i.title} ${i.text}`.toLowerCase().includes(w)),
-        );
         // Broad requests (briefings, "today", "recent") fall back to the newest items.
-        const hits = (matched.length > 0 ? matched : all).slice(0, 6);
+        const hits = relevantNotes(await listItems(), str(input.query), 6);
         findings.push(
           `Saved notes: ${hits.map((h) => `${h.title}: ${h.text.slice(0, 300)}`).join(" | ") || "none found"}`,
         );
@@ -229,5 +228,5 @@ export async function runAgentTask(
   );
   charge(final);
   step({ agent: "Writer", summary: "Answer ready", status: "done" });
-  return { steps, answer: final.text, actions, costPaise: cost };
+  return { steps, answer: final.text, actions, costPaise: cost, source };
 }

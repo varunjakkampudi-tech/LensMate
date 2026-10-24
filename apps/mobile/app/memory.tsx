@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Image, Platform, View } from "react-native";
 import { aiErrorText, askText } from "../src/ai/assistant";
+import { relevantNotes } from "../src/memory/search";
 import {
   deleteAll,
   deleteItem,
@@ -74,18 +75,11 @@ export default function MemoryScreen() {
   const askNotes = async () => {
     setBusy(true);
     setAnswer(null);
-    const words = question
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length > 3);
-    const relevant = items
-      .filter(
-        (i) =>
-          i.kind !== "capture" &&
-          words.some((w) => `${i.title} ${i.text}`.toLowerCase().includes(w)),
-      )
-      .slice(0, 8);
-    const context = relevant
+    const context = relevantNotes(
+      items.filter((i) => i.kind !== "capture"),
+      question,
+      8,
+    )
       .map((i) => `- ${i.title}: ${i.text}`)
       .join("\n")
       .slice(0, 6000);

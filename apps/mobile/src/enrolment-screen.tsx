@@ -123,7 +123,7 @@ export function EnrolmentScreen({ config, onClose, storage, doFetch }: Enrolment
     }
   }
 
-  async function removeDamaged() {
+  async function removeStoredCredential() {
     if (!confirmRemove) {
       setConfirmRemove(true);
       return;
@@ -152,19 +152,23 @@ export function EnrolmentScreen({ config, onClose, storage, doFetch }: Enrolment
       </Text>
       <Text>{T.intro}</Text>
       {storedText === null ? null : <Text accessibilityRole="alert">{storedText}</Text>}
-      {stored?.kind === "invalid" ? (
+      {stored === null ? null : (
         <Pressable
           accessibilityRole="button"
           onPress={() => {
-            void removeDamaged();
+            void removeStoredCredential();
           }}
           style={styles.secondary}
         >
           <Text style={styles.secondaryText}>
-            {confirmRemove ? T.removeConfirm : T.removeInvalid}
+            {confirmRemove
+              ? T.removeConfirm
+              : stored.kind === "invalid"
+                ? T.removeInvalid
+                : T.removeEnrolled}
           </Text>
         </Pressable>
-      ) : null}
+      )}
 
       <Text nativeID="enrol-code-label">{T.codeLabel}</Text>
       <TextInput
