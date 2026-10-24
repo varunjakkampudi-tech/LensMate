@@ -32,6 +32,22 @@ const MAX_MESSAGES = 20;
 const MAX_CONTENT_CHARS = 16_384;
 const IMAGE_DATA_URL = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/;
 
+/**
+ * The rate-limit key for an address. An IPv6 client controls a whole /64, so the key keeps only the first four groups.
+ * IPv4 addresses are used as they are.
+ */
+export function enrolmentKey(address: string): string {
+  if (!address.includes(":")) {
+    return address;
+  }
+  const [head = "", tail = ""] = address.split("::");
+  const headGroups = head === "" ? [] : head.split(":");
+  const tailGroups = tail === "" ? [] : tail.split(":");
+  const missing = Math.max(0, 8 - headGroups.length - tailGroups.length);
+  const groups = [...headGroups, ...Array<string>(missing).fill("0"), ...tailGroups];
+  return groups.slice(0, 4).join(":");
+}
+
 export interface BrokerDependencies {
   readonly config: BrokerConfig;
   readonly budget: BudgetStore;
@@ -40,6 +56,11 @@ export interface BrokerDependencies {
   readonly provider: ChatProvider;
   /** Source of time, in milliseconds since the epoch. Injected so tests control day and month boundaries. */
   readonly now: () => number;
+  /**
+   * Identifies the caller for the enrolment rate limit. Defaults to the client address (see `trustProxyHops`). Tests
+   * pass a header so each simulated client has its own bucket.
+   */
+  readonly enrolmentSource?: (request: { headers: Record<string, unknown>; ip: string }) => string;
   /** Pino options. Tests pass a stream to capture output; production uses stdout. */
   readonly logger: {
     level: string;
@@ -104,9 +125,13 @@ interface VisionBody {
  */
 export async function buildServer(deps: BrokerDependencies): Promise<FastifyInstance> {
   const { config, budget, provider, now, devices } = deps;
-  const enrolRate = new TokenBucket(5, 1 / 60, now);
+  // Per client address, so one caller cannot lock out the others. A single global ceiling still caps total guessing.
+  const enrolPerSource = new TokenBucket(5, 1 / 60, now);
+  const enrolGlobal = new TokenBucket(60, 1 / 30, now);
   const app = Fastify<RawServerDefault>({
     logger: deps.logger as NonNullable<FastifyServerOptions["logger"]>,
+    // Only a configured number of proxy hops may set the client address. Otherwise a caller could forge it.
+    trustProxy: config.trustProxyHops > 0 ? (_address, hop) => hop < config.trustProxyHops : false,
     bodyLimit: Math.max(config.maxInputBytes, config.maxImageBytes * 2) + 65_536,
     // Unknown fields are rejected, not silently dropped, and types are never coerced ("64" is not 64).
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, allErrors: false } },
@@ -152,8 +177,9 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
       },
     },
     async (request, reply) => {
-      // One global bucket: enrolment is rare, and guessing is slowed down.
-      if (!enrolRate.take("enrol")) {
+      // Per-client first, so a refused client does not spend the shared ceiling.
+      const source = enrolmentKey(deps.enrolmentSource?.(request) ?? request.ip);
+      if (!enrolPerSource.take(source) || !enrolGlobal.take("all")) {
         return reply.code(429).send({ error: "try_later", code: "RATE_LIMITED" });
       }
       const result = await redeemEnrolment(devices, request.body.code, request.body.label, now());

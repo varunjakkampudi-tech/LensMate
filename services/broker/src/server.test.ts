@@ -1,7 +1,7 @@
 import { Writable } from "node:stream";
 import type { FastifyInstance } from "fastify";
 import { InMemoryBudgetStore, type BudgetStore } from "./budget.js";
-import { buildServer, utcMonth } from "./server.js";
+import { buildServer, enrolmentKey, utcMonth } from "./server.js";
 import { findModel, microUsdToPaise, worstCaseMicroUsd } from "./pricing.js";
 import {
   MockProvider,
@@ -51,6 +51,11 @@ async function harness(
     devices,
     provider,
     now: nowMs,
+    // Tests give each simulated client its own address through a header. Production uses the client address.
+    enrolmentSource: (request) => {
+      const header = request.headers["x-test-client"];
+      return typeof header === "string" ? header : request.ip;
+    },
     logger: {
       level: "info",
       redact: { paths: ["req.headers.authorization"], censor: "[redacted]" },
@@ -567,5 +572,70 @@ describe("enrolment over HTTP", () => {
       );
     }
     expect(statuses).toContain(429);
+  });
+});
+
+describe("enrolment rate limit (per client, with a global ceiling)", () => {
+  function enrol(app: FastifyInstance, client: string, code: string) {
+    return request(app, {
+      method: "POST",
+      url: "/v1/enrol",
+      headers: { "x-test-client": client },
+      payload: { code, label: "x" },
+    });
+  }
+
+  it("throttles an abusive client without locking out a legitimate client", async () => {
+    const devices = new InMemoryDeviceStore();
+    const { app } = await harnessWithDevices(devices);
+    for (let index = 0; index < 8; index += 1) {
+      await enrol(app, "attacker", "AAAA-AAAA-AAAA-AAAA");
+    }
+    expect((await enrol(app, "attacker", "AAAA-AAAA-AAAA-AAAA")).statusCode).toBe(429);
+
+    const code = await issueEnrolmentCode(devices, NOW);
+    const legitimate = await enrol(app, "owner-phone", code);
+    expect(legitimate.statusCode).toBe(200);
+  });
+
+  it("allows only the burst to a client that fires many requests at once", async () => {
+    const devices = new InMemoryDeviceStore();
+    const { app } = await harnessWithDevices(devices);
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => enrol(app, "burst", "AAAA-AAAA-AAAA-AAAA")),
+    );
+    const statuses = results.map((result) => result.statusCode);
+    expect(statuses.filter((status) => status === 403)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+  });
+
+  it("caps total guessing across many clients with the global ceiling", async () => {
+    const devices = new InMemoryDeviceStore();
+    const { app } = await harnessWithDevices(devices);
+    // 12 clients x 5 requests uses the 60-request ceiling exactly.
+    for (let client = 0; client < 12; client += 1) {
+      for (let index = 0; index < 5; index += 1) {
+        await enrol(app, `spread-${String(client)}`, "AAAA-AAAA-AAAA-AAAA");
+      }
+    }
+    expect((await enrol(app, "spread-new", "AAAA-AAAA-AAAA-AAAA")).statusCode).toBe(429);
+  });
+
+  it("refuses a replayed code from any client, and counts the replay against that client", async () => {
+    const devices = new InMemoryDeviceStore();
+    const { app } = await harnessWithDevices(devices);
+    const code = await issueEnrolmentCode(devices, NOW);
+    expect((await enrol(app, "first", code)).statusCode).toBe(200);
+    expect((await enrol(app, "replayer", code)).statusCode).toBe(403);
+    expect((await enrol(app, "first", code)).statusCode).toBe(403);
+  });
+});
+
+describe("enrolment rate-limit key", () => {
+  it("keeps IPv4 addresses whole and reduces IPv6 addresses to their /64", () => {
+    expect(enrolmentKey("203.0.113.7")).toBe("203.0.113.7");
+    expect(enrolmentKey("2001:db8:1:2:3:4:5:6")).toBe("2001:db8:1:2");
+    expect(enrolmentKey("2001:db8::1")).toBe("2001:db8:0:0");
+    expect(enrolmentKey("2001:db8::ffff")).toBe(enrolmentKey("2001:db8::1"));
   });
 });

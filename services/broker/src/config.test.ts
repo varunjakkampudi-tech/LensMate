@@ -65,9 +65,28 @@ describe("loadConfig", () => {
         ...BASE_MOCK,
         BROKER_MODE: "live",
         BROKER_DATABASE_URL: "postgres://db",
+        BROKER_LEDGER_ANCHOR_FILE: "/anchor/ledger-anchor.json",
         BROKER_OWNER_CAP_CONFIRMATION_PAISE: "50000",
       }),
     ).toThrow(/OPENROUTER_API_KEY is required in live mode/);
+  });
+
+  it("refuses a database without a spend-continuity anchor file", () => {
+    expect(() => loadConfig({ ...BASE_MOCK, BROKER_DATABASE_URL: "postgres://db" })).toThrow(
+      /BROKER_LEDGER_ANCHOR_FILE is required/,
+    );
+    expect(
+      loadConfig({
+        ...BASE_MOCK,
+        BROKER_DATABASE_URL: "postgres://db",
+        BROKER_LEDGER_ANCHOR_FILE: "/anchor/ledger-anchor.json",
+      }).ledgerAnchorPath,
+    ).toBe("/anchor/ledger-anchor.json");
+  });
+
+  it("reads the trusted proxy hop count, defaulting to none", () => {
+    expect(loadConfig(BASE_MOCK).trustProxyHops).toBe(0);
+    expect(loadConfig({ ...BASE_MOCK, BROKER_TRUST_PROXY_HOPS: "1" }).trustProxyHops).toBe(1);
   });
 
   it("refuses live mode without a database", () => {
@@ -87,6 +106,7 @@ describe("loadConfig", () => {
       BROKER_MODE: "live",
       OPENROUTER_API_KEY: LIVE_SECRET,
       BROKER_DATABASE_URL: "postgres://db",
+      BROKER_LEDGER_ANCHOR_FILE: "/anchor/ledger-anchor.json",
     };
     expect(() => loadConfig(base)).toThrow(/owner confirmation of the cap/);
     expect(() => loadConfig({ ...base, BROKER_OWNER_CAP_CONFIRMATION_PAISE: "40000" })).toThrow(
@@ -102,6 +122,7 @@ describe("loadConfig", () => {
         BROKER_MODE: "live",
         OPENROUTER_API_KEY: LIVE_SECRET,
         BROKER_DATABASE_URL: "postgres://db",
+        BROKER_LEDGER_ANCHOR_FILE: "/anchor/ledger-anchor.json",
         BROKER_OWNER_CAP_CONFIRMATION_PAISE: "1",
         BROKER_PROVIDER_TIMEOUT_MS: LIVE_SECRET,
       });

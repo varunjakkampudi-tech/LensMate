@@ -249,3 +249,22 @@ describe("EnrolmentScreen", () => {
     await waitFor(() => expect(screen.getByLabelText(T.codeLabel).props.editable).toBe(true));
   });
 });
+
+describe("EnrolmentScreen reinstall and storage read failures", () => {
+  it("locks enrolment when the credential store cannot be read, so nothing is overwritten", async () => {
+    const storage = memoryStorage();
+    storage.getItemAsync = () => Promise.reject(new Error("platform detail"));
+    await render(<EnrolmentScreen config={CONFIG} onClose={jest.fn()} storage={storage} />);
+    expect(await screen.findByText(T.errors.READ_FAILED)).toBeTruthy();
+    expect(screen.getByLabelText(T.codeLabel).props.editable).toBe(false);
+    expect(screen.getByRole("button", { name: T.submit }).props.accessibilityState.disabled).toBe(
+      true,
+    );
+  });
+
+  it("shows the reinstall guidance on a fresh install with no stored credential", async () => {
+    await render(<EnrolmentScreen config={CONFIG} onClose={jest.fn()} storage={memoryStorage()} />);
+    expect(screen.getByText(T.reinstallNote)).toBeTruthy();
+    expect(screen.getByLabelText(T.codeLabel).props.editable).toBe(true);
+  });
+});

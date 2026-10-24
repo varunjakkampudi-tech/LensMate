@@ -11,13 +11,14 @@ import type { CredentialState, CredentialStorage } from "./device-credential";
 
 export const CLOUD_DISCLOSURE_KEY = "lensmate.cloud-disclosure";
 
-type BrokerAccessBlock =
+export type BrokerAccessBlock =
   | "NOT_CONFIGURED"
   | "CONFIG_INVALID"
   | "NOT_ENROLLED"
   | "CREDENTIAL_INVALID"
   | "DISCLOSURE_NOT_APPROVED"
-  | "DISCLOSURE_REQUIRED";
+  | "DISCLOSURE_REQUIRED"
+  | "STORAGE_UNAVAILABLE";
 
 export type BrokerAccess =
   | { readonly ok: true; readonly baseUrl: string; readonly token: string }

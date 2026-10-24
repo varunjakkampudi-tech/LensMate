@@ -215,29 +215,13 @@ export class PostgresDeviceStore implements DeviceStore {
     _nowMs: number,
     device: { deviceId: string; label: string; secretSha256: string },
   ): Promise<boolean> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const used = await client.query(
-        "UPDATE broker_enrolment_code SET used_at = now() WHERE code_sha256 = $1 AND used_at IS NULL AND expires_at > now() RETURNING code_sha256",
-        [codeSha256],
-      );
-      if (used.rowCount !== 1) {
-        await client.query("ROLLBACK");
-        return false;
-      }
-      await client.query(
-        "INSERT INTO broker_device (device_id, label, secret_sha256) VALUES ($1, $2, $3)",
-        [device.deviceId, device.label, device.secretSha256],
-      );
-      await client.query("COMMIT");
-      return true;
-    } catch (error) {
-      await client.query("ROLLBACK").catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+    // One database function marks the code used and registers the device in one transaction. Its clock is the
+    // database clock. The application role has no direct INSERT on devices.
+    const result = await this.pool.query<{ ok: boolean }>(
+      "SELECT broker_redeem_enrolment($1, $2, $3, $4) AS ok",
+      [codeSha256, device.deviceId, device.label, device.secretSha256],
+    );
+    return result.rows[0]?.ok === true;
   }
 
   async findDevice(deviceId: string): Promise<DeviceRecord | undefined> {

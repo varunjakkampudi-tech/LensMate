@@ -47,7 +47,9 @@ export function EnrolmentScreen({ config, onClose, storage, doFetch }: Enrolment
     { readonly kind: "enrolled"; readonly deviceId: string } | { readonly kind: "invalid" } | null
   >(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const blocked = stored !== null;
+  // A stored credential, or a credential store that cannot be read, locks enrolment. Nothing is overwritten then.
+  const [readFailed, setReadFailed] = useState(false);
+  const blocked = stored !== null || readFailed;
   // A ref, not state, so a second press in the same frame cannot start a second request.
   const submitting = useRef(false);
 
@@ -66,6 +68,7 @@ export function EnrolmentScreen({ config, onClose, storage, doFetch }: Enrolment
       })
       .catch(() => {
         if (active) {
+          setReadFailed(true);
           setNotice({ tone: "error", text: T.errors.READ_FAILED });
         }
       });
@@ -194,6 +197,7 @@ export function EnrolmentScreen({ config, onClose, storage, doFetch }: Enrolment
         style={styles.input}
       />
       <Text>{T.labelHint}</Text>
+      <Text>{T.reinstallNote}</Text>
 
       <Pressable
         accessibilityRole="button"

@@ -113,7 +113,55 @@ const TRIGGERS = [
   "broker_device_revocation_permanent",
   "broker_enrolment_code_single_use",
   "broker_budget_spend_monotonic",
+  "broker_budget_reserved_consistent",
+  "broker_reservation_reserved_consistent",
 ];
+
+const REDEEM_SQL = `
+CREATE OR REPLACE FUNCTION broker_redeem_enrolment(p_code_sha256 text, p_device_id text, p_label text, p_secret_sha256 text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
+DECLARE redeemed text;
+BEGIN
+  UPDATE broker_enrolment_code SET used_at = now()
+    WHERE code_sha256 = p_code_sha256 AND used_at IS NULL AND expires_at > now()
+    RETURNING code_sha256 INTO redeemed;
+  IF redeemed IS NULL THEN
+    RETURN false;
+  END IF;
+  INSERT INTO broker_device (device_id, label, secret_sha256) VALUES (p_device_id, p_label, p_secret_sha256);
+  RETURN true;
+END
+$fn$;
+REVOKE ALL ON FUNCTION broker_redeem_enrolment(text, text, text, text) FROM PUBLIC;
+`;
+
+/**
+ * Recorded reserved spend must equal the open reservations of its month. Checked at commit, so the reserve, settle and
+ * release statements may run in any order inside one transaction. A direct edit of reserved_paise therefore fails.
+ * Recorded spend is not checked here, because the owner's documented recovery raises it to the anchored value.
+ */
+const RESERVED_SQL = `
+CREATE OR REPLACE FUNCTION broker_check_reserved() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM broker_budget_month b
+    WHERE b.month = NEW.month
+      AND b.reserved_paise <> (
+        SELECT COALESCE(SUM(r.amount_paise), 0) FROM broker_reservation r
+        WHERE r.month = NEW.month AND r.state = 'reserved')
+  ) THEN
+    RAISE EXCEPTION 'reserved spend does not match the open reservations';
+  END IF;
+  RETURN NULL;
+END
+$fn$;
+DROP TRIGGER IF EXISTS broker_budget_reserved_consistent ON broker_budget_month;
+CREATE CONSTRAINT TRIGGER broker_budget_reserved_consistent AFTER INSERT OR UPDATE ON broker_budget_month
+  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION broker_check_reserved();
+DROP TRIGGER IF EXISTS broker_reservation_reserved_consistent ON broker_reservation;
+CREATE CONSTRAINT TRIGGER broker_reservation_reserved_consistent AFTER INSERT OR UPDATE ON broker_reservation
+  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION broker_check_reserved();
+`;
 
 const ROLE_NAME = /^[a-z_][a-z0-9_]{0,62}$/;
 const RESERVED_ROLE = /^(public|pg_.*|information_schema)$/;
@@ -154,15 +202,22 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
       );
     }
     await client.query(SCHEMA_SQL);
+    await client.query(REDEEM_SQL);
+    await client.query(RESERVED_SQL);
     await client.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
     await client.query(`REVOKE ALL ON ${LEDGER_TABLES.join(", ")} FROM ${app}, ${admin}`);
     await client.query(`GRANT USAGE ON SCHEMA public TO ${app}, ${admin}`);
-    // Application role: record reservations and spend; read devices and codes; register devices; redeem codes.
+    // Application role: record reservations and spend; read devices and codes; redeem codes through a function.
     await client.query(
       `GRANT SELECT ON broker_budget_month, broker_daily_quota, broker_reservation, broker_device, broker_enrolment_code TO ${app}`,
     );
     await client.query(
-      `GRANT INSERT ON broker_budget_month, broker_daily_quota, broker_reservation, broker_device TO ${app}`,
+      `GRANT INSERT ON broker_budget_month, broker_daily_quota, broker_reservation TO ${app}`,
+    );
+    // Device registration goes through broker_redeem_enrolment, which runs as the owner. The app role cannot insert
+    // a device directly.
+    await client.query(
+      `GRANT EXECUTE ON FUNCTION broker_redeem_enrolment(text, text, text, text) TO ${app}`,
     );
     await client.query(
       `GRANT UPDATE (spent_paise, reserved_paise) ON broker_budget_month TO ${app}`,

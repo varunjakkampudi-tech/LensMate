@@ -13,6 +13,10 @@ export interface BrokerConfig {
   readonly port: number;
   readonly host: string;
   readonly databaseUrl: string | undefined;
+  /** Anchor file on a volume the database restore never touches. Required when a database is configured. */
+  readonly ledgerAnchorPath: string | undefined;
+  /** Number of reverse-proxy hops in front of the broker, so per-client limits see the real client address. */
+  readonly trustProxyHops: number;
   readonly openRouterApiKey: string | undefined;
   readonly openRouterBaseUrl: string;
   /** Monthly cap in paise (integer). Owner-confirmed before any live call. */
@@ -64,6 +68,13 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
   const ownerCapConfirmation = optionalInt(env, "BROKER_OWNER_CAP_CONFIRMATION_PAISE");
   const openRouterApiKey = readSecret(env, "OPENROUTER_API_KEY");
   const databaseUrl = readSecret(env, "BROKER_DATABASE_URL");
+  const ledgerAnchorPath = env.BROKER_LEDGER_ANCHOR_FILE?.trim() || undefined;
+  const trustProxyHops = optionalInt(env, "BROKER_TRUST_PROXY_HOPS") ?? 0;
+  if (databaseUrl !== undefined && ledgerAnchorPath === undefined) {
+    throw new ConfigError(
+      "BROKER_LEDGER_ANCHOR_FILE is required when a database is configured (spend continuity, see ledger-anchor.ts)",
+    );
+  }
 
   if (mode === "live") {
     if (openRouterApiKey === undefined) {
@@ -89,6 +100,8 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
     port: optionalInt(env, "BROKER_PORT") ?? DEFAULTS.port,
     host: env.BROKER_HOST ?? DEFAULTS.host,
     databaseUrl,
+    ledgerAnchorPath,
+    trustProxyHops,
     openRouterApiKey,
     openRouterBaseUrl: baseUrl,
     monthlyCapPaise,

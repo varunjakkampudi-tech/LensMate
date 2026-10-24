@@ -12,6 +12,8 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /out/ ./
+# Spend-continuity anchor directory, owned by the runtime user. A new named volume copies this ownership.
+RUN mkdir -p /var/lib/broker-anchor && chown node:node /var/lib/broker-anchor
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

@@ -71,7 +71,8 @@ export class EnrolmentError extends Error {
   }
 }
 
-const secureStorage: CredentialStorage = {
+/** Secure device storage. The default for every caller in the app. */
+export const secureStorage: CredentialStorage = {
   getItemAsync: (key) => SecureStore.getItemAsync(key),
   setItemAsync: (key, value, options) => SecureStore.setItemAsync(key, value, options),
   deleteItemAsync: (key) => SecureStore.deleteItemAsync(key),

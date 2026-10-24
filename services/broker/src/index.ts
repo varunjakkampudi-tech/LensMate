@@ -6,6 +6,14 @@ import { PostgresBudgetStore } from "./postgres-budget.js";
 import { OpenRouterProvider, MockProvider, type ChatProvider } from "./provider.js";
 import { buildServer } from "./server.js";
 import { verifySchema } from "./schema.js";
+import {
+  AnchoredBudgetStore,
+  checkContinuity,
+  FileAnchor,
+  monthOf,
+  probeAnchor,
+  recentMonths,
+} from "./ledger-anchor.js";
 
 /** Open reservations older than this are charged at worst case by the reaper. It is well past any provider timeout. */
 const REAP_AFTER_SECONDS = 300;
@@ -31,9 +39,23 @@ async function main(): Promise<void> {
     });
     await verifySchema(pool);
     const store = new PostgresBudgetStore(pool);
-    budget = store;
+    // Refuses to start when recorded spend is below what the broker itself anchored (a restored or altered ledger).
+    // The owner must raise recorded spend to the anchored value, or to the provider-billed amount if higher.
+    const anchor = new FileAnchor(config.ledgerAnchorPath ?? "");
+    await probeAnchor(anchor);
+    await checkContinuity(store, anchor, Date.now());
+    const anchored = new AnchoredBudgetStore(store, anchor);
+    await anchored.start();
+    budget = anchored;
     devices = new PostgresDeviceStore(pool);
-    reaper = () => store.reapStale(REAP_AFTER_SECONDS);
+    reaper = async () => {
+      const settled = await store.reapStale(REAP_AFTER_SECONDS);
+      // The reaper can settle reservations from the previous month, so refresh both months it may touch.
+      for (const month of recentMonths(monthOf(Date.now()), 2)) {
+        await anchored.refresh(month);
+      }
+      return settled;
+    };
   } else {
     budget = new InMemoryBudgetStore();
     devices = new InMemoryDeviceStore();

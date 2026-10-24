@@ -88,7 +88,22 @@ PGPASSFILE=/secure/pgpass BROKER_RESTORE_DATABASE_URL="postgres://broker_owner@p
 ```
 
 Restore checks the integrity tag before it decrypts anything, and it refuses a target that already holds `broker_*`
-tables. After a restore, run the migration (owner role) to re-apply the grants. The encryption key and the MAC key
+tables. After a restore, run the migration (owner role) to re-apply the grants. Then complete these steps before the
+broker is pointed at the restored database:
+
+1. **Spend continuity.** The broker keeps a spend anchor on its own volume (`broker_anchor`), which a restore never
+   touches. At start-up the broker refuses to run if recorded spend is below the anchored spend for any month
+   (`ROLLED_BACK`). The owner recovers by raising recorded spend to the anchored value, or to the provider-billed
+   amount if that is higher, using the owner role. The spend trigger allows an increase and refuses a decrease. Never
+   lower the anchor. If the anchor is lost, the broker refuses to start while any recent month has spend (`NO_ANCHOR_WITH_SPEND`).
+2. **Revocations.** A restore brings back devices as they were at the backup time. Re-run
+   `admin-cli revoke <deviceId>` for every device revoked after that backup, before the broker starts.
+3. **Verification.** `admin-cli list-devices` must show the revocations you expect, and the broker's start-up log must
+   not report a continuity failure.
+
+Known residual risks: the anchor proves only what the broker itself recorded. Writes that reached the database in the
+moment between a settle and its anchor write can be lost on a rollback (one attempt, bounded). The anchor volume is only
+as trustworthy as the server that holds it. The encryption key and the MAC key
 must be backed up separately; without them the backups cannot be read or checked. Run the scripts only on the Linux
 host that holds the key files, never on a shared machine.
 

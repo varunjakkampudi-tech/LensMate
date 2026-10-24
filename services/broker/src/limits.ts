@@ -6,16 +6,28 @@
 export class TokenBucket {
   private readonly buckets = new Map<string, { tokens: number; updatedMs: number }>();
 
+  /**
+   * `maxKeys` bounds memory when keys come from many clients. When the bound is reached the oldest key is dropped, so
+   * the oldest clients get a fresh bucket. A flood of new keys therefore cannot exhaust memory.
+   */
   constructor(
     private readonly burst: number,
     private readonly refillPerSecond: number,
     private readonly now: () => number,
+    private readonly maxKeys = 10_000,
   ) {}
 
   /** Takes one token for `key`. Returns false when the client is over its rate. */
   take(key: string): boolean {
     const nowMs = this.now();
-    const bucket = this.buckets.get(key) ?? { tokens: this.burst, updatedMs: nowMs };
+    const existing = this.buckets.get(key);
+    if (existing === undefined && this.buckets.size >= this.maxKeys) {
+      const oldest = this.buckets.keys().next();
+      if (oldest.done !== true) {
+        this.buckets.delete(oldest.value);
+      }
+    }
+    const bucket = existing ?? { tokens: this.burst, updatedMs: nowMs };
     const elapsedSeconds = (nowMs - bucket.updatedMs) / 1000;
     bucket.tokens = Math.min(this.burst, bucket.tokens + elapsedSeconds * this.refillPerSecond);
     bucket.updatedMs = nowMs;

@@ -52,6 +52,8 @@ export const STRINGS = {
     removeInvalid: "Remove the damaged credential from this phone",
     removeConfirm: "Tap again to remove the damaged credential. This cannot be undone.",
     removed: "The stored credential was removed. You can enrol this phone again.",
+    reinstallNote:
+      "If this phone was enrolled before it was reinstalled or its data was cleared, that old device may still be active. Ask the owner to revoke it before enrolling this phone again.",
     back: "Back to home",
   },
   measurement: {

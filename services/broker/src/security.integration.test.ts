@@ -8,6 +8,11 @@ import {
   sha256Hex,
 } from "./devices.js";
 import { migrate, SchemaError, verifySchema } from "./schema.js";
+import { checkContinuity, FileAnchor, AnchorError } from "./ledger-anchor.js";
+import { PostgresBudgetStore } from "./postgres-budget.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * PostgreSQL security tests (BLOCKER-006 items 1, 3 and 4). They run as the application role and the admin role, not
@@ -204,6 +209,64 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     await expect(verifySchema(owner)).rejects.toThrow(/broker_enrolment_code/);
     await migrate(owner, APP_ROLE, ADMIN_ROLE);
     await expect(verifySchema(owner)).resolves.toBeUndefined();
+  });
+
+  it("spend continuity: a ledger restored to an older state is refused against the real anchor", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-continuity-"));
+    try {
+      const anchor = new FileAnchor(join(dir, "anchor.json"));
+      const store = new PostgresBudgetStore(owner);
+      const month = new Date().toISOString().slice(0, 7);
+      await owner.query("DELETE FROM broker_reservation");
+      await owner.query("DELETE FROM broker_budget_month");
+      await owner.query("INSERT INTO broker_budget_month (month, spent_paise) VALUES ($1, 500)", [
+        month,
+      ]);
+      await anchor.write({ [month]: 500 });
+      await expect(checkContinuity(store, anchor, Date.now())).resolves.toBeUndefined();
+
+      // A restore of an older backup: the same month with less spend. Only the owner can do this, and the trigger
+      // refuses a decrease, so the test simulates the restore by truncating and re-inserting.
+      await owner.query("TRUNCATE broker_reservation, broker_budget_month");
+      await owner.query("INSERT INTO broker_budget_month (month, spent_paise) VALUES ($1, 120)", [
+        month,
+      ]);
+      const error = await checkContinuity(store, anchor, Date.now()).catch(
+        (caught: unknown) => caught,
+      );
+      expect(error).toBeInstanceOf(AnchorError);
+      expect((error as AnchorError).code).toBe("ROLLED_BACK");
+
+      // The owner's documented recovery: raise recorded spend to the anchored value, which the trigger allows.
+      await owner.query("UPDATE broker_budget_month SET spent_paise = 500 WHERE month = $1", [
+        month,
+      ]);
+      await expect(checkContinuity(store, anchor, Date.now())).resolves.toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("the application role cannot insert a device directly, only through the redemption function", async () => {
+    await expect(
+      app.query(
+        "INSERT INTO broker_device (device_id, label, secret_sha256) VALUES ($1, 'forged', $2)",
+        ["99999999-9999-4999-8999-999999999999", sha256Hex("forged")],
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+
+  it("a direct edit of reserved spend that does not match open reservations is refused at commit", async () => {
+    await owner.query("DELETE FROM broker_reservation WHERE month = '2030-03'");
+    await owner.query(
+      "INSERT INTO broker_budget_month (month, reserved_paise) VALUES ('2030-03', 0) ON CONFLICT (month) DO UPDATE SET reserved_paise = 0",
+    );
+    await expect(
+      owner.query("UPDATE broker_budget_month SET reserved_paise = 999 WHERE month = '2030-03'"),
+    ).rejects.toThrow(/reserved spend does not match/);
+    await expect(
+      app.query("UPDATE broker_budget_month SET reserved_paise = 999 WHERE month = '2030-03'"),
+    ).rejects.toThrow(/reserved spend does not match/);
   });
 
   it("the schema guard refuses a database whose immutability trigger was dropped or disabled", async () => {
