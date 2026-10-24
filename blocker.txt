@@ -402,3 +402,16 @@ Not in the owner's report, so still unverified on the phone:
 - AI connection panel on Profile: states reported separately; reachability check sends no credential and calls no AI.
 - Not done: the premium redesign of the other screens, the assistant redesign, the simulator redesign, live-vision
   analysis and screenshot validation in light and dark modes. The owner's iPhone run of this build is pending.
+
+## ROUND 2026-10-25 (assistant redesign, readiness split)
+
+- Assistant (app/assistant.tsx): conversation bubbles, fixed composer with mic, text, Send and Stop, Replay, Try again,
+  listening/thinking/speaking status, MOCK or LIVE badge. The badge shows "NOT CHECKED" when a broker address is set
+  but no request has run. Agent run, microphone session, speech, confirmed actions and feature gates are unchanged.
+  Verified: typecheck, format, bundle compile (1,606 modules), browser DOM check at a desktop window. A phone-size
+  screenshot was attempted but the browser renderer timed out; not verified visually. Not verified on the iPhone.
+- Stop: cancels speech and listening. It does not cancel a running agent request (the agent run has no cancel path).
+- Readiness: Feature Progress (features) and Release Readiness (phase-1 go/no-go checklist with a verdict). Owner
+  iPhone results are listed as reported, with no commit recorded and no status change (src/readiness/owner-reports.ts).
+- Not done: the simulator redesign, the Profile and Home simplification, live-vision analysis, screenshots in light and
+  dark mode at iPhone size, and the secure broker route (decision 0003, owner approval needed).
