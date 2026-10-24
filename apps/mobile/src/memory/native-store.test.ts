@@ -264,3 +264,30 @@ describe("encrypted native memory store", () => {
     });
   });
 });
+
+describe("refusals are not retried (Expo Go and lost keys)", () => {
+  it("fails at once after a lasting refusal, without reopening the database", async () => {
+    const world = makeWorld({ cipher: false });
+    const store = createNativeMemoryStore(world.deps(HEX_KEY_A));
+
+    await expect(store.list()).rejects.toMatchObject({ failure: "NOT_ENCRYPTED" });
+    const keyedBefore = world.statements.filter((s) => s.startsWith("PRAGMA key")).length;
+    await expect(store.list()).rejects.toMatchObject({ failure: "NOT_ENCRYPTED" });
+    await expect(store.save({ id: "1", createdAt: 1, body: "x" })).rejects.toMatchObject({
+      failure: "NOT_ENCRYPTED",
+    });
+
+    expect(world.statements.filter((s) => s.startsWith("PRAGMA key")).length).toBe(keyedBefore);
+  });
+
+  it("clears the refusal after delete-all, so a fresh start can try again", async () => {
+    const world = makeWorld({ cipher: false });
+    const store = createNativeMemoryStore(world.deps(HEX_KEY_A));
+    await expect(store.list()).rejects.toMatchObject({ failure: "NOT_ENCRYPTED" });
+
+    world.cipher = true;
+    await store.removeAll();
+
+    await expect(store.list()).resolves.toEqual([]);
+  });
+});

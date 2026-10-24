@@ -130,9 +130,22 @@ export function createNativeMemoryStore(deps: NativeMemoryDeps): NativeMemorySto
     }
   }
 
+  // Once the store has refused for a lasting reason (no SQLCipher, or a lost key), later calls fail at once instead of
+  // reopening the database each time. Only "delete everything" clears this, so an unsupported build does not retry.
+  let refused: MemoryStoreError | undefined;
+
   function connect(): Promise<SqlDatabase> {
+    if (refused !== undefined) {
+      return Promise.reject(refused);
+    }
     connection ??= open().catch((error: unknown) => {
       connection = undefined;
+      if (
+        error instanceof MemoryStoreError &&
+        (error.failure === "NOT_ENCRYPTED" || error.failure === "KEY_LOST")
+      ) {
+        refused = error;
+      }
       throw error;
     });
     return connection;
@@ -197,6 +210,7 @@ export function createNativeMemoryStore(deps: NativeMemoryDeps): NativeMemorySto
       }
       await deps.deleteDatabase(MEMORY_DB_NAME);
       await deps.keys.deleteItemAsync(MEMORY_KEY_NAME);
+      refused = undefined;
     },
   };
 }
