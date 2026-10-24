@@ -431,6 +431,8 @@ record h "Revoke refuses when the anchor is not a separate volume, and the devic
   "exit non-zero; 'nothing was revoked'; device still active" "exit=$H_RC; device active=$H_STATE; refusal text=$h_ok" \
   "$(verdict "$h_ok")"
 # i: the real volume is mounted in the admin container. Revoke succeeds and the anchor records the revocation.
+# f replaced the anchor file with a directory on purpose. Remove that fixture first, so i tests the revoke path itself.
+dc run --rm -T --entrypoint sh broker -c 'rm -rf /var/lib/broker-anchor/ledger-anchor.json' >/dev/null 2>&1
 dca run --rm -T broker node dist/admin-cli.js revoke "$DEVICE_ID" >"$SCRATCH/i.txt" 2>&1
 I_RC=$?
 I_ANCHOR=$(anchor_cat)
