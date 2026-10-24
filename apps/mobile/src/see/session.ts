@@ -1,9 +1,9 @@
 /**
- * One SEE → THINK → TALK session: photo in, question asked, answer shown and spoken, with interruption and cancellation.
+ * One SEE → THINK → TALK session: a photo, questions about it, answers shown and spoken, with interruption,
+ * cancellation and camera cleanup. The capture screen (app/capture.tsx) is a view over this state machine.
  *
- * The session is a small state machine. Its camera, network and speech parts are passed in (SeeDeps), so the same logic
- * runs in the app and in automated tests. Tests stand in for the camera and speech engines; they do not exercise a
- * physical camera or speaker, and the tests say so.
+ * Camera, network and speech are injected (SeeDeps), so the same logic runs in the app and in automated tests. Tests
+ * stand in for the camera and speech engines and say so; they do not exercise a physical camera or speaker.
  */
 
 /** Largest decoded image the broker accepts (services/broker/src/config.ts, maxImageBytes). */
@@ -35,34 +35,51 @@ export function checkImage(dataUrl: string | null): ImageCheck {
   return { ok: true, bytes };
 }
 
-export type SeeState =
-  | { readonly phase: "idle" }
-  | { readonly phase: "permission_denied" }
-  | { readonly phase: "previewing" }
-  | { readonly phase: "photo_ready"; readonly image: string }
-  | { readonly phase: "thinking" }
-  | { readonly phase: "answered"; readonly answer: string; readonly source: "mock" | "openrouter" }
-  | { readonly phase: "speaking"; readonly answer: string; readonly source: "mock" | "openrouter" }
-  | { readonly phase: "error"; readonly message: string };
+export interface SeeAnswer {
+  readonly text: string;
+  readonly source: "mock" | "openrouter";
+  readonly costPaise: number;
+  readonly latencyMs: number;
+}
 
-/** Injected dependencies. Each one is a real app function in production and a stand-in in tests. */
+export type SeePhase =
+  | "idle" // nothing on screen
+  | "previewing" // the camera is live
+  | "photo_ready" // a photo is held, no request running
+  | "thinking" // a question is being answered
+  | "answered" // an answer is shown
+  | "speaking" // an answer is being read aloud
+  | "error"; // the last action failed; the photo and any answer are kept
+
+export interface SeeState {
+  readonly phase: SeePhase;
+  /** The photo held for questions, as a JPEG or PNG data URL. */
+  readonly photo: string | null;
+  readonly answer: SeeAnswer | null;
+  /** A short, user-facing message for the error phase or a camera notice. */
+  readonly message: string | null;
+}
+
+/** Injected dependencies. Each is a real app function in production and a stand-in in tests. */
 export interface SeeDeps {
-  requestCamera(): Promise<boolean>;
+  /** Called when the camera is started (the screen starts its capture indicator here). */
+  startCamera(): void;
+  /** Takes one photo from the live preview. Resolves to a data URL, or null when the camera is not ready. */
   capture(): Promise<string | null>;
+  /** Stops the camera and clears its indicator. Called once per start. */
   releaseCamera(): void;
-  ask(
-    image: string,
-    question: string,
-    signal: AbortSignal,
-  ): Promise<{ text: string; source: "mock" | "openrouter" }>;
+  ask(image: string, question: string, signal: AbortSignal): Promise<SeeAnswer>;
   speak(text: string, onDone: () => void): void;
   stopSpeech(): void;
   errorText(error: unknown): string;
 }
 
+const INITIAL: SeeState = { phase: "idle", photo: null, answer: null, message: null };
+
 export class SeeSession {
-  private current: SeeState = { phase: "idle" };
+  private current: SeeState = INITIAL;
   private abort: AbortController | null = null;
+  private camera = false;
   private readonly listeners = new Set<(state: SeeState) => void>();
 
   constructor(private readonly deps: SeeDeps) {}
@@ -73,24 +90,48 @@ export class SeeSession {
 
   subscribe(listener: (state: SeeState) => void): () => void {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
-  private set(state: SeeState): void {
-    this.current = state;
-    this.listeners.forEach((fn) => fn(state));
+  private set(patch: Partial<SeeState> & { phase: SeePhase }): void {
+    this.current = {
+      photo: this.current.photo,
+      answer: this.current.answer,
+      message: null,
+      ...patch,
+    };
+    this.listeners.forEach((fn) => fn(this.current));
   }
 
-  /** Step 1-2: asks for the camera and starts the preview. A refusal leads to a recoverable state. */
-  async start(): Promise<void> {
-    if (!(await this.deps.requestCamera())) {
-      this.set({ phase: "permission_denied" });
+  /** Where the session rests when nothing is running: answered, a photo held, or idle. */
+  private restPhase(): SeePhase {
+    if (this.current.answer !== null) {
+      return "answered";
+    }
+    return this.current.photo !== null ? "photo_ready" : "idle";
+  }
+
+  /** Starts the camera. The preview asks for permission and reports a refusal through reportCameraError. */
+  start(): void {
+    if (this.camera) {
       return;
     }
+    this.camera = true;
+    this.deps.startCamera();
     this.set({ phase: "previewing" });
   }
 
-  /** Step 3-4: takes one photo, validates it, and keeps it for the question. Only one photo per question. */
+  /** Stops the camera once. Safe to call when it is not running. */
+  private stopCamera(): void {
+    if (this.camera) {
+      this.camera = false;
+      this.deps.releaseCamera();
+    }
+  }
+
+  /** Takes one photo from the live preview, validates it, and ends the live preview. */
   async takePhoto(): Promise<void> {
     if (this.current.phase !== "previewing") {
       return;
@@ -99,81 +140,123 @@ export class SeeSession {
     try {
       dataUrl = await this.deps.capture();
     } catch (error) {
-      this.set({ phase: "error", message: this.deps.errorText(error) });
+      this.reportCameraError(this.deps.errorText(error));
       return;
     }
+    if (dataUrl === null) {
+      this.reportCameraError("The camera was not ready. Try again.");
+      return;
+    }
+    this.stopCamera();
+    this.setPhoto(dataUrl);
+  }
+
+  /** Accepts a photo from the library or the camera after validating it. A bad image keeps the current photo. */
+  setPhoto(dataUrl: string | null): boolean {
     const check = checkImage(dataUrl);
     if (!check.ok) {
       this.set({
-        phase: "error",
+        phase: this.restPhase(),
         message:
           check.reason === "TOO_LARGE"
             ? "That photo is too large. Try again closer to the object."
-            : "That photo could not be read. Take it again.",
+            : "That file could not be read as an image.",
       });
-      return;
+      return false;
     }
-    this.set({ phase: "photo_ready", image: dataUrl as string });
+    this.set({ phase: "photo_ready", photo: dataUrl as string, answer: null });
+    return true;
   }
 
-  /** Step 5-7: asks the question about the photo through the broker and shows the labelled answer. */
+  /** Removes the photo and its answer, and stops any speech. */
+  removePhoto(): void {
+    this.deps.stopSpeech();
+    this.set({ phase: "idle", photo: null, answer: null });
+  }
+
+  /** Asks one question about the held photo. A newer question replaces an older one still in progress. */
   async ask(question: string): Promise<void> {
-    if (this.current.phase !== "photo_ready" || question.trim() === "") {
+    const photo = this.current.photo;
+    if (photo === null || question.trim() === "" || this.current.phase === "thinking") {
       return;
     }
-    const image = this.current.image;
-    this.abort = new AbortController();
-    this.set({ phase: "thinking" });
+    this.deps.stopSpeech();
+    const controller = new AbortController();
+    this.abort = controller;
+    this.set({ phase: "thinking", photo, answer: this.current.answer });
     try {
-      const reply = await this.deps.ask(image, question.trim(), this.abort.signal);
-      if (this.abort.signal.aborted) {
+      const answer = await this.deps.ask(photo, question.trim(), controller.signal);
+      if (controller.signal.aborted) {
         return;
       }
-      this.set({ phase: "answered", answer: reply.text, source: reply.source });
+      this.set({ phase: "answered", photo, answer });
     } catch (error) {
-      if (this.abort.signal.aborted) {
+      if (controller.signal.aborted) {
         return;
       }
-      this.set({ phase: "error", message: this.deps.errorText(error) });
+      this.set({
+        phase: "error",
+        photo,
+        answer: this.current.answer,
+        message: this.deps.errorText(error),
+      });
     } finally {
-      this.abort = null;
+      if (this.abort === controller) {
+        this.abort = null;
+      }
     }
   }
 
-  /** Step 8: speaks the answer. Speech ends by itself or when interrupted. */
+  /** Reads the shown answer aloud. Ends by itself, or when interrupted. */
   speak(): void {
-    if (this.current.phase !== "answered") {
+    const { phase, answer, photo } = this.current;
+    if (answer === null || (phase !== "answered" && phase !== "error")) {
       return;
     }
-    const { answer, source } = this.current;
-    this.set({ phase: "speaking", answer, source });
-    this.deps.speak(answer, () => {
+    this.set({ phase: "speaking", photo, answer });
+    this.deps.speak(answer.text, () => {
       if (this.current.phase === "speaking") {
-        this.set({ phase: "answered", answer, source });
+        this.set({ phase: "answered", photo, answer });
       }
     });
   }
 
-  /** Step 9: stops speech at once. The answer stays on screen. */
+  /** Stops speech at once. The answer stays on screen. */
   interrupt(): void {
     this.deps.stopSpeech();
     if (this.current.phase === "speaking") {
-      this.set({ phase: "answered", answer: this.current.answer, source: this.current.source });
+      this.set({ phase: "answered", photo: this.current.photo, answer: this.current.answer });
     }
   }
 
-  /** Cancels a request in progress; the answer is discarded. Speech stops too. */
-  cancel(): void {
+  /** Cancels a question in progress. Its answer is discarded; the previous answer, if any, is shown again. */
+  cancelRequest(): void {
+    if (this.current.phase !== "thinking") {
+      return;
+    }
     this.abort?.abort();
-    this.deps.stopSpeech();
-    this.set({ phase: "previewing" });
+    this.abort = null;
+    this.set({ phase: this.restPhase() });
   }
 
-  /** Step 10: releases the camera and speech, and returns to idle. Safe to call more than once. */
+  /** Cancels the live preview without taking a photo. */
+  cancelCamera(): void {
+    this.stopCamera();
+    this.set({ phase: this.restPhase() });
+  }
+
+  /** The camera failed or was refused. The message says what to do; any photo and answer are kept. */
+  reportCameraError(message: string): void {
+    this.stopCamera();
+    this.set({ phase: this.restPhase(), message });
+  }
+
+  /** Leaves the screen: stops speech and any request, and releases the camera. Keeps the photo and answer. */
   end(): void {
     this.abort?.abort();
+    this.abort = null;
     this.deps.stopSpeech();
-    this.deps.releaseCamera();
-    this.set({ phase: "idle" });
+    this.stopCamera();
+    this.set({ phase: this.restPhase() });
   }
 }

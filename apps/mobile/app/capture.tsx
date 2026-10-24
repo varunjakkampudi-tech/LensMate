@@ -1,13 +1,14 @@
-import { useCallback, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { aiErrorText, askVision } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
 import { saveItem } from "../src/memory/vault";
+import { SeeSession, type SeeAnswer, type SeeState } from "../src/see/session";
 import { useCapture } from "../src/ui/capture-session";
 import { Icon } from "../src/ui/icon";
 import { Btn, Card, Field, Notice } from "../src/ui/kit";
-import { usePrefs } from "../src/ui/prefs";
+import { usePrefs, type Prefs } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
 interface Answer {
@@ -20,7 +21,13 @@ interface Answer {
 const FORMAT =
   'Reply with JSON only: {"title": short name of the main subject, "answer": 2-4 sentences, "followups": [3 short follow-up questions the user may ask next]}.';
 
-function parse(raw: string): Omit<Answer, "meta"> {
+interface Parsed {
+  readonly title: string;
+  readonly text: string;
+  readonly followups: readonly string[];
+}
+
+function parse(raw: string): Parsed {
   try {
     const j = JSON.parse(/\{[\s\S]*\}/.exec(raw)?.[0] ?? "") as {
       title?: unknown;
@@ -39,6 +46,11 @@ function parse(raw: string): Omit<Answer, "meta"> {
   }
 }
 
+/** "MOCK" is shown whenever no AI provider was paid for this answer. */
+function metaOf(a: SeeAnswer): string {
+  return `${a.source === "mock" ? "MOCK · " : ""}${(a.latencyMs / 1000).toFixed(1)} s · ₹${(a.costPaise / 100).toFixed(2)}`;
+}
+
 /** See – Photo & Ask: capture or upload, ask, follow up, read aloud, save. Mistake checks live under More. */
 export default function CaptureScreen() {
   const { c } = useTheme();
@@ -46,58 +58,84 @@ export default function CaptureScreen() {
   const capture = useCapture();
   const camera = useRef<CameraHandle>(null);
   const token = useRef(0);
-  const [live, setLive] = useState(false);
-  const [photo, setPhoto] = useState<string | null>(null);
+  // Refs keep the session's callbacks current without rebuilding the session on every render.
+  const prefsRef = useRef<Prefs>(prefs);
+  prefsRef.current = prefs;
+  const captureRef = useRef(capture);
+  captureRef.current = capture;
+
+  const sessionRef = useRef<SeeSession | null>(null);
+  if (sessionRef.current === null) {
+    sessionRef.current = new SeeSession({
+      startCamera: () => {
+        token.current = captureRef.current.begin("camera", "Photo & Ask", () =>
+          sessionRef.current?.cancelCamera(),
+        );
+      },
+      capture: () => camera.current?.capture() ?? Promise.resolve(null),
+      releaseCamera: () => captureRef.current.end(token.current),
+      ask: async (image, question, signal): Promise<SeeAnswer> => {
+        const p = prefsRef.current;
+        const a = await askVision(question, image, p.language, p.detailedDescriptions);
+        if (signal.aborted) {
+          throw new Error("cancelled");
+        }
+        return { text: a.text, source: a.source, costPaise: a.costPaise, latencyMs: a.latencyMs };
+      },
+      speak: (text, onDone) => {
+        const p = prefsRef.current;
+        speak(parse(text).text, p.language, p.voiceRate, onDone);
+      },
+      stopSpeech: () => stopSaying(),
+      errorText: (e) => aiErrorText(e),
+    });
+  }
+  const session = sessionRef.current;
+
+  const [see, setSee] = useState<SeeState>(session.state);
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState<Answer | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [more, setMore] = useState(false);
   const [checks, setChecks] = useState("Is the stove switched off?\nIs the door locked?");
 
-  const stopCam = useCallback(() => setLive(false), []);
-  const onCamError = useCallback(
-    (m: string) => {
-      setError(m);
-      setLive(false);
-      capture.end(token.current);
-    },
-    [capture],
-  );
+  useEffect(() => session.subscribe(setSee), [session]);
+  // Leaving the screen stops speech and any request, and releases the camera.
+  useEffect(() => () => session.end(), [session]);
 
-  const setNewPhoto = (d: string) => {
-    setPhoto(d);
-    setAnswer(null);
+  // The answer's own parse happens once per answer, not on every render.
+  const answer: Answer | null = useMemo(() => {
+    if (see.answer === null) {
+      return null;
+    }
+    const p = parse(see.answer.text);
+    return { title: p.title, text: p.text, followups: p.followups, meta: metaOf(see.answer) };
+  }, [see.answer]);
+
+  // A new answer is unsaved, and reads aloud when the user has chosen auto-speak.
+  useEffect(() => {
     setSaved(false);
-  };
+    if (see.phase === "answered" && see.answer !== null && prefs.autoSpeak) {
+      session.speak();
+    }
+    // Only a new answer triggers this; re-renders must not read it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [see.answer]);
 
-  const ask = async (q: string, checkMode = false) => {
-    if (photo === null || q.trim() === "") {
+  const photo = see.photo;
+  const live = see.phase === "previewing";
+  const busy = see.phase === "thinking";
+  const error = see.message;
+
+  const onCamError = (m: string) => session.reportCameraError(m);
+
+  const ask = (q: string, checkMode = false) => {
+    if (q.trim() === "") {
       return;
     }
-    setBusy(true);
-    setError(null);
-    stopSpeaking();
     const prompt = checkMode
       ? `Check this image against each check. For each: '<check> — Looks fine | Possible issue | Can't tell — reason, confidence low/medium/high'. Information only, never a safety guarantee. Put the lines in "answer". ${FORMAT}\nChecks:\n${checks}`
       : `${q}\n\n${FORMAT}`;
-    try {
-      const a = await askVision(prompt, photo, prefs.language, prefs.detailedDescriptions);
-      const p = parse(a.text);
-      setAnswer({
-        ...p,
-        meta: `${a.source === "mock" ? "MOCK · " : ""}${(a.latencyMs / 1000).toFixed(1)} s · ₹${(a.costPaise / 100).toFixed(2)}`,
-      });
-      setSaved(false);
-      if (prefs.autoSpeak) {
-        speak(p.text, prefs.language, prefs.voiceRate);
-      }
-    } catch (e) {
-      setError(aiErrorText(e));
-    } finally {
-      setBusy(false);
-    }
+    void session.ask(prompt);
   };
 
   const pill = (
@@ -174,10 +212,7 @@ export default function CaptureScreen() {
             accessibilityRole="button"
             accessibilityLabel="Remove photo"
             testID="remove-photo"
-            onPress={() => {
-              setPhoto(null);
-              setAnswer(null);
-            }}
+            onPress={() => session.removePhoto()}
             style={{
               position: "absolute",
               top: 10,
@@ -201,27 +236,9 @@ export default function CaptureScreen() {
               testID="take-photo-button"
               label="Take photo"
               icon="camera"
-              onPress={() => {
-                void (async () => {
-                  const s = (await camera.current?.capture()) ?? null;
-                  setLive(false);
-                  capture.end(token.current);
-                  if (s === null) {
-                    setError("The camera was not ready. Try again.");
-                  } else {
-                    setNewPhoto(s);
-                  }
-                })();
-              }}
+              onPress={() => void session.takePhoto()}
             />
-            <Btn
-              label="Cancel"
-              tone="ghost"
-              onPress={() => {
-                setLive(false);
-                capture.end(token.current);
-              }}
-            />
+            <Btn label="Cancel" tone="ghost" onPress={() => session.cancelCamera()} />
           </>
         ) : (
           <Btn
@@ -229,11 +246,7 @@ export default function CaptureScreen() {
             label={photo === null ? "Camera" : "Retake"}
             icon="camera"
             disabled={!prefs.features.vision}
-            onPress={() => {
-              setError(null);
-              setLive(true);
-              token.current = capture.begin("camera", "Photo & Ask", stopCam);
-            }}
+            onPress={() => session.start()}
           />
         )}
         {!live ? (
@@ -243,11 +256,7 @@ export default function CaptureScreen() {
             tone="ghost"
             icon="upload"
             disabled={!prefs.features.vision}
-            onPress={() =>
-              pickImageFile((d) =>
-                d === null ? setError("That file could not be read as an image.") : setNewPhoto(d),
-              )
-            }
+            onPress={() => pickImageFile((d) => session.setPhoto(d))}
           />
         ) : null}
       </View>
@@ -272,7 +281,7 @@ export default function CaptureScreen() {
           onChangeText={setQuestion}
           placeholder="What is this? Is it good for indoors?"
           placeholderTextColor={c.muted}
-          onSubmitEditing={() => void ask(question)}
+          onSubmitEditing={() => ask(question)}
           style={{ flex: 1, color: c.text, fontFamily: FONTS.body, fontSize: 14, minHeight: 40 }}
         />
         <Pressable
@@ -280,7 +289,7 @@ export default function CaptureScreen() {
           accessibilityLabel="Ask"
           testID="vision-ask-button"
           disabled={busy || photo === null || question.trim() === ""}
-          onPress={() => void ask(question)}
+          onPress={() => ask(question)}
           style={{
             width: 40,
             height: 40,
@@ -301,7 +310,7 @@ export default function CaptureScreen() {
             accessibilityRole="button"
             testID={`quick-${q.split(" ")[0]?.toLowerCase()}`}
             disabled={photo === null || busy}
-            onPress={() => void ask(q)}
+            onPress={() => ask(q)}
             style={{
               paddingHorizontal: 12,
               paddingVertical: 8,
@@ -355,9 +364,9 @@ export default function CaptureScreen() {
           </Card>
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
             {pill(
-              "Read Aloud",
+              see.phase === "speaking" ? "Stop" : "Read Aloud",
               "speaker",
-              () => speak(answer.text, prefs.language, prefs.voiceRate),
+              () => (see.phase === "speaking" ? session.interrupt() : session.speak()),
               "read-aloud-button",
             )}
             {pill(
@@ -381,7 +390,7 @@ export default function CaptureScreen() {
                 accessibilityRole="button"
                 testID="followup-chip"
                 disabled={busy}
-                onPress={() => void ask(f)}
+                onPress={() => ask(f)}
                 style={{
                   paddingHorizontal: 12,
                   paddingVertical: 9,
@@ -414,10 +423,15 @@ export default function CaptureScreen() {
             tone="ghost"
             busy={busy}
             disabled={photo === null || checks.trim() === ""}
-            onPress={() => void ask("checks", true)}
+            onPress={() => ask("checks", true)}
           />
         </Card>
       ) : null}
     </ScrollView>
   );
+}
+
+/** Stops read-aloud on the phone and the web (the speech module decides which). */
+function stopSaying(): void {
+  stopSpeaking();
 }

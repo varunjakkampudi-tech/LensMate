@@ -1,16 +1,16 @@
 /**
  * SEE → THINK → TALK, automated, in mock mode.
  *
- * What is real here: the session state machine, the image checks, askVision and its broker request path, and the speech
- * module's native branch. What is stand-in: the broker transport (mocked, so no provider is called), the speech engine
- * (expo-speech is mocked), and the camera (a fixed image is returned). No physical camera, microphone or speaker is
+ * Real: the session state machine, the image checks, askVision and its broker request path (through the mocked
+ * transport), and the speech module's native branch. Stand-in: the broker transport (mocked, so no provider is called),
+ * the speech engine (expo-speech is mocked) and the camera (a fixed image). No physical camera, microphone or speaker is
  * exercised by these tests; device checks are listed for the owner.
  */
 import * as Speech from "expo-speech";
+import { BrokerError } from "@lensmate/core";
 import { askVision, aiErrorText } from "../ai/assistant";
 import { speak as speakText, stopSpeaking } from "../ai/speech";
 import { callBrokerVision } from "../broker-call";
-import { BrokerError } from "@lensmate/core";
 import { checkImage, MAX_IMAGE_BYTES, SeeSession, type SeeDeps } from "./session";
 
 jest.mock("expo-speech", () => ({
@@ -30,6 +30,7 @@ const visionCall = callBrokerVision as unknown as jest.Mock;
 
 // A tiny valid JPEG data URL (header bytes only). The broker is mocked, so only the phone-side checks see it.
 const PHOTO = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2w==";
+const OVERSIZE = "data:image/jpeg;base64," + "A".repeat(Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 8);
 
 function reply(text: string, source: "mock" | "openrouter" = "mock") {
   return {
@@ -43,17 +44,17 @@ function reply(text: string, source: "mock" | "openrouter" = "mock") {
 
 interface Harness {
   session: SeeSession;
+  startCamera: jest.Mock;
   releaseCamera: jest.Mock;
   capture: jest.Mock;
-  requestCamera: jest.Mock;
 }
 
 function harness(overrides: Partial<SeeDeps> = {}): Harness {
-  const requestCamera = jest.fn(async () => true);
-  const capture = jest.fn(async () => PHOTO as string | null);
+  const startCamera = jest.fn();
   const releaseCamera = jest.fn();
+  const capture = jest.fn(async () => PHOTO as string | null);
   const deps: SeeDeps = {
-    requestCamera,
+    startCamera,
     capture,
     releaseCamera,
     ask: (image, question, signal) =>
@@ -61,14 +62,14 @@ function harness(overrides: Partial<SeeDeps> = {}): Harness {
         if (signal.aborted) {
           throw new Error("aborted");
         }
-        return { text: a.text, source: a.source };
+        return { text: a.text, source: a.source, costPaise: a.costPaise, latencyMs: a.latencyMs };
       }),
     speak: (text, onDone) => speakText(text, "en", 1, onDone),
     stopSpeech: () => stopSpeaking(),
     errorText: (error) => aiErrorText(error),
     ...overrides,
   };
-  return { session: new SeeSession(deps), releaseCamera, capture, requestCamera };
+  return { session: new SeeSession(deps), startCamera, releaseCamera, capture };
 }
 
 beforeEach(() => {
@@ -80,18 +81,19 @@ describe("SEE → THINK → TALK session (mock broker, mock speech engine)", () 
   it("runs the whole session and labels the answer as a mock", async () => {
     const h = harness();
 
-    await h.session.start();
+    h.session.start();
     expect(h.session.state.phase).toBe("previewing");
-    await h.session.takePhoto();
-    expect(h.session.state.phase).toBe("photo_ready");
-    await h.session.ask("What is on the table?");
+    expect(h.startCamera).toHaveBeenCalledTimes(1);
 
+    await h.session.takePhoto();
+    expect(h.session.state).toMatchObject({ phase: "photo_ready", photo: PHOTO });
+    expect(h.releaseCamera).toHaveBeenCalledTimes(1);
+
+    await h.session.ask("What is on the table?");
     expect(h.session.state).toMatchObject({
       phase: "answered",
-      answer: "A red mug on a wooden table.",
-      source: "mock",
+      answer: { text: "A red mug on a wooden table.", source: "mock" },
     });
-    expect(visionCall).toHaveBeenCalledTimes(1);
     expect(visionCall.mock.calls[0]?.[0]).toMatchObject({ imageDataUrl: PHOTO });
 
     h.session.speak();
@@ -100,30 +102,24 @@ describe("SEE → THINK → TALK session (mock broker, mock speech engine)", () 
       "A red mug on a wooden table.",
       expect.objectContaining({ rate: 1 }),
     );
-
-    h.session.end();
-    expect(h.session.state.phase).toBe("idle");
-    expect(h.releaseCamera).toHaveBeenCalledTimes(1);
-    expect(engineStop).toHaveBeenCalled();
   });
 
-  it("returns to an answered state when speech finishes on its own", async () => {
+  it("returns to answered when speech finishes on its own", async () => {
     const h = harness();
-    await h.session.start();
+    h.session.start();
     await h.session.takePhoto();
     await h.session.ask("Describe it");
     h.session.speak();
 
-    // Finish the engine's speech: the onDone callback passed to speak.
-    const onDone = engineSpeak.mock.calls[0]?.[1] as { onDone: () => void };
-    onDone.onDone();
+    const options = engineSpeak.mock.calls[0]?.[1] as { onDone: () => void };
+    options.onDone();
 
     expect(h.session.state.phase).toBe("answered");
   });
 
   it("interrupts speech at once and keeps the answer on screen", async () => {
     const h = harness();
-    await h.session.start();
+    h.session.start();
     await h.session.takePhoto();
     await h.session.ask("Describe it");
     h.session.speak();
@@ -133,92 +129,149 @@ describe("SEE → THINK → TALK session (mock broker, mock speech engine)", () 
     expect(engineStop).toHaveBeenCalled();
     expect(h.session.state).toMatchObject({
       phase: "answered",
-      answer: "A red mug on a wooden table.",
+      answer: { text: "A red mug on a wooden table." },
     });
   });
 
-  it("reports a refused camera permission and never captures", async () => {
-    const h = harness({ requestCamera: async () => false });
-
-    await h.session.start();
+  it("asks a follow-up about the same photo, keeping the photo", async () => {
+    const h = harness();
+    h.session.start();
     await h.session.takePhoto();
+    await h.session.ask("What colour is it?");
+    await h.session.ask("How big is it?");
 
-    expect(h.session.state.phase).toBe("permission_denied");
-    expect(h.capture).not.toHaveBeenCalled();
+    expect(visionCall).toHaveBeenCalledTimes(2);
+    expect(visionCall.mock.calls[1]?.[0]).toMatchObject({ imageDataUrl: PHOTO });
+    expect(h.session.state.photo).toBe(PHOTO);
   });
 
-  it("rejects an invalid image before any broker call", async () => {
-    const h = harness({ capture: async () => "data:text/plain;base64,aGk=" });
-
-    await h.session.start();
+  it("cancels a question in progress and discards its answer", async () => {
+    let release: (value: unknown) => void = () => undefined;
+    visionCall.mockImplementation(() => new Promise((resolve) => (release = resolve)));
+    const h = harness();
+    h.session.start();
     await h.session.takePhoto();
 
-    expect(h.session.state).toMatchObject({ phase: "error" });
+    const pending = h.session.ask("What is it?");
+    h.session.cancelRequest();
+    release(reply("Late answer that must be ignored"));
+    await pending;
+
+    expect(h.session.state).toMatchObject({ phase: "photo_ready", answer: null });
+  });
+
+  it("stops the camera when the user cancels the preview, and releases it once", () => {
+    const h = harness();
+    h.session.start();
+
+    h.session.cancelCamera();
+    h.session.cancelCamera();
+
+    expect(h.releaseCamera).toHaveBeenCalledTimes(1);
+    expect(h.session.state.phase).toBe("idle");
+  });
+
+  it("releases the camera and speech when the screen is left, keeping the photo and answer", async () => {
+    const h = harness();
+    h.session.start();
+    await h.session.takePhoto();
+    await h.session.ask("Describe it");
+    h.session.speak();
+
+    h.session.end();
+
+    expect(engineStop).toHaveBeenCalled();
+    expect(h.session.state).toMatchObject({ phase: "answered", photo: PHOTO });
+  });
+
+  it("ends cleanly when ended twice, without releasing the camera twice", () => {
+    const h = harness();
+    h.session.start();
+
+    h.session.end();
+    h.session.end();
+
+    expect(h.releaseCamera).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a refused camera permission and keeps any photo already held", async () => {
+    const h = harness();
+    h.session.start();
+    await h.session.takePhoto();
+    h.session.start();
+    h.session.reportCameraError("Camera permission was refused. You can upload a photo instead.");
+
+    expect(h.session.state).toMatchObject({ phase: "photo_ready", photo: PHOTO });
+    expect(h.session.state.message).toMatch(/refused/);
+    expect(h.releaseCamera).toHaveBeenCalled();
+  });
+
+  it("reports a camera that is not ready, and keeps the camera off", async () => {
+    const h = harness({ capture: async () => null });
+    h.session.start();
+
+    await h.session.takePhoto();
+
+    expect(h.session.state).toMatchObject({
+      phase: "idle",
+      message: "The camera was not ready. Try again.",
+    });
+    expect(h.releaseCamera).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an invalid image before any broker call, and keeps the previous photo", async () => {
+    const h = harness();
+    h.session.start();
+    await h.session.takePhoto();
+
+    expect(h.session.setPhoto("data:text/plain;base64,aGk=")).toBe(false);
+
+    expect(h.session.state).toMatchObject({
+      photo: PHOTO,
+      message: "That file could not be read as an image.",
+    });
     expect(visionCall).not.toHaveBeenCalled();
   });
 
   it("rejects an oversize photo before any broker call", async () => {
-    const big = "data:image/jpeg;base64," + "A".repeat(Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 8);
-    const h = harness({ capture: async () => big });
+    const h = harness();
 
-    await h.session.start();
-    await h.session.takePhoto();
+    expect(h.session.setPhoto(OVERSIZE)).toBe(false);
 
-    expect(h.session.state).toMatchObject({
-      phase: "error",
-      message: expect.stringMatching(/too large/),
-    });
+    expect(h.session.state.message).toMatch(/too large/);
+    expect(h.session.state.photo).toBeNull();
     expect(visionCall).not.toHaveBeenCalled();
   });
 
-  it("shows a clear message when the network fails, and does not invent an answer", async () => {
+  it("shows a clear error on network failure and does not invent an answer", async () => {
     visionCall.mockRejectedValue(new TypeError("Network request failed"));
     const h = harness();
+    h.session.setPhoto(PHOTO);
 
-    await h.session.start();
-    await h.session.takePhoto();
     await h.session.ask("What is it?");
 
-    expect(h.session.state.phase).toBe("error");
-    expect(h.session.state).not.toMatchObject({ answer: expect.anything() });
+    expect(h.session.state).toMatchObject({ phase: "error", photo: PHOTO, answer: null });
+    expect(h.session.state.message).toBeTruthy();
   });
 
   it("shows the broker's refusal in plain words", async () => {
     visionCall.mockRejectedValue(new BrokerError("BUDGET_EXHAUSTED", "PROVIDER_ERROR", false));
     const h = harness();
+    h.session.setPhoto(PHOTO);
 
-    await h.session.start();
-    await h.session.takePhoto();
     await h.session.ask("What is it?");
 
-    expect(h.session.state).toMatchObject({ phase: "error" });
+    expect(h.session.state.phase).toBe("error");
   });
 
-  it("cancels a request in progress and discards its answer", async () => {
-    let release: (value: unknown) => void = () => undefined;
-    visionCall.mockImplementation(() => new Promise((resolve) => (release = resolve)));
+  it("removes the photo and its answer", async () => {
     const h = harness();
+    h.session.setPhoto(PHOTO);
+    await h.session.ask("What is it?");
 
-    await h.session.start();
-    await h.session.takePhoto();
-    const pending = h.session.ask("What is it?");
-    h.session.cancel();
-    release(reply("Late answer that must be ignored"));
-    await pending;
+    h.session.removePhoto();
 
-    expect(h.session.state.phase).toBe("previewing");
-    expect(engineStop).toHaveBeenCalled();
-  });
-
-  it("ends cleanly when ended twice and returns to idle", async () => {
-    const h = harness();
-    await h.session.start();
-
-    h.session.end();
-    h.session.end();
-
-    expect(h.releaseCamera).toHaveBeenCalledTimes(2);
-    expect(h.session.state.phase).toBe("idle");
+    expect(h.session.state).toMatchObject({ phase: "idle", photo: null, answer: null });
   });
 });
 
@@ -236,8 +289,6 @@ describe("image checks", () => {
     });
     expect(checkImage("not a data url")).toEqual({ ok: false, reason: "NOT_AN_IMAGE" });
     expect(checkImage("data:image/jpeg;base64,")).toEqual({ ok: false, reason: "NOT_AN_IMAGE" });
-    expect(
-      checkImage("data:image/jpeg;base64," + "A".repeat(Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 8)),
-    ).toEqual({ ok: false, reason: "TOO_LARGE" });
+    expect(checkImage(OVERSIZE)).toEqual({ ok: false, reason: "TOO_LARGE" });
   });
 });
