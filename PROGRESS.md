@@ -428,3 +428,11 @@ Not verified in this pass: a live restore of a pre-genesis backup; the backfill 
 - The demonstration is reachable from the home screen ("Try the demo") and at /demo on the web preview. Verified in the browser on the preview server: choose a synthetic scene, take a simulated photo, ask a synthetic question, read the mock-labelled answer, and see the event-log summary (1 photo, 1 question, 1 answer). Synthetic scenes, transcripts, mock answers and simulated times are labelled in the UI.
 - Not real: no AI, no speech, no camera, no microphone, no provider. Cloud disclosure is not approved, so the demo makes no network calls and the broker path stays blocked.
 - BLOCKER-006 and BLOCKER-008 remain OPEN; the re-review of 034f6da is pending. The Docker failure-path suite is being re-run on 034f6da.
+
+### Docker failure-path verification on 4ad5fc1 (2026-10-24)
+
+- 14 of 14 scenarios PASS on the committed head (`git archive HEAD`, mock mode, placeholder secrets, project removed afterwards). Non-project containers unchanged (15 entries before and after).
+- A first re-run on 034f6da failed seven scenarios. Root cause: `verifySchema` read columns from `information_schema.columns`, which lists only columns the current role may use. The broker runs the check as the application role, which has no rights on the new genesis table, so the table looked empty and the broker refused to start. The local PostgreSQL tests run as the owner and did not show it. Fix: read `pg_attribute` (commit 4ad5fc1). Regression test added: the guard runs as the application role.
+- Lesson recorded: schema checks must run with the least privilege the broker uses, and the Docker suite is the only place that exercises that path end to end.
+- Broker unit and PostgreSQL tests on 4ad5fc1: 185 of 185 passed. Lint of services/broker passed.
+- Fresh-context re-review of 034f6da and 4ad5fc1: requested; result to be recorded when it returns. BLOCKER-006 and BLOCKER-008 remain OPEN until that review is complete.
