@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { createElement, useEffect, useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { rupees, useAiSetup, type AiSetup } from "../src/ai/use-ai-setup";
 import { DEMO } from "../src/demo/demo-strings";
 import { listItems, type MemoryItem } from "../src/memory/vault";
@@ -9,7 +9,6 @@ import { useGlasses } from "../src/ui/glasses";
 import { Icon, type IconName } from "../src/ui/icon";
 import { Body, Btn, Card, H2, Notice, Row } from "../src/ui/kit";
 import { FONTS, useTheme } from "../src/ui/theme";
-import { ScrollView } from "react-native";
 
 type Tint = "tintBlue" | "tintRed" | "tintIndigo" | "tintAmber";
 const TILES: {

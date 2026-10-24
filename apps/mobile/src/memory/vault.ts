@@ -31,8 +31,11 @@ function isWeb(): boolean {
   );
 }
 
+// One shared connection for the page. A failed open is retried on the next call.
+let dbPromise: Promise<IDBDatabase> | undefined;
+
 function open(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  dbPromise ??= new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB, 1);
     request.onupgradeneeded = () => {
       request.result.createObjectStore(STORE);
@@ -40,7 +43,11 @@ function open(): Promise<IDBDatabase> {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(new Error("VAULT_UNAVAILABLE"));
+  }).catch((error: unknown) => {
+    dbPromise = undefined;
+    throw error;
   });
+  return dbPromise;
 }
 
 function run<T>(
@@ -56,7 +63,19 @@ function run<T>(
   });
 }
 
-async function key(db: IDBDatabase): Promise<CryptoKey> {
+// One key per browser profile. The promise is shared so two calls at once cannot each create a key and overwrite the
+// other's, which would leave the first call's items unreadable.
+let keyPromise: Promise<CryptoKey> | undefined;
+
+function key(db: IDBDatabase): Promise<CryptoKey> {
+  keyPromise ??= loadOrCreateKey(db).catch((error: unknown) => {
+    keyPromise = undefined;
+    throw error;
+  });
+  return keyPromise;
+}
+
+async function loadOrCreateKey(db: IDBDatabase): Promise<CryptoKey> {
   const existing = await run<CryptoKey | undefined>(db, KEYS, "readonly", (s) => s.get("main"));
   if (existing !== undefined) {
     return existing;
@@ -133,6 +152,7 @@ export async function deleteAll(): Promise<void> {
   const db = await open();
   await run(db, STORE, "readwrite", (s) => s.clear());
   await run(db, KEYS, "readwrite", (s) => s.clear());
+  keyPromise = undefined;
 }
 
 /** Export of everything the user saved, as a JSON download (web). */

@@ -8,16 +8,20 @@ import { LANGS, type Lang } from "../ui/prefs";
  */
 const locale = (lang: Lang) => LANGS[lang].locale;
 
-/** Picks the most natural-sounding installed voice for a language (neural or online voices first). */
-function bestVoice(lang: Lang): SpeechSynthesisVoice | undefined {
-  const voices = speechSynthesis
+/** Installed voices for a language. Browsers report tags as "en-US" or "en_US"; both match. */
+function voicesFor(lang: Lang): SpeechSynthesisVoice[] {
+  return speechSynthesis
     .getVoices()
     .filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(lang));
+}
+
+/** Picks the most natural-sounding installed voice for a language (neural or online voices first). */
+function bestVoice(lang: Lang): SpeechSynthesisVoice | undefined {
   const score = (v: SpeechSynthesisVoice) =>
     (/natural|neural|online|premium|enhanced/i.test(v.name) ? 4 : 0) +
     (/google/i.test(v.name) ? 2 : 0) +
     (v.lang.toLowerCase() === locale(lang).toLowerCase() ? 1 : 0);
-  return voices.sort((a, b) => score(b) - score(a))[0];
+  return voicesFor(lang).sort((a, b) => score(b) - score(a))[0];
 }
 
 interface RecognitionLike {
@@ -106,9 +110,7 @@ export function listen(
 }
 
 export function hasVoiceFor(lang: Lang): boolean {
-  return (
-    canSpeak() && speechSynthesis.getVoices().some((v) => v.lang.toLowerCase().startsWith(lang))
-  );
+  return canSpeak() && voicesFor(lang).length > 0;
 }
 
 export function speak(text: string, lang: Lang, rate: number, onDone?: () => void): void {

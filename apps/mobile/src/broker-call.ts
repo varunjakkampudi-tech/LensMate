@@ -43,11 +43,6 @@ export interface BrokerCallPolicy {
   readonly doFetch?: typeof fetch;
 }
 
-/**
- * The only path from the app to the broker. It reads the address, the device credential and the disclosure acceptance
- * itself, and sends the request only when all three hold. A blocked call makes no request. The caller cannot supply
- * the approval or the acceptance.
- */
 /** Resolves broker access for one call, or throws BrokerCallBlocked before any request is made. */
 async function brokerOptions(policy: BrokerCallPolicy): Promise<BrokerClientOptions> {
   let credential: CredentialState;

@@ -24,12 +24,16 @@ function toJpeg(source: CanvasImageSource, width: number, height: number): strin
 function fileToJpeg(file: File): Promise<string | null> {
   return new Promise((resolve) => {
     const img = new Image();
+    const url = URL.createObjectURL(file);
     img.onload = () => {
       resolve(toJpeg(img, img.naturalWidth, img.naturalHeight));
-      URL.revokeObjectURL(img.src);
+      URL.revokeObjectURL(url);
     };
-    img.onerror = () => resolve(null);
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      resolve(null);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
   });
 }
 
@@ -63,6 +67,10 @@ export const CameraPreview = forwardRef<CameraHandle, { onError: (message: strin
           : toJpeg(video.current, video.current.videoWidth, video.current.videoHeight),
     }));
 
+    // Held in a ref so a parent that passes a new callback each render does not restart the camera.
+    const reportError = useRef(onError);
+    reportError.current = onError;
+
     useEffect(() => {
       if (Platform.OS !== "web") {
         return;
@@ -83,13 +91,15 @@ export const CameraPreview = forwardRef<CameraHandle, { onError: (message: strin
           }
         })
         .catch(() =>
-          onError("Camera unavailable or permission refused. You can upload a photo instead."),
+          reportError.current(
+            "Camera unavailable or permission refused. You can upload a photo instead.",
+          ),
         );
       return () => {
         cancelled = true;
         stream?.getTracks().forEach((t) => t.stop());
       };
-    }, [onError]);
+    }, []);
 
     if (Platform.OS !== "web") {
       return (

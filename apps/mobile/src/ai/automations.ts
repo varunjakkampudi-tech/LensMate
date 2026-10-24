@@ -24,7 +24,8 @@ export function loadAutomations(): Automation[] {
     return [];
   }
   try {
-    return JSON.parse(globalThis.localStorage.getItem(KEY) ?? "[]") as Automation[];
+    const parsed: unknown = JSON.parse(globalThis.localStorage.getItem(KEY) ?? "[]");
+    return Array.isArray(parsed) ? (parsed as Automation[]) : [];
   } catch {
     return [];
   }
@@ -36,7 +37,13 @@ export function saveAutomations(list: readonly Automation[]): void {
   }
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+/** Today's date in the user's local time zone, the same clock that sets each automation's time. */
+function today(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
 
 export async function runAutomation(a: Automation): Promise<string> {
   const result = await runAgentTask(a.goal, "en", () => undefined);

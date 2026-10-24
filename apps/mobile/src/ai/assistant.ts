@@ -23,9 +23,17 @@ export interface LatencyRecord {
   readonly ok: boolean;
 }
 
+const LOG_LIMIT = 200;
 const log: LatencyRecord[] = [];
+
+/** The most recent calls, newest first. Kept in memory only, for the diagnostics screen. */
 export function latencyLog(): readonly LatencyRecord[] {
   return log;
+}
+
+function record(entry: LatencyRecord): void {
+  log.unshift(entry);
+  log.splice(LOG_LIMIT);
 }
 
 const RULES =
@@ -55,7 +63,7 @@ async function timed(
       source: reply.source,
       latencyMs: Date.now() - started,
     };
-    log.unshift({
+    record({
       at: started,
       route,
       latencyMs: answer.latencyMs,
@@ -64,7 +72,7 @@ async function timed(
     });
     return answer;
   } catch (error) {
-    log.unshift({ at: started, route, latencyMs: Date.now() - started, costPaise: 0, ok: false });
+    record({ at: started, route, latencyMs: Date.now() - started, costPaise: 0, ok: false });
     throw error;
   } finally {
     clearTimeout(timer);
@@ -109,7 +117,7 @@ export function askVision(
   );
 }
 
-/** Live internet research (OpenRouter web search, zero data retention). Costs about ₹2.3 per call under the cap. */
+/** Live internet research (OpenRouter web search, zero data retention). The broker charges the worst case per call. */
 export function research(question: string, lang: Lang): Promise<AiAnswer> {
   return timed("research", (signal) =>
     callBroker(

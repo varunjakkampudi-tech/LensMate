@@ -9,7 +9,14 @@ import { listItems, saveItem, type MemoryItem } from "./vault";
 const ROUNDS = 310_000;
 export const RETENTION_CHOICES = [7, 30, 90, 365] as const;
 
-const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+// Chunked so large payloads do not exceed the call-stack limit of String.fromCharCode(...bytes).
+const b64 = (bytes: Uint8Array) => {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(bin);
+};
 const unb64 = (text: string) => Uint8Array.from(atob(text), (ch) => ch.charCodeAt(0));
 
 async function keyFrom(passphrase: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
@@ -40,12 +47,7 @@ export async function sealItems(items: readonly MemoryItem[], passphrase: string
       new TextEncoder().encode(JSON.stringify(items)),
     ),
   );
-  // Chunked to avoid call-stack limits on large payloads.
-  let bin = "";
-  for (let i = 0; i < data.length; i += 0x8000) {
-    bin += String.fromCharCode(...data.subarray(i, i + 0x8000));
-  }
-  return `v1.${b64(salt)}.${b64(iv)}.${btoa(bin)}`;
+  return `v1.${b64(salt)}.${b64(iv)}.${b64(data)}`;
 }
 
 export async function openItems(sealed: string, passphrase: string): Promise<MemoryItem[]> {
@@ -99,6 +101,7 @@ export async function deleteBackup(): Promise<void> {
 export function backupErrorText(error: unknown): string {
   const code = error instanceof Error ? error.message : "";
   if (code === "BACKUP_PASSPHRASE") return "That backup passphrase does not open this backup.";
+  if (code === "BACKUP_FORMAT") return "The backup on the server is damaged and cannot be opened.";
   if (code === "BACKUP_NONE") return "There is no backup on the server (or it has expired).";
   if (code === "BACKUP_400") return "The backup is too large. Leave photos out and try again.";
   if (code.startsWith("BACKUP_")) return "The server could not store the backup. Try again later.";

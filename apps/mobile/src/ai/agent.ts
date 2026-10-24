@@ -54,20 +54,26 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : typeof v === "number" ? String(v) : "";
 }
 
+/** Builds the link the user is asked to tap. Anything the model proposes is checked here, never passed through. */
 export function actionUrl(kind: string, target: string, body: string): PhoneAction | null {
   const t = encodeURIComponent(target);
   const b = encodeURIComponent(body);
+  const digits = target.replace(/[^+\d]/g, "");
   switch (kind) {
     case "call":
-      return { kind, label: `Call ${target}`, url: `tel:${target.replace(/[^+\d]/g, "")}` };
+      return digits === "" ? null : { kind, label: `Call ${target}`, url: `tel:${digits}` };
     case "sms":
-      return {
-        kind,
-        label: `Message ${target}`,
-        url: `sms:${target.replace(/[^+\d]/g, "")}?body=${b}`,
-      };
+      return digits === ""
+        ? null
+        : { kind, label: `Message ${target}`, url: `sms:${digits}?body=${b}` };
     case "email":
-      return { kind, label: `Email ${target}`, url: `mailto:${target}?body=${b}` };
+      return /^[^\s@?&#]+@[^\s@?&#]+$/.test(target)
+        ? {
+            kind,
+            label: `Email ${target}`,
+            url: `mailto:${encodeURIComponent(target)}?body=${b}`,
+          }
+        : null;
     case "maps":
       return {
         kind,
@@ -89,7 +95,9 @@ export function parseCalls(text: string): ToolCall[] {
   try {
     const parsed = JSON.parse(/\{[\s\S]*\}/.exec(text)?.[0] ?? "") as { calls?: unknown };
     return Array.isArray(parsed.calls)
-      ? (parsed.calls as ToolCall[]).filter((c) => typeof c.tool === "string").slice(0, 4)
+      ? (parsed.calls as (ToolCall | null)[])
+          .filter((c): c is ToolCall => c !== null && typeof c.tool === "string")
+          .slice(0, 4)
       : [];
   } catch {
     return [];
@@ -119,8 +127,7 @@ export async function runAgentTask(
     "en",
     PLANNER,
   );
-  cost += plan.costPaise;
-  const calls = parseCalls(plan.text);
+  const calls = parseCalls(charge(plan));
   step({
     agent: "Planner",
     summary: calls.length === 0 ? "No tools needed" : calls.map((c) => c.tool).join(" → "),
@@ -185,7 +192,7 @@ export async function runAgentTask(
           code(input.from, "en"),
           code(input.to, lang),
         );
-        cost += result.answer.costPaise;
+        charge(result.answer);
         findings.push(`Translation: ${result.translation}`);
         step({ agent: "Translator", summary: result.translation, status: "done" });
       } else if (call.tool === "phone_action") {
@@ -220,7 +227,7 @@ export async function runAgentTask(
     lang,
     "You are the writer agent. When agent results exist, base the answer on them and never invent news, prices or saved items; when there are none, answer from your general knowledge. Be concise and concrete. Mention uncertainty. Do not claim an action was done unless the results say so.",
   );
-  cost += final.costPaise;
+  charge(final);
   step({ agent: "Writer", summary: "Answer ready", status: "done" });
   return { steps, answer: final.text, actions, costPaise: cost };
 }

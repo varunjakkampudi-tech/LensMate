@@ -103,7 +103,12 @@ export async function requestBrokerUsage(
   if (!response.ok) {
     throw refusalFor(response.status, text);
   }
-  const parsed = JSON.parse(text) as Partial<BrokerUsage>;
+  let parsed: Partial<BrokerUsage>;
+  try {
+    parsed = JSON.parse(text) as Partial<BrokerUsage>;
+  } catch {
+    throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+  }
   if (typeof parsed.capPaise !== "number" || typeof parsed.spentPaise !== "number") {
     throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
   }

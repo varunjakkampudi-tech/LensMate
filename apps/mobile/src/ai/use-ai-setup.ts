@@ -4,6 +4,8 @@ import { APPROVED_CLOUD_DISCLOSURE_VERSION, fetchBrokerUsage } from "../broker-c
 import { readBrokerConfig } from "../broker-config";
 import { loadDeviceCredential, secureStorage } from "../device-credential";
 
+const USAGE_TIMEOUT_MS = 15_000;
+
 export interface AiSetup {
   readonly loading: boolean;
   readonly configured: boolean;
@@ -45,12 +47,16 @@ export function useAiSetup(): AiSetup {
       let spentPaise: number | null = null;
       let capPaise: number | null = null;
       if (configured && enrolled && accepted) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), USAGE_TIMEOUT_MS);
         try {
-          const usage = await fetchBrokerUsage(new AbortController().signal);
+          const usage = await fetchBrokerUsage(controller.signal);
           spentPaise = usage.spentPaise + usage.reservedPaise;
           capPaise = usage.capPaise;
         } catch {
           // Usage is display only; the broker still enforces the cap.
+        } finally {
+          clearTimeout(timer);
         }
       }
       if (alive) {
