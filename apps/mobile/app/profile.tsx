@@ -219,6 +219,21 @@ export default function MoreScreen() {
       <NotificationTestCard />
 
       <Card>
+        <H2>Diagnostics</H2>
+        <Body muted size={14}>
+          What this phone or browser can do right now: camera, spoken answers, voice input,
+          notifications, broker address and encrypted notes.
+        </Body>
+        <Btn
+          testID="open-diagnostics-button"
+          label="Open diagnostics"
+          tone="ghost"
+          icon="chart"
+          onPress={() => router.push("/diagnostics" as "/")}
+        />
+      </Card>
+
+      <Card>
         <H2>Interview practice</H2>
         <Body muted size={14}>
           Mock questions, feedback and debriefs. Practice only: LensMate never helps during a live
