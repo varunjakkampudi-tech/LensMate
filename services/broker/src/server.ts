@@ -149,7 +149,6 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     bodyLimit: Math.max(config.maxInputBytes, config.maxImageBytes * 2) + 65_536,
     // Unknown fields are rejected, not silently dropped, and types are never coerced ("64" is not 64).
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, allErrors: false } },
-    disableRequestLogging: false,
   });
   const rate = new TokenBucket(config.rateLimitBurst, config.rateLimitRefillPerSecond, now);
   const concurrency = new ConcurrencyGuard(
