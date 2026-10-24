@@ -8,7 +8,7 @@ import {
   saveAutomations,
   type Automation,
 } from "../src/ai/automations";
-import { saveItem } from "../src/memory/vault";
+import { memoryErrorText, saveItem } from "../src/memory/vault";
 import { FeatureOff } from "../src/ui/feature-off";
 import { Body, Btn, Card, Field, H2, Notice, Page, Row } from "../src/ui/kit";
 import { usePrefs } from "../src/ui/prefs";
@@ -177,7 +177,7 @@ export default function TasksScreen() {
                   kind: "answer",
                   title: `Research: ${query.slice(0, 50)}`,
                   text: found,
-                })
+                }).catch((e: unknown) => setError(memoryErrorText(e)))
               }
             />
           )}

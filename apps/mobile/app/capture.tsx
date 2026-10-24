@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-nativ
 import { aiErrorText, askVision } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
-import { saveItem } from "../src/memory/vault";
+import { memoryErrorText, saveItem } from "../src/memory/vault";
 import { SeeSession, type SeeAnswer, type SeeState } from "../src/see/session";
 import { useCapture } from "../src/ui/capture-session";
 import { Icon } from "../src/ui/icon";
@@ -124,7 +124,8 @@ export default function CaptureScreen() {
   const photo = see.photo;
   const live = see.phase === "previewing";
   const busy = see.phase === "thinking";
-  const error = see.message;
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const error = see.message ?? saveError;
 
   const onCamError = (m: string) => session.reportCameraError(m);
 
@@ -378,7 +379,12 @@ export default function CaptureScreen() {
                   title: answer.title,
                   text: answer.text,
                   ...(photo === null ? {} : { imageDataUrl: photo }),
-                }).then(() => setSaved(true)),
+                })
+                  .then(() => {
+                    setSaved(true);
+                    setSaveError(null);
+                  })
+                  .catch((e: unknown) => setSaveError(memoryErrorText(e))),
               "save-capture-button",
             )}
             {pill("More", "more", () => setMore(!more), "more-button")}

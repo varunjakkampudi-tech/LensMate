@@ -177,20 +177,23 @@ function useTicker() {
       }
     };
     const timer = setInterval(() => {
-      void listItems().then(async (items) => {
-        for (const item of items) {
-          if (
-            item.kind === "reminder" &&
-            item.done !== true &&
-            item.dueAt !== undefined &&
-            item.dueAt <= Date.now()
-          ) {
-            await saveItem({ ...item, done: true });
-            notify("LensMate reminder", item.title);
+      void listItems()
+        .then(async (items) => {
+          for (const item of items) {
+            if (
+              item.kind === "reminder" &&
+              item.done !== true &&
+              item.dueAt !== undefined &&
+              item.dueAt <= Date.now()
+            ) {
+              await saveItem({ ...item, done: true });
+              notify("LensMate reminder", item.title);
+            }
           }
-        }
-      });
-      void runDueAutomations(notify);
+        })
+        .catch(() => undefined);
+      // Encrypted notes can be unavailable (Expo Go, lost key). The reminder check then skips silently.
+      void runDueAutomations(notify).catch(() => undefined);
     }, 30_000);
     return () => clearInterval(timer);
   }, []);

@@ -62,14 +62,18 @@ export default function MemoryScreen() {
     ) {
       await Notification.requestPermission();
     }
-    await saveItem({
-      kind: "reminder",
-      title: reminder.trim(),
-      text: "",
-      dueAt: Date.now() + mins * 60_000,
-    });
-    setReminder("");
-    refresh();
+    try {
+      await saveItem({
+        kind: "reminder",
+        title: reminder.trim(),
+        text: "",
+        dueAt: Date.now() + mins * 60_000,
+      });
+      setReminder("");
+      refresh();
+    } catch (e: unknown) {
+      setMessage(memoryErrorText(e));
+    }
   };
 
   /** Information retrieval over the user's own notes: only matching note text is sent, after the user asks. */
@@ -132,10 +136,12 @@ export default function MemoryScreen() {
                 kind: "note",
                 title: note.trim().split("\n")[0]?.slice(0, 60) ?? "Note",
                 text: note.trim(),
-              }).then(() => {
-                setNote("");
-                refresh();
               })
+                .then(() => {
+                  setNote("");
+                  refresh();
+                })
+                .catch((e: unknown) => setMessage(memoryErrorText(e)))
             }
           />
         </Card>
@@ -238,7 +244,11 @@ export default function MemoryScreen() {
               label="Delete"
               tone="ghost"
               icon="trash"
-              onPress={() => void deleteItem(item.id).then(refresh)}
+              onPress={() =>
+                void deleteItem(item.id)
+                  .then(refresh)
+                  .catch((e: unknown) => setMessage(memoryErrorText(e)))
+              }
             />
           </View>
         ))}

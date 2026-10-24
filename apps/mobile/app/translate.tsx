@@ -5,7 +5,7 @@ import { hasVoiceFor, speak } from "../src/ai/speech";
 import { startsNewSession } from "../src/ai/session";
 import { useMicSession } from "../src/ai/use-voice";
 import { pickImageFile } from "../src/capture/camera";
-import { saveItem } from "../src/memory/vault";
+import { memoryErrorText, saveItem } from "../src/memory/vault";
 import { Icon, type IconName } from "../src/ui/icon";
 import { Btn, Field, Notice } from "../src/ui/kit";
 import { LangPicker } from "../src/ui/lang-picker";
@@ -310,7 +310,9 @@ export default function TranslateScreen() {
                   kind: "note",
                   title: `Translation: ${(original ?? "").slice(0, 40)}`,
                   text: `${original ?? ""}\n→ ${result.text}`,
-                }).then(() => setSavedNote(true))
+                })
+                  .then(() => setSavedNote(true))
+                  .catch((e: unknown) => setError(memoryErrorText(e)))
               }
             >
               <Icon name="bookmark" color={savedNote ? c.accent : c.muted} size={18} />
