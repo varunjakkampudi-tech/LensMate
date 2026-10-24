@@ -69,6 +69,31 @@ Nothing is ever committed that should not be public, because history stays publi
 - Review record: docs/reviews/2026-10-24-ai-memory-review.md (13 findings; 6 fixed in this checkpoint or earlier).
 - Status: READY_FOR_OWNER for the four approvals above. No native code added. No Hostinger deployment. main untouched.
 
+## ROUND 2026-10-24 (autonomous directive) — items not built in this session and why
+- Branch: the directive names "emergent" as the target, but the latest instruction and the Goal name dev. Work went to dev.
+  No emergent branch was created or pushed. main untouched.
+- Native speech and speech output (directive phase 3 and 4): not built. Needs owner approval of expo-speech and
+  expo-speech-recognition, and one EAS development build (docs/decisions/0001). Owner action: approve or reject.
+- Native encrypted storage (phase 6.3): not built. Needs owner approval of expo-sqlite (docs/decisions/0001).
+- Backup recovery after re-enrolment (phase 6.4): options and owner authorization in docs/decisions/0002. No change to
+  who can read a backup has been made.
+- Premium visual redesign (phase 1.1-1.2): not done. The Viswatra visual identity is an owner decision (blocker
+  BLOCKER-007 scope); a redesign now would replace approved-looking work without that decision.
+- Advanced vision (phase 2), advanced translation (phase 5), smart capture (phase 7), advanced assistant (phase 8),
+  live research expansion (phase 11): not built in this session. Each needs a live-verification plan and billable
+  calls the owner has not authorized for this session. Broker stays in mock mode.
+- Autonomous tasks, multi-agent, mobile actions, proactive automation (phases 9, 10, 12, 13): several are later-phase
+  under Goal sections 2A.3 and 8. Not extended beyond the existing demonstrations. Owner decision needed on which
+  are in scope.
+- Desktop and PC interfaces (phase 14): later phase and forbidden to enable live control (Goal section 9). Not built.
+- Native camera, microphone and device testing (phases 2 to 4, 15, 17 device tiers): needs an EAS development build and
+  a phone or emulator. Not available in this session.
+- Dependency advisory node-forge (high, no patched release): still open (BLOCKER-010). The agent cannot waive it.
+- Interview practice and tasks/automations are built ahead of their phase (Goal sections 2A.3 and 8). Owner review
+  needed to decide whether they stay enabled or move behind a feature switch.
+- Status: READY_FOR_OWNER for the items above. Work completed this session: CI format fix, demo back-to-home
+  navigation with a unit test, APP_SCREEN_MATRIX.md.
+
 ## BLOCKER-001 — Apple Developer Program membership (iPhone builds and TestFlight)
 - Priority: high. Module: apps/mobile (iOS). Requirement: G46; Engineering Standards 1 and 6; Goal 14.2.
 - Status: DEFERRED (2026-10-24). Owner action required before real-iPhone testing or TestFlight distribution. Not resolved: Apple Developer Program membership has not been verified. Development continues on simulator, emulator and Android. Reopen this item when iPhone 15 testing or TestFlight distribution is scheduled.
