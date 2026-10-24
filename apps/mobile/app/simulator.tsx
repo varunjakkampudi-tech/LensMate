@@ -1,9 +1,21 @@
 import { router } from "expo-router";
-import { useCallback, useRef, useState } from "react";
-import { Image, Platform, Pressable, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Image, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { aiErrorText, askVision } from "../src/ai/assistant";
-import { speak } from "../src/ai/speech";
+import { RunGuard } from "../src/ai/run-guard";
+import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
+import {
+  canRetake,
+  MODES,
+  overlayState,
+  PROMPTS,
+  shutterAction,
+  sourceLabel,
+  type ImageSource,
+  type Mode,
+} from "../src/simulator/model";
 import { useCapture } from "../src/ui/capture-session";
 import { useGlasses } from "../src/ui/glasses";
 import { Icon } from "../src/ui/icon";
@@ -13,28 +25,27 @@ import { FONTS } from "../src/ui/theme";
 const SAMPLE_SCENE =
   "https://images.pexels.com/photos/16813081/pexels-photo-16813081.jpeg?auto=compress&cs=tinysrgb&w=900";
 
-type Mode = "Scene" | "OCR" | "Objects" | "Text";
-const PROMPTS: Record<Mode, string> = {
-  Scene: "Name the scene in 1-3 words on the first line, then up to 3 short lines describing it.",
-  OCR: "Read all readable text exactly. First line: 'Text found'. Then the text.",
-  Objects: "First line: 'Objects'. Then list the main objects, one short line each, nearest first.",
-  Text: "First line: a title for the main sign or label. Then explain what it says and means in 2 lines.",
-};
-
 /** Virtual glasses view: what the glasses camera would see, with the glasses' capture modes. */
 export default function SimulatorScreen() {
   const { prefs } = usePrefs();
   const capture = useCapture();
   const { status, connect } = useGlasses();
+  const insets = useSafeAreaInsets();
   const camera = useRef<CameraHandle>(null);
+  const guard = useRef(new RunGuard()).current;
+  const token = useRef(0);
   const [mode, setMode] = useState<Mode>("Scene");
   const [live, setLive] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [source, setSource] = useState<ImageSource>("sample");
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const token = useRef(0);
 
-  const stopCam = useCallback(() => setLive(false), []);
+  const stopCam = useCallback(() => {
+    setLive(false);
+    capture.end(token.current);
+  }, [capture]);
+
   const onError = useCallback(
     (m: string) => {
       setResult(m);
@@ -44,43 +55,98 @@ export default function SimulatorScreen() {
     [capture],
   );
 
-  const analyse = async (image: string) => {
+  // Leaving the screen (navigation or unmount) cancels any analysis and releases the camera and the capture indicator.
+  useEffect(
+    () => () => {
+      guard.cancel();
+      stopSpeaking();
+      capture.end(token.current);
+    },
+    [capture, guard],
+  );
+
+  const analyse = async (image: string, from: ImageSource) => {
+    const run = guard.begin();
     setPhoto(image);
+    setSource(from);
     setBusy(true);
     setResult(null);
     try {
       const a = await askVision(PROMPTS[mode], image, prefs.language, prefs.detailedDescriptions);
+      if (!guard.isCurrent(run.id)) {
+        return;
+      }
+      guard.finish(run.id);
       setResult(a.text);
       if (prefs.autoSpeak) {
         speak(a.text, prefs.language, prefs.voiceRate);
       }
     } catch (e) {
+      if (!guard.isCurrent(run.id)) {
+        return;
+      }
+      guard.finish(run.id);
       setResult(aiErrorText(e));
     } finally {
-      setBusy(false);
+      if (guard.isCurrent(run.id)) {
+        setBusy(false);
+      }
     }
   };
 
-  const shutter = () => {
+  const openCamera = () => {
     if (status !== "connected") {
       void connect();
     }
-    if (!live) {
-      setPhoto(null);
-      setResult(null);
-      setLive(true);
-      token.current = capture.begin("camera", "Virtual glasses camera", stopCam);
-      return;
-    }
+    guard.cancel();
+    setPhoto(null);
+    setResult(null);
+    setSource("live");
+    setLive(true);
+    token.current = capture.begin("camera", "Virtual glasses camera", stopCam);
+  };
+
+  const capturePhoto = () => {
     void (async () => {
       const shot = (await camera.current?.capture()) ?? null;
       setLive(false);
       capture.end(token.current);
       if (shot !== null) {
-        void analyse(shot);
+        void analyse(shot, "live");
+      } else {
+        setResult("The camera was not ready. Try again.");
       }
     })();
   };
+
+  const shutter = () => {
+    const action = shutterAction(live, busy);
+    if (action === "open-camera") {
+      openCamera();
+    } else if (action === "capture") {
+      capturePhoto();
+    }
+  };
+
+  const stopAll = () => {
+    guard.cancel();
+    stopSpeaking();
+    if (live) {
+      setLive(false);
+      capture.end(token.current);
+    }
+    setBusy(false);
+  };
+
+  const retake = () => {
+    setPhoto(null);
+    setResult(null);
+    openCamera();
+  };
+
+  const overlay = overlayState(busy, result);
+  const sourceText = live ? sourceLabel("live") : sourceLabel(source);
+  const sourceIsCamera = live || source === "live";
 
   return (
     <View style={{ flex: 1, backgroundColor: "#05070B" }}>
@@ -92,34 +158,36 @@ export default function SimulatorScreen() {
             source={{ uri: photo ?? SAMPLE_SCENE }}
             style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
             resizeMode="cover"
-            accessibilityLabel="Glasses view"
+            accessibilityLabel={photo === null ? "Sample glasses view" : "Captured glasses view"}
           />
         )}
+
         <View
           style={{
             position: "absolute",
-            top: 14,
-            left: 14,
-            right: 14,
+            top: insets.top + 8,
+            left: 12,
+            right: 12,
             flexDirection: "row",
             alignItems: "center",
+            gap: 8,
           }}
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close simulator"
+            accessibilityLabel="Back to home"
             testID="simulator-close"
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: "rgba(0,0,0,0.45)",
+              minWidth: 44,
+              minHeight: 44,
+              borderRadius: 22,
+              backgroundColor: "rgba(0,0,0,0.5)",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Icon name="x" color="#fff" size={18} />
+            <Icon name="back" color="#fff" size={20} />
           </Pressable>
           <Text
             style={{
@@ -130,62 +198,102 @@ export default function SimulatorScreen() {
               fontSize: 15,
               fontWeight: "600",
             }}
+            numberOfLines={1}
           >
             Virtual Glasses
           </Text>
           <View
+            testID="simulator-source"
+            accessibilityLabel={`Image source: ${sourceText}`}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 999,
+              backgroundColor: sourceIsCamera ? "#EF4444" : "rgba(0,0,0,0.5)",
+              borderWidth: sourceIsCamera ? 0 : 1,
+              borderColor: "rgba(255,255,255,0.5)",
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{sourceText}</Text>
+          </View>
+          <View
             testID="simulator-live"
+            accessibilityLabel={`Glasses ${status === "connected" ? "connected" : "offline"}`}
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: 5,
-              backgroundColor: status === "connected" ? "#22C55E" : "rgba(0,0,0,0.45)",
+              backgroundColor: status === "connected" ? "#22C55E" : "rgba(0,0,0,0.5)",
               paddingHorizontal: 10,
               paddingVertical: 5,
               borderRadius: 999,
             }}
           >
             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: "#fff" }} />
-            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>
-              {status === "connected" ? "Live" : "Offline"}
+            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
+              {status === "connected" ? "Connected" : "Offline"}
             </Text>
           </View>
         </View>
-        {result === null && !busy ? null : (
+
+        {overlay.kind === "hidden" ? null : (
           <View
             testID="simulator-result"
+            accessibilityLiveRegion="polite"
             style={{
               position: "absolute",
-              left: 40,
-              right: 40,
-              bottom: 24,
-              backgroundColor: "rgba(10,12,18,0.72)",
-              borderColor: "rgba(255,255,255,0.35)",
+              left: 16,
+              right: 16,
+              bottom: 12,
+              maxHeight: "38%",
+              backgroundColor: "rgba(10,12,18,0.8)",
+              borderColor: "rgba(255,255,255,0.3)",
               borderWidth: 1,
-              borderRadius: 12,
+              borderRadius: 14,
               padding: 12,
             }}
           >
-            <Text style={{ color: "#fff", fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 }}>
-              {busy ? "Looking…" : result}
-            </Text>
+            <ScrollView>
+              <Text style={{ color: "#fff", fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 }}>
+                {overlay.kind === "working" ? "Looking…" : overlay.text}
+              </Text>
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginTop: 6 }}>
+                {prefs.features.vision
+                  ? "Answer from the phone's AI service"
+                  : "Vision help is off"}
+              </Text>
+            </ScrollView>
           </View>
         )}
       </View>
-      <View style={{ paddingVertical: 14, gap: 16 }}>
-        <View style={{ flexDirection: "row", justifyContent: "center", gap: 10 }}>
-          {(Object.keys(PROMPTS) as Mode[]).map((m) => (
+
+      <View
+        style={{
+          paddingTop: 12,
+          paddingBottom: Math.max(insets.bottom, 12),
+          gap: 12,
+          backgroundColor: "#05070B",
+        }}
+      >
+        <View
+          style={{ flexDirection: "row", justifyContent: "center", gap: 8, paddingHorizontal: 12 }}
+        >
+          {MODES.map((m) => (
             <Pressable
               key={m}
               accessibilityRole="radio"
+              accessibilityLabel={`${m} mode`}
               accessibilityState={{ selected: mode === m }}
               testID={`sim-mode-${m.toLowerCase()}`}
               onPress={() => setMode(m)}
               style={{
-                paddingHorizontal: 14,
-                paddingVertical: 7,
+                minHeight: 40,
+                minWidth: 64,
+                paddingHorizontal: 12,
+                alignItems: "center",
+                justifyContent: "center",
                 borderRadius: 999,
-                backgroundColor: mode === m ? "#1E6BFF" : "transparent",
+                backgroundColor: mode === m ? "#1E6BFF" : "rgba(255,255,255,0.08)",
               }}
             >
               <Text
@@ -196,52 +304,62 @@ export default function SimulatorScreen() {
             </Pressable>
           ))}
         </View>
+
         <View
-          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-around" }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-around",
+            paddingHorizontal: 24,
+          }}
         >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Choose a photo"
             testID="sim-gallery"
             disabled={Platform.OS !== "web" || busy}
-            onPress={() => pickImageFile((d) => d !== null && void analyse(d))}
+            onPress={() => pickImageFile((d) => d !== null && void analyse(d, "photo"))}
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 23,
+              width: 48,
+              height: 48,
+              borderRadius: 24,
               borderWidth: 1,
               borderColor: "rgba(255,255,255,0.4)",
               alignItems: "center",
               justifyContent: "center",
+              opacity: Platform.OS !== "web" || busy ? 0.4 : 1,
             }}
           >
             <Icon name="image" color="#fff" size={20} />
           </Pressable>
+
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={live ? "Take photo" : "Open glasses camera"}
+            accessibilityLabel={live ? "Capture photo" : "Open glasses camera"}
             testID="sim-shutter"
             disabled={busy}
             onPress={shutter}
             style={{
-              width: 74,
-              height: 74,
-              borderRadius: 37,
+              width: 78,
+              height: 78,
+              borderRadius: 39,
               borderWidth: 4,
               borderColor: "#fff",
               alignItems: "center",
               justifyContent: "center",
+              opacity: busy ? 0.5 : 1,
             }}
           >
             <View
               style={{
-                width: 58,
-                height: 58,
-                borderRadius: 29,
+                width: 60,
+                height: 60,
+                borderRadius: 30,
                 backgroundColor: live ? "#EF4444" : "#fff",
               }}
             />
           </Pressable>
+
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Analyse sample scene"
@@ -258,25 +376,77 @@ export default function SimulatorScreen() {
                       fr.readAsDataURL(b);
                     }),
                 )
-                .then((d) => analyse(d))
+                .then((d) => analyse(d, "sample"))
                 .catch(() => setResult("Sample scene unavailable."))
             }
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 23,
+              width: 48,
+              height: 48,
+              borderRadius: 24,
               borderWidth: 1,
               borderColor: "rgba(255,255,255,0.4)",
               alignItems: "center",
               justifyContent: "center",
+              opacity: busy ? 0.4 : 1,
             }}
           >
-            <Icon name="flip" color="#fff" size={20} />
+            <Icon name="spark" color="#fff" size={20} />
           </Pressable>
         </View>
-        <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", fontSize: 11 }}>
-          Shutter opens the camera, tap again to capture. Right button analyses the sample scene.
-        </Text>
+
+        <View
+          style={{ flexDirection: "row", justifyContent: "center", gap: 12, paddingHorizontal: 16 }}
+        >
+          {canRetake(live, photo, busy) ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Retake photo"
+              testID="sim-retake"
+              onPress={retake}
+              style={{
+                minHeight: 44,
+                paddingHorizontal: 18,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.5)",
+              }}
+            >
+              <Icon name="camera" color="#fff" size={16} />
+              <Text
+                style={{ color: "#fff", fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}
+              >
+                Retake
+              </Text>
+            </Pressable>
+          ) : null}
+          {live || busy ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Stop"
+              testID="sim-stop"
+              onPress={stopAll}
+              style={{
+                minHeight: 44,
+                paddingHorizontal: 18,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                borderRadius: 999,
+                backgroundColor: "#EF4444",
+              }}
+            >
+              <Icon name="stop" color="#fff" size={16} />
+              <Text
+                style={{ color: "#fff", fontFamily: FONTS.body, fontSize: 13, fontWeight: "700" }}
+              >
+                Stop
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );
