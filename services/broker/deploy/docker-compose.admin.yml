@@ -7,6 +7,10 @@ services:
   broker:
     environment:
       BROKER_ADMIN_DATABASE_URL_FILE: /run/secrets/broker_admin_database_url
+      # Revoke records the revocation on the anchor volume, so a restore cannot bring the device back unnoticed.
+      BROKER_LEDGER_ANCHOR_FILE: /var/lib/broker-anchor/ledger-anchor.json
+    volumes:
+      - broker_anchor:/var/lib/broker-anchor
     # !override replaces the base service list, so this container gets only the admin URL.
     secrets: !override [broker_admin_database_url]
 

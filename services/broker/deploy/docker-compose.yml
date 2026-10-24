@@ -37,6 +37,8 @@ services:
       OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
       # Spend-continuity anchor on its own volume. A database restore never touches it (see ledger-anchor.ts).
       BROKER_LEDGER_ANCHOR_FILE: /var/lib/broker-anchor/ledger-anchor.json
+      # Set to yes only for the owner's first start of an empty ledger; unset otherwise (see README).
+      BROKER_LEDGER_GENESIS: ${BROKER_LEDGER_GENESIS:-}
       # One reverse proxy hop in front, so the enrolment rate limit sees the real client address.
       BROKER_TRUST_PROXY_HOPS: "1"
     volumes:

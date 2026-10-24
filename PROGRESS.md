@@ -385,3 +385,24 @@ Still open (owner or external): the reverse-proxy TLS, body and rate limits and 
 - Local Docker validation (mock mode only; project `lensmate-broker-local`; no Hostinger, no provider call, no real key): see blocker.txt BLOCKER-006 for the step table. Other products' containers were recorded before and after and were not changed.
 - Test evidence for this change set: `pnpm test` with PostgreSQL 17 on a throwaway instance: root 370 tests and mobile 98 tests passed; coverage gates passed; typecheck, lint, format, knip and build passed.
 - BLOCKER-006 remains OPEN. Re-review of this change set is PENDING.
+
+### BLOCKER-006: fresh-context re-review of 095c8c8 and fixes (2026-10-24)
+
+Review (fresh context, read-only): APPROVE WITH CONDITIONS, no critical finding. Closed from the previous review: backup guard, anchor write queue and fsync, label validation before redemption, closed-reservation immutability (app and admin roles), verified spend anchored at start-up. Findings and handling in this change set:
+
+| # | Severity | Finding | Handling |
+|---|---|---|---|
+| F1 | Medium | An anchor with no months was accepted as a valid baseline, so a rolled-back ledger could overwrite it. | Fixed. An anchor with no months is treated as absent. Test: a rolled-back ledger with an empty anchor is refused. |
+| F2 | Medium | With no anchor and an empty ledger, a restored empty backup started silently with no anchor. | Fixed. A first start needs the owner's `BROKER_LEDGER_GENESIS=yes`. Without it the broker refuses with `NO_ANCHOR`. The failure-path script sets the flag only for its first start. |
+| F4 | Medium | Search-path shadowing: a temporary table could shadow a ledger table for a session. | Fixed. Every database function pins `search_path = public, pg_temp`, and TEMP is revoked from PUBLIC at migration. Tests: the application role cannot create temporary tables; the grant is false. |
+| F5 | Medium | A restore brought revoked devices back as active. | Fixed. Revocations are recorded on the anchor volume (the admin CLI mounts it). Startup refuses with `REVOCATION_ROLLED_BACK` if a recorded device is active or missing. Tests: unit tests for recording, preservation across spend writes and the startup refusal. |
+| F6 | Low | libpq parameters such as `sslpassword` could carry a secret in the URL. | Fixed. Any query parameter whose name contains "pass" is refused. Test added. |
+| F7 | Low | IPv4-mapped IPv6 clients all shared one rate-limit bucket. | Fixed. They are keyed by their IPv4 address. Test added. |
+| F9 | Low | The encryption key and the integrity key could be the same file. | Fixed. Backup and restore refuse identical keys. Test added. |
+| F3 | Medium, residual | The application role is the broker runtime; a compromised broker process can alter reservation state and reserved spend within its own role. Spend itself cannot be lowered. | Accepted residual. A transactional check on settled actuals would need an owner-role recovery exception and was not built. Recorded here. |
+| F8 | Low, residual | `callBrokerWithPolicy` is exported, and `@lensmate/core` exports the raw client. The app does not call either path. | Accepted residual for now. A lint rule or package export restriction is the owner-approved follow-up. |
+| F10 | Info | Owner-role can disable triggers; startup verifies trigger names and enabled state, not function bodies. | Residual, owner-trust. |
+
+Test evidence: `pnpm test` with PostgreSQL 17 on a throwaway instance: 434 root tests and 100 mobile tests passed. Coverage gates passed. Lint, typecheck, format, knip, build, `check:expo` and `check:schema` passed.
+
+Still open: re-review of this change set (PENDING); the Docker failure-path suite must be re-run against the committed head because it builds from git; live mode stays disabled; BLOCKER-006 remains OPEN.

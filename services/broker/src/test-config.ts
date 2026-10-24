@@ -13,6 +13,7 @@ export function testConfig(overrides: Partial<BrokerConfig> = {}): BrokerConfig 
     host: "127.0.0.1",
     databaseUrl: undefined,
     ledgerAnchorPath: undefined,
+    ledgerGenesis: false,
     trustProxyHops: 0,
     openRouterApiKey: undefined,
     openRouterBaseUrl: "https://openrouter.ai/api/v1",

@@ -288,6 +288,17 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     ).rejects.toThrow(/closed reservation cannot change/);
   });
 
+  it("the application role cannot create temporary tables, so a session cannot shadow a ledger table", async () => {
+    await expect(
+      app.query("CREATE TEMP TABLE broker_enrolment_code (code_sha256 text)"),
+    ).rejects.toThrow(/permission denied/);
+    // The superuser is not bound by grants and is used only by the owner migration path, so the check is on the grant.
+    const grant = await owner.query<{ can_temp: boolean }>(
+      "SELECT has_database_privilege('public', current_database(), 'TEMP') AS can_temp",
+    );
+    expect(grant.rows[0]?.can_temp).toBe(false);
+  });
+
   it("the schema guard refuses a database whose immutability trigger was dropped or disabled", async () => {
     await owner.query("DROP TRIGGER broker_budget_spend_monotonic ON broker_budget_month");
     await expect(verifySchema(owner)).rejects.toThrow(/broker_budget_spend_monotonic/);

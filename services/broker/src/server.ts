@@ -37,6 +37,11 @@ const IMAGE_DATA_URL = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/;
  * IPv4 addresses are used as they are.
  */
 export function enrolmentKey(address: string): string {
+  // An IPv4-mapped IPv6 address ("::ffff:a.b.c.d") is the IPv4 client. Keying it as IPv6 would merge every such client.
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(address);
+  if (mapped?.[1] !== undefined) {
+    return mapped[1];
+  }
   if (!address.includes(":")) {
     return address;
   }

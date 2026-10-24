@@ -21,6 +21,7 @@ file="${1:-}"
 : "${BROKER_RESTORE_CONFIRM:?set BROKER_RESTORE_CONFIRM to the target database name}"
 require_key_file "$BROKER_BACKUP_KEY_FILE" "restore"
 require_key_file "$BROKER_BACKUP_MAC_KEY_FILE" "restore"
+require_distinct_keys "$BROKER_BACKUP_KEY_FILE" "$BROKER_BACKUP_MAC_KEY_FILE" "restore"
 refuse_password_in_url "$BROKER_RESTORE_DATABASE_URL" "restore"
 
 target_name="${BROKER_RESTORE_DATABASE_URL%%\?*}"

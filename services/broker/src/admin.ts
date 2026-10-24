@@ -9,6 +9,8 @@ export async function runAdmin(
   args: readonly string[],
   devices: DeviceStore,
   nowMs: number,
+  // Records a revocation on the spend anchor, so a restore cannot bring the device back unnoticed.
+  onRevoked?: (deviceId: string) => Promise<void>,
 ): Promise<string> {
   const [command, argument] = args;
   switch (command) {
@@ -32,7 +34,20 @@ export async function runAdmin(
         return "usage: revoke <deviceId>\n";
       }
       const ok = await devices.revokeDevice(argument);
-      return ok ? `revoked ${argument}\n` : `no device ${argument}\n`;
+      if (!ok) {
+        return `no device ${argument}\n`;
+      }
+      if (onRevoked !== undefined) {
+        try {
+          await onRevoked(argument);
+        } catch {
+          // The device is revoked, but the record that stops a restore from undoing it is missing. Say so.
+          throw new Error(
+            "revoked in the database, but the revocation could not be recorded on the anchor; run revoke again",
+          );
+        }
+      }
+      return `revoked ${argument}\n`;
     }
     default:
       return "usage: enrol-code | list-devices | revoke <deviceId>\n";

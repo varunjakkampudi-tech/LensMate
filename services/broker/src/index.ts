@@ -9,6 +9,7 @@ import { verifySchema } from "./schema.js";
 import {
   AnchoredBudgetStore,
   checkContinuity,
+  checkRevocations,
   FileAnchor,
   monthOf,
   probeAnchor,
@@ -43,7 +44,7 @@ async function main(): Promise<void> {
     // The owner must raise recorded spend to the anchored value, or to the provider-billed amount if higher.
     const anchor = new FileAnchor(config.ledgerAnchorPath ?? "");
     await probeAnchor(anchor);
-    await checkContinuity(store, anchor, Date.now());
+    await checkContinuity(store, anchor, Date.now(), { genesis: config.ledgerGenesis });
     const anchored = new AnchoredBudgetStore(store, anchor);
     await anchored.start();
     // The continuity check has passed, so the verified spend is recorded now. A crash before the first settlement
@@ -52,7 +53,10 @@ async function main(): Promise<void> {
       await anchored.refresh(month);
     }
     budget = anchored;
-    devices = new PostgresDeviceStore(pool);
+    const registered = new PostgresDeviceStore(pool);
+    // A restore can bring back devices that were revoked after the backup. Refuse until they are revoked again.
+    await checkRevocations(registered, anchor);
+    devices = registered;
     reaper = async () => {
       const settled = await store.reapStale(REAP_AFTER_SECONDS);
       // The reaper can settle reservations from the previous month, so refresh both months it may touch.

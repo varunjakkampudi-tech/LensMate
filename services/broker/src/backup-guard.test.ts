@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 /**
  * Runs the real backup guard (deploy/backup/lib.sh) in bash. A URL that would put a password on the command line must be
@@ -34,5 +36,28 @@ describe("backup connection guard (lib.sh)", () => {
   it("accepts a password-free postgres URL", () => {
     expect(refused("postgres://broker_backup@db:5432/broker")).toBe(false);
     expect(refused("postgresql://db:5432/broker")).toBe(false);
+  });
+});
+
+describe("backup guard additions", () => {
+  it("refuses libpq parameters whose names contain pass, such as sslpassword", () => {
+    expect(refused("postgres://db/broker?sslpassword=fixture-pass")).toBe(true);
+    expect(refused("postgres://db/broker?passfile=/tmp/x")).toBe(true);
+  });
+
+  it("refuses an encryption key and an integrity key that are the same file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "guard-keys-"));
+    try {
+      const key = join(dir, "same.key");
+      writeFileSync(key, "k".repeat(40));
+      const result = spawnSync(
+        "bash",
+        ["-c", 'source "$1"; require_distinct_keys "$2" "$2" backup', "guard", LIB, key],
+        { encoding: "utf8" },
+      );
+      expect(result.status).not.toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

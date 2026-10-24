@@ -661,3 +661,10 @@ describe("enrolment label validation", () => {
     expect(good.statusCode).toBe(200);
   });
 });
+
+describe("IPv4-mapped client addresses", () => {
+  it("keys an IPv4-mapped IPv6 address by its IPv4 address, so mapped clients are not merged", () => {
+    expect(enrolmentKey("::ffff:203.0.113.7")).toBe("203.0.113.7");
+    expect(enrolmentKey("::ffff:203.0.113.8")).not.toBe(enrolmentKey("::ffff:203.0.113.7"));
+  });
+});

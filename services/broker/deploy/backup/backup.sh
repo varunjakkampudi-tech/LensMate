@@ -21,6 +21,7 @@ retention="${BROKER_BACKUP_RETENTION_DAYS:-14}"
 [[ "$retention" =~ ^[0-9]+$ ]] || die "backup" "BROKER_BACKUP_RETENTION_DAYS must be a whole number"
 require_key_file "$BROKER_BACKUP_KEY_FILE" "backup"
 require_key_file "$BROKER_BACKUP_MAC_KEY_FILE" "backup"
+require_distinct_keys "$BROKER_BACKUP_KEY_FILE" "$BROKER_BACKUP_MAC_KEY_FILE" "backup"
 [[ -d "$BROKER_BACKUP_DIR" ]] || die "backup" "backup directory does not exist"
 refuse_password_in_url "$BROKER_BACKUP_DATABASE_URL" "backup"
 

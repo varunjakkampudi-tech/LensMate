@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { runAdmin } from "./admin.js";
 import { readEnvValue } from "./env.js";
 import { PostgresDeviceStore } from "./devices.js";
+import { FileAnchor } from "./ledger-anchor.js";
 
 /**
  * `node dist/admin-cli.js <command>`. Uses the admin role (BROKER_ADMIN_DATABASE_URL or _FILE), which can issue
@@ -14,7 +15,16 @@ async function main(): Promise<void> {
   }
   const pool = new Pool({ connectionString: url, max: 1 });
   try {
-    const output = await runAdmin(process.argv.slice(2), new PostgresDeviceStore(pool), Date.now());
+    // Revoke also records on the anchor volume. Without that mount the revocation could be undone by a restore.
+    const anchorPath = process.env.BROKER_LEDGER_ANCHOR_FILE?.trim();
+    const anchor =
+      anchorPath === undefined || anchorPath === "" ? undefined : new FileAnchor(anchorPath);
+    const output = await runAdmin(
+      process.argv.slice(2),
+      new PostgresDeviceStore(pool),
+      Date.now(),
+      anchor === undefined ? undefined : (deviceId) => anchor.recordRevocation(deviceId),
+    );
     process.stdout.write(output);
   } finally {
     await pool.end();

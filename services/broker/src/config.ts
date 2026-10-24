@@ -15,6 +15,8 @@ export interface BrokerConfig {
   readonly databaseUrl: string | undefined;
   /** Anchor file on a volume the database restore never touches. Required when a database is configured. */
   readonly ledgerAnchorPath: string | undefined;
+  /** Set to "yes" once, by the owner, for the first start of an empty ledger. Otherwise a missing anchor refuses to start. */
+  readonly ledgerGenesis: boolean;
   /** Number of reverse-proxy hops in front of the broker, so per-client limits see the real client address. */
   readonly trustProxyHops: number;
   readonly openRouterApiKey: string | undefined;
@@ -70,6 +72,11 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
   const databaseUrl = readSecret(env, "BROKER_DATABASE_URL");
   const ledgerAnchorPath = env.BROKER_LEDGER_ANCHOR_FILE?.trim() || undefined;
   const trustProxyHops = optionalInt(env, "BROKER_TRUST_PROXY_HOPS") ?? 0;
+  const genesisRaw = emptyToUndefined(env.BROKER_LEDGER_GENESIS);
+  if (genesisRaw !== undefined && genesisRaw !== "yes") {
+    throw new ConfigError("BROKER_LEDGER_GENESIS must be exactly yes when set");
+  }
+  const ledgerGenesis = genesisRaw === "yes";
   if (databaseUrl !== undefined && ledgerAnchorPath === undefined) {
     throw new ConfigError(
       "BROKER_LEDGER_ANCHOR_FILE is required when a database is configured (spend continuity, see ledger-anchor.ts)",
@@ -101,6 +108,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): B
     host: env.BROKER_HOST ?? DEFAULTS.host,
     databaseUrl,
     ledgerAnchorPath,
+    ledgerGenesis,
     trustProxyHops,
     openRouterApiKey,
     openRouterBaseUrl: baseUrl,

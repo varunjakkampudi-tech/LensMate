@@ -9,6 +9,7 @@ import {
   LedgerHaltedError,
   MemoryAnchor,
   checkContinuity,
+  checkRevocations,
   probeAnchor,
   monthOf,
   recentMonths,
@@ -46,6 +47,12 @@ class FailingAnchor implements AnchorFile {
   write(): Promise<void> {
     return Promise.reject(new Error("disk full"));
   }
+  revokedDevices(): Promise<readonly string[]> {
+    return Promise.resolve([]);
+  }
+  recordRevocation(): Promise<void> {
+    return Promise.reject(new Error("disk full"));
+  }
 }
 
 describe("month helpers", () => {
@@ -56,10 +63,55 @@ describe("month helpers", () => {
 });
 
 describe("continuity check", () => {
-  it("passes for an empty ledger with no anchor", async () => {
+  it("passes an empty ledger with no anchor only for a first start the owner asked for", async () => {
     await expect(
-      checkContinuity(new InMemoryBudgetStore(), new MemoryAnchor(), NOW),
+      checkContinuity(new InMemoryBudgetStore(), new MemoryAnchor(), NOW, { genesis: true }),
     ).resolves.toBeUndefined();
+    expect(
+      await errorCodeOf(checkContinuity(new InMemoryBudgetStore(), new MemoryAnchor(), NOW)),
+    ).toBe("NO_ANCHOR");
+  });
+
+  it("treats an anchor that records no months as absent, so it cannot prove a rollback baseline", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-empty-anchor-"));
+    try {
+      const path = join(dir, "anchor.json");
+      writeFileSync(path, JSON.stringify({ version: 1, months: {}, revoked: [] }));
+      const store = new InMemoryBudgetStore();
+      await store.reserve(reserveInput("seed", 5000));
+      await store.settle("seed", 5000);
+      expect(
+        await errorCodeOf(checkContinuity(store, new FileAnchor(path), NOW, { genesis: true })),
+      ).toBe("NO_ANCHOR_WITH_SPEND");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("records revocations and keeps them when spend is written", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-revoke-"));
+    try {
+      const anchor = new FileAnchor(join(dir, "anchor.json"));
+      const device = "11111111-2222-4333-8444-555555555555";
+      await anchor.recordRevocation(device);
+      await anchor.write({ "2026-10": 100 });
+      expect(await anchor.revokedDevices()).toEqual([device]);
+      expect(await anchor.read()).toEqual({ "2026-10": 100 });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses to start when a revoked device is active again in the database (restored backup)", async () => {
+    const anchor = new MemoryAnchor();
+    const device = "11111111-2222-4333-8444-555555555555";
+    await anchor.recordRevocation(device);
+    const active = { findDevice: () => Promise.resolve({ revoked: false }) };
+    expect(await errorCodeOf(checkRevocations(active, anchor))).toBe("REVOCATION_ROLLED_BACK");
+    const missing = { findDevice: () => Promise.resolve(undefined) };
+    expect(await errorCodeOf(checkRevocations(missing, anchor))).toBe("REVOCATION_ROLLED_BACK");
+    const revoked = { findDevice: () => Promise.resolve({ revoked: true }) };
+    await expect(checkRevocations(revoked, anchor)).resolves.toBeUndefined();
   });
 
   it("refuses a ledger that has spend but no anchor, so a missing anchor cannot reset the cap", async () => {

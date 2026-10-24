@@ -157,3 +157,13 @@ describe("loadConfig", () => {
     ).toBe(1);
   });
 });
+
+describe("first-start flag for the spend anchor", () => {
+  it("accepts only the exact value yes, and defaults to off", () => {
+    expect(loadConfig(BASE_MOCK).ledgerGenesis).toBe(false);
+    expect(loadConfig({ ...BASE_MOCK, BROKER_LEDGER_GENESIS: "yes" }).ledgerGenesis).toBe(true);
+    expect(() => loadConfig({ ...BASE_MOCK, BROKER_LEDGER_GENESIS: "true" })).toThrow(
+      /must be exactly yes/,
+    );
+  });
+});

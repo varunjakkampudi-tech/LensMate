@@ -37,3 +37,25 @@ describe("owner admin commands", () => {
     );
   });
 });
+
+describe("revocation is recorded on the anchor", () => {
+  it("calls the recorder with the revoked device id", async () => {
+    const devices = new InMemoryDeviceStore();
+    devices.seedDevice("dev-3", "not-a-real-device-secret-".repeat(3), "phone");
+    const recorded: string[] = [];
+    const output = await runAdmin(["revoke", "dev-3"], devices, NOW, (id) => {
+      recorded.push(id);
+      return Promise.resolve();
+    });
+    expect(output).toBe("revoked dev-3\n");
+    expect(recorded).toEqual(["dev-3"]);
+  });
+
+  it("does not report success when the anchor cannot record the revocation", async () => {
+    const devices = new InMemoryDeviceStore();
+    devices.seedDevice("dev-4", "not-a-real-device-secret-".repeat(3), "phone");
+    await expect(
+      runAdmin(["revoke", "dev-4"], devices, NOW, () => Promise.reject(new Error("disk full"))),
+    ).rejects.toThrow(/could not be recorded on the anchor/);
+  });
+});

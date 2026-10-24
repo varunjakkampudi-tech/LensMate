@@ -25,8 +25,10 @@ refuse_password_in_url() {
   # URLs are allowed. Only PGPASSFILE may carry the password.
   # Only postgres:// or postgresql:// URLs are accepted. The libpq keyword form (host=... password=...) is refused,
   # because it would put the password on the command line.
+  # Any query parameter whose name contains "pass" (password, sslpassword, passfile...) is refused: libpq reads such values
+  # from the URL and they would sit in the process argument list.
   local scheme='^postgres(ql)?://' userinfo='://[^@]*:[^@]*@'
-  local keyword='(^|[[:space:]])[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][[:space:]]*=' query='[?&][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]='
+  local keyword='(^|[[:space:]])[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][[:space:]]*=' query='[?&][^=&]*[Pp][Aa][Ss][Ss][^=&]*='
   if [[ ! "$url" =~ $scheme ]]; then
     die "$label" "the connection must be a postgres:// URL with no password; use PGPASSFILE instead"
   fi
@@ -40,4 +42,11 @@ hmac_file() {
   node -e 'const c = require("crypto"), f = require("fs");
 const key = f.readFileSync(process.argv[2], "utf8").trim();
 process.stdout.write(c.createHmac("sha256", key).update(f.readFileSync(process.argv[1])).digest("hex"));' "$1" "$2"
+}
+
+# The encryption key and the integrity key must be different. Reusing one key defeats the separation the tag relies on.
+require_distinct_keys() {
+  if cmp -s "$1" "$2"; then
+    die "$3" "the encryption key and the integrity key must be different files"
+  fi
 }

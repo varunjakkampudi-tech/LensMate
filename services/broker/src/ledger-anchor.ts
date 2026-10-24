@@ -32,40 +32,64 @@ import type { BudgetStore, BudgetSummary, ReserveInput, ReserveResult } from "./
 /** Months checked when no anchor exists yet: the current month and the twelve before it. */
 const LOOKBACK_MONTHS = 12;
 
+/** The anchored state: recorded spend per month, and the devices the broker has recorded as revoked. */
+export interface AnchorState {
+  readonly months: Readonly<Record<string, number>>;
+  readonly revoked: readonly string[];
+}
+
+const DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 export interface AnchorFile {
-  /** Null when no anchor has been written. Throws when the anchor exists but cannot be read or parsed. */
+  /**
+   * Null when no anchor has been written, or when it records no months: an empty anchor proves nothing, so it is treated
+   * as absent. Rejects when the anchor exists but cannot be read or parsed.
+   */
   read(): Promise<Record<string, number> | null>;
   write(months: Readonly<Record<string, number>>): Promise<void>;
+  /** Devices recorded as revoked. Empty when none. */
+  revokedDevices(): Promise<readonly string[]>;
+  /** Records a revocation, so a restore that brings the device back is detected at start-up. */
+  recordRevocation(deviceId: string): Promise<void>;
+}
+
+/** Runs a synchronous file operation and turns any throw into a rejected promise with an AnchorError when needed. */
+function settle<T>(operation: () => T): Promise<T> {
+  try {
+    return Promise.resolve(operation());
+  } catch (error) {
+    return Promise.reject(error instanceof Error ? error : new AnchorError("ANCHOR_INVALID"));
+  }
 }
 
 /** Checks that the anchor location can be written, so a read-only or unowned volume stops start-up, not a billed call. */
-export async function probeAnchor(
-  anchor: AnchorFile & { probe?: () => Promise<void> },
-): Promise<void> {
+export async function probeAnchor(anchor: { probe?: () => Promise<void> }): Promise<void> {
   if (anchor.probe !== undefined) {
     await anchor.probe();
   }
 }
 
-/** Writes JSON through a temporary file and a rename, so a crash never leaves a half-written anchor. */
+/** Writes JSON through a temporary file, flushed before the rename, so a crash never leaves a partial anchor. */
 export class FileAnchor implements AnchorFile {
   constructor(private readonly path: string) {}
 
   read(): Promise<Record<string, number> | null> {
-    let raw: string;
-    try {
-      raw = readFileSync(this.path, "utf8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        return Promise.resolve(null);
-      }
-      return Promise.reject(new AnchorError("ANCHOR_UNREADABLE"));
-    }
-    try {
-      return Promise.resolve(parseAnchor(raw));
-    } catch (error) {
-      return Promise.reject(error instanceof Error ? error : new AnchorError("ANCHOR_INVALID"));
-    }
+    return settle(() => {
+      const state = this.readState();
+      return state === null || Object.keys(state.months).length === 0 ? null : { ...state.months };
+    });
+  }
+
+  revokedDevices(): Promise<readonly string[]> {
+    return settle(() => this.readState()?.revoked ?? []);
+  }
+
+  recordRevocation(deviceId: string): Promise<void> {
+    return settle(() => {
+      const state = this.readState();
+      const revoked = [...new Set([...(state?.revoked ?? []), deviceId])];
+      this.persist({ months: state?.months ?? {}, revoked });
+    });
   }
 
   /** Writes and removes a probe file next to the anchor. Rejects with ANCHOR_WRITE_FAILED when that is not possible. */
@@ -82,35 +106,63 @@ export class FileAnchor implements AnchorFile {
   }
 
   write(months: Readonly<Record<string, number>>): Promise<void> {
+    return settle(() => {
+      const revoked = this.readState()?.revoked ?? [];
+      this.persist({ months, revoked });
+    });
+  }
+
+  private readState(): AnchorState | null {
+    let raw: string;
+    try {
+      raw = readFileSync(this.path, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null;
+      }
+      throw new AnchorError("ANCHOR_UNREADABLE");
+    }
+    return parseAnchor(raw);
+  }
+
+  private persist(state: AnchorState): void {
     try {
       mkdirSync(dirname(this.path), { recursive: true });
       const temporary = `${this.path}.tmp`;
-      // Flush the data to disk before the rename, so a power loss cannot leave an empty or partial anchor in place.
       const descriptor = openSync(temporary, "w", 0o600);
       try {
-        writeSync(descriptor, JSON.stringify({ version: 1, months }));
+        writeSync(descriptor, JSON.stringify({ version: 1, ...state }));
         fsyncSync(descriptor);
       } finally {
         closeSync(descriptor);
       }
       renameSync(temporary, this.path);
-      return Promise.resolve();
     } catch {
-      return Promise.reject(new AnchorError("ANCHOR_WRITE_FAILED"));
+      throw new AnchorError("ANCHOR_WRITE_FAILED");
     }
   }
 }
 
 /** In-memory anchor, for tests and the mock mode without a database. */
 export class MemoryAnchor implements AnchorFile {
-  private stored: Record<string, number> | null = null;
+  private months: Record<string, number> = {};
+  private revoked: string[] = [];
 
   read(): Promise<Record<string, number> | null> {
-    return Promise.resolve(this.stored === null ? null : { ...this.stored });
+    return Promise.resolve(Object.keys(this.months).length === 0 ? null : { ...this.months });
   }
 
   write(months: Readonly<Record<string, number>>): Promise<void> {
-    this.stored = { ...months };
+    this.months = { ...months };
+    return Promise.resolve();
+  }
+
+  revokedDevices(): Promise<readonly string[]> {
+    return Promise.resolve([...this.revoked]);
+  }
+
+  recordRevocation(deviceId: string): Promise<void> {
+    this.revoked = [...new Set([...this.revoked, deviceId])];
     return Promise.resolve();
   }
 }
@@ -122,14 +174,16 @@ export class AnchorError extends Error {
       | "ANCHOR_WRITE_FAILED"
       | "ANCHOR_INVALID"
       | "ROLLED_BACK"
-      | "NO_ANCHOR_WITH_SPEND",
+      | "NO_ANCHOR"
+      | "NO_ANCHOR_WITH_SPEND"
+      | "REVOCATION_ROLLED_BACK",
   ) {
     super(code);
     this.name = "AnchorError";
   }
 }
 
-function parseAnchor(raw: string): Record<string, number> {
+function parseAnchor(raw: string): AnchorState {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -139,15 +193,16 @@ function parseAnchor(raw: string): Record<string, number> {
   if (typeof parsed !== "object" || parsed === null) {
     throw new AnchorError("ANCHOR_INVALID");
   }
-  const candidate = parsed as { version?: unknown; months?: unknown };
+  const candidate = parsed as { version?: unknown; months?: unknown; revoked?: unknown };
   if (
     candidate.version !== 1 ||
     typeof candidate.months !== "object" ||
-    candidate.months === null
+    candidate.months === null ||
+    Array.isArray(candidate.months)
   ) {
     throw new AnchorError("ANCHOR_INVALID");
   }
-  const result: Record<string, number> = {};
+  const months: Record<string, number> = {};
   for (const [month, value] of Object.entries(candidate.months)) {
     if (
       !/^\d{4}-\d{2}$/.test(month) ||
@@ -157,9 +212,16 @@ function parseAnchor(raw: string): Record<string, number> {
     ) {
       throw new AnchorError("ANCHOR_INVALID");
     }
-    result[month] = value;
+    months[month] = value;
   }
-  return result;
+  const revoked = candidate.revoked ?? [];
+  if (
+    !Array.isArray(revoked) ||
+    !revoked.every((id) => typeof id === "string" && DEVICE_ID.test(id))
+  ) {
+    throw new AnchorError("ANCHOR_INVALID");
+  }
+  return { months, revoked: revoked as string[] };
 }
 
 /** The calendar month (UTC, "YYYY-MM") that holds `nowMs`. */
@@ -191,6 +253,7 @@ export async function checkContinuity(
   budget: Pick<BudgetStore, "summary">,
   anchor: AnchorFile,
   nowMs: number,
+  options: { readonly genesis: boolean } = { genesis: false },
 ): Promise<void> {
   const anchored = await anchor.read();
   if (anchored === null) {
@@ -199,6 +262,11 @@ export async function checkContinuity(
       if (summary.spentPaise > 0 || summary.reservedPaise > 0) {
         throw new AnchorError("NO_ANCHOR_WITH_SPEND");
       }
+    }
+    // An empty ledger with no anchor is only a first start the owner has asked for. Otherwise a restored empty backup
+    // would silently start a new, unanchored ledger.
+    if (!options.genesis) {
+      throw new AnchorError("NO_ANCHOR");
     }
     return;
   }
@@ -319,6 +387,22 @@ export class AnchoredBudgetStore implements BudgetStore {
     } catch {
       this.halted = true;
       throw new LedgerHaltedError();
+    }
+  }
+}
+
+/**
+ * Every device recorded as revoked must still be revoked in the database. A restore of an older database brings
+ * revoked devices back as active; this refuses to start until the owner revokes them again.
+ */
+export async function checkRevocations(
+  devices: { findDevice(deviceId: string): Promise<{ revoked: boolean } | undefined> },
+  anchor: AnchorFile,
+): Promise<void> {
+  for (const deviceId of await anchor.revokedDevices()) {
+    const device = await devices.findDevice(deviceId);
+    if (device === undefined || !device.revoked) {
+      throw new AnchorError("REVOCATION_ROLLED_BACK");
     }
   }
 }

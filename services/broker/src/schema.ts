@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS broker_enrolment_code (
   used_at timestamptz
 );
 
-CREATE OR REPLACE FUNCTION broker_forbid_unrevoke() RETURNS trigger LANGUAGE plpgsql AS $fn$
+CREATE OR REPLACE FUNCTION broker_forbid_unrevoke() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
 BEGIN
   IF OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS DISTINCT FROM OLD.revoked_at THEN
     RAISE EXCEPTION 'revocation is permanent';
@@ -83,7 +83,7 @@ DROP TRIGGER IF EXISTS broker_device_revocation_permanent ON broker_device;
 CREATE TRIGGER broker_device_revocation_permanent BEFORE UPDATE ON broker_device
   FOR EACH ROW EXECUTE FUNCTION broker_forbid_unrevoke();
 
-CREATE OR REPLACE FUNCTION broker_forbid_code_reuse() RETURNS trigger LANGUAGE plpgsql AS $fn$
+CREATE OR REPLACE FUNCTION broker_forbid_code_reuse() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
 BEGIN
   IF OLD.used_at IS NOT NULL AND NEW.used_at IS DISTINCT FROM OLD.used_at THEN
     RAISE EXCEPTION 'an enrolment code is single use';
@@ -95,7 +95,7 @@ DROP TRIGGER IF EXISTS broker_enrolment_code_single_use ON broker_enrolment_code
 CREATE TRIGGER broker_enrolment_code_single_use BEFORE UPDATE ON broker_enrolment_code
   FOR EACH ROW EXECUTE FUNCTION broker_forbid_code_reuse();
 
-CREATE OR REPLACE FUNCTION broker_forbid_spend_decrease() RETURNS trigger LANGUAGE plpgsql AS $fn$
+CREATE OR REPLACE FUNCTION broker_forbid_spend_decrease() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
 BEGIN
   IF NEW.spent_paise < OLD.spent_paise THEN
     RAISE EXCEPTION 'recorded spend cannot decrease';
@@ -123,7 +123,7 @@ const TRIGGERS = [
  * fixed, so the application role cannot reopen a billed call or release one that was charged.
  */
 const CLOSED_FINAL_SQL = `
-CREATE OR REPLACE FUNCTION broker_forbid_reservation_reopen() RETURNS trigger LANGUAGE plpgsql AS $fn$
+CREATE OR REPLACE FUNCTION broker_forbid_reservation_reopen() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
 BEGIN
   IF OLD.state <> 'reserved'
     AND (NEW.state, NEW.actual_paise, NEW.closed_at) IS DISTINCT FROM (OLD.state, OLD.actual_paise, OLD.closed_at) THEN
@@ -139,7 +139,7 @@ CREATE TRIGGER broker_reservation_closed_final BEFORE UPDATE ON broker_reservati
 
 const REDEEM_SQL = `
 CREATE OR REPLACE FUNCTION broker_redeem_enrolment(p_code_sha256 text, p_device_id text, p_label text, p_secret_sha256 text)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE redeemed text;
 BEGIN
   UPDATE broker_enrolment_code SET used_at = now()
@@ -161,7 +161,7 @@ REVOKE ALL ON FUNCTION broker_redeem_enrolment(text, text, text, text) FROM PUBL
  * Recorded spend is not checked here, because the owner's documented recovery raises it to the anchored value.
  */
 const RESERVED_SQL = `
-CREATE OR REPLACE FUNCTION broker_check_reserved() RETURNS trigger LANGUAGE plpgsql AS $fn$
+CREATE OR REPLACE FUNCTION broker_check_reserved() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM broker_budget_month b
@@ -226,6 +226,10 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
     await client.query(RESERVED_SQL);
     await client.query(CLOSED_FINAL_SQL);
     await client.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
+    // Temporary tables would shadow the ledger tables for a session; no role needs them.
+    await client.query(
+      "DO $$ BEGIN EXECUTE format('REVOKE TEMPORARY ON DATABASE %I FROM PUBLIC', current_database()); END $$",
+    );
     await client.query(`REVOKE ALL ON ${LEDGER_TABLES.join(", ")} FROM ${app}, ${admin}`);
     await client.query(`GRANT USAGE ON SCHEMA public TO ${app}, ${admin}`);
     // Application role: record reservations and spend; read devices and codes; redeem codes through a function.

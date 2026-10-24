@@ -254,11 +254,14 @@ anchor_sh 'rm -rf /var/lib/broker-anchor/ledger-anchor.json*'
 
 # ---------------------------------------------------------------- d: rollback prevention, then documented recovery
 # A valid anchor is written by a clean start. Spend 500 is then recorded and the broker restarted, so the anchor holds 500.
+# The first start of an empty ledger needs the owner's genesis flag; it is unset again right after.
+export BROKER_LEDGER_GENESIS=yes
 if start_broker; then d_start=yes; else d_start=no; fi
 d_stop=$(stop_broker)
 set_spend() { sql broker "INSERT INTO broker_budget_month (month, spent_paise) VALUES ('$CUR', $1) ON CONFLICT (month) DO UPDATE SET spent_paise = EXCLUDED.spent_paise" >/dev/null 2>&1; }
 set_spend 500
 if start_broker; then d_restart=yes; else d_restart=no; fi
+unset BROKER_LEDGER_GENESIS
 anchored_now=$(anchor_cat)
 d_stop2=$(stop_broker)
 case "$anchored_now" in *"\"$CUR\":500"*) d_anchor=yes ;; *) d_anchor=no ;; esac

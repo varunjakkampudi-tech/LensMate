@@ -40,22 +40,22 @@ Exit status: `0` all PASS, `1` a FAIL or a changed container list, `2` a precond
 
 ## Scenario expectations
 
-| ID | Scenario | Action | Expected result |
-|----|----------|--------|-----------------|
-| a | Missing anchor with existing spend | Insert spend 300 for the current month, no anchor file, start the broker | Exit non-zero; message `AnchorError: NO_ANCHOR_WITH_SPEND` |
-| b | Corrupt anchor | Write `{not json` to the anchor file, start | Exit non-zero; `AnchorError: ANCHOR_INVALID` |
-| c | Unreadable anchor | Replace the anchor file with a directory, start | Exit non-zero; `AnchorError: ANCHOR_UNREADABLE` |
-| d-setup | Valid anchor at 500 | Clean start, record spend 500, restart | Anchor file holds the current month at 500; both starts succeed; clean stop exits 0 |
-| d | Rollback prevention | TRUNCATE the ledger, insert spend 100 (anchor still 500), start | Exit non-zero; `AnchorError: ROLLED_BACK` |
-| d-recovery | Documented recovery | Owner raises spend to 500, start | Broker starts; `/healthz` returns `{"status":"ok"}` |
-| e1 | Backup output | Run `backup.sh` | Exit 0; ciphertext with OpenSSL `Salted__` header; 64-hex HMAC tag file |
-| e2 | Wrong confirmation | Restore with a confirmation that is not the target name | Exit non-zero; `confirmation does not match` |
-| e3 | Non-empty target | Restore into the live `broker` database | Exit non-zero; `already holds ledger tables` |
-| e4 | Tampered file | Flip one ciphertext byte, restore into a database that does not exist yet | Exit non-zero; `integrity check failed` (no database step reached) |
-| e5 | Empty target | Create `broker_restore_check`, restore | Exit 0; restored spend and device count equal the source |
-| g | Restart after clean shutdown | Stop (SIGTERM), start again with the same anchor | Stop exit code 0; restart; `/healthz` 200 |
-| f1 | Anchor write fails | Replace the anchor file with a directory, send one chat request in mock mode | HTTP 503 `LEDGER_UNAVAILABLE`; the request is not answered |
-| f2 | Ledger halted | Send another chat request | HTTP 503 `LEDGER_UNAVAILABLE` |
+| ID         | Scenario                           | Action                                                                       | Expected result                                                                     |
+| ---------- | ---------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| a          | Missing anchor with existing spend | Insert spend 300 for the current month, no anchor file, start the broker     | Exit non-zero; message `AnchorError: NO_ANCHOR_WITH_SPEND`                          |
+| b          | Corrupt anchor                     | Write `{not json` to the anchor file, start                                  | Exit non-zero; `AnchorError: ANCHOR_INVALID`                                        |
+| c          | Unreadable anchor                  | Replace the anchor file with a directory, start                              | Exit non-zero; `AnchorError: ANCHOR_UNREADABLE`                                     |
+| d-setup    | Valid anchor at 500                | Clean start, record spend 500, restart                                       | Anchor file holds the current month at 500; both starts succeed; clean stop exits 0 |
+| d          | Rollback prevention                | TRUNCATE the ledger, insert spend 100 (anchor still 500), start              | Exit non-zero; `AnchorError: ROLLED_BACK`                                           |
+| d-recovery | Documented recovery                | Owner raises spend to 500, start                                             | Broker starts; `/healthz` returns `{"status":"ok"}`                                 |
+| e1         | Backup output                      | Run `backup.sh`                                                              | Exit 0; ciphertext with OpenSSL `Salted__` header; 64-hex HMAC tag file             |
+| e2         | Wrong confirmation                 | Restore with a confirmation that is not the target name                      | Exit non-zero; `confirmation does not match`                                        |
+| e3         | Non-empty target                   | Restore into the live `broker` database                                      | Exit non-zero; `already holds ledger tables`                                        |
+| e4         | Tampered file                      | Flip one ciphertext byte, restore into a database that does not exist yet    | Exit non-zero; `integrity check failed` (no database step reached)                  |
+| e5         | Empty target                       | Create `broker_restore_check`, restore                                       | Exit 0; restored spend and device count equal the source                            |
+| g          | Restart after clean shutdown       | Stop (SIGTERM), start again with the same anchor                             | Stop exit code 0; restart; `/healthz` 200                                           |
+| f1         | Anchor write fails                 | Replace the anchor file with a directory, send one chat request in mock mode | HTTP 503 `LEDGER_UNAVAILABLE`; the request is not answered                          |
+| f2         | Ledger halted                      | Send another chat request                                                    | HTTP 503 `LEDGER_UNAVAILABLE`                                                       |
 
 The control chat request before the fault must return HTTP 200. If it does not, f1 and f2 are reported NOT RUN with
 the reason.
