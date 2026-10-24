@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { Btn, Card, H2 } from "../ui/kit";
 import { FONTS, useTheme } from "../ui/theme";
 import { REGISTRY, MATRIX_COMMIT, MATRIX_DATE } from "./registry";
+import { OWNER_REPORTS } from "./owner-reports";
 import {
   completionPercent,
   evidenceLevels,
@@ -62,12 +63,26 @@ export function ReadinessSection() {
   const { c } = useTheme();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("p1");
+  const [view, setView] = useState<"progress" | "release">("progress");
   const [limit, setLimit] = useState(PAGE);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const p1 = useMemo(() => REGISTRY.filter((e) => e.p1Scope), []);
   const summary = useMemo(() => summarise(p1), [p1]);
-  const visible = useMemo(() => REGISTRY.filter((e) => inFilter(e, filter)), [filter]);
+  const visible = useMemo(
+    () =>
+      view === "release"
+        ? REGISTRY.filter((e) => e.kind === "checklist" && e.p1Scope)
+        : REGISTRY.filter((e) => inFilter(e, filter)),
+    [filter, view],
+  );
+  const goNoGo = useMemo(() => {
+    const checklist = REGISTRY.filter((e) => e.kind === "checklist" && e.p1Scope);
+    return {
+      total: checklist.length,
+      ready: checklist.filter((e) => stateOf(e) === "Ready").length,
+    };
+  }, []);
   const shown = visible.slice(0, limit);
 
   const stateColor = (s: ReadinessState) =>
@@ -88,7 +103,7 @@ export function ReadinessSection() {
           {summary.Blocked} blocked
         </Text>
         <Text style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}>
-          {open ? "Hide" : "Show all features"}
+          {open ? "Hide" : "Open readiness"}
         </Text>
       </Pressable>
 
@@ -102,8 +117,82 @@ export function ReadinessSection() {
             are implementation estimates (policy v{REGISTRY_POLICY_VERSION}), not measurements.
             Matrix {MATRIX_DATE} · commit {MATRIX_COMMIT}.
           </Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {(["progress", "release"] as const).map((v) => (
+              <Pressable
+                key={v}
+                testID={`readiness-view-${v}`}
+                accessibilityRole="button"
+                accessibilityLabel={v === "progress" ? "Feature progress" : "Release readiness"}
+                accessibilityState={{ selected: view === v }}
+                onPress={() => {
+                  setView(v);
+                  setLimit(PAGE);
+                  setExpanded(null);
+                }}
+                style={{
+                  flex: 1,
+                  minHeight: 40,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: view === v ? c.accent : c.surface2,
+                }}
+              >
+                <Text
+                  style={{
+                    color: view === v ? c.accentInk : c.text,
+                    fontFamily: FONTS.body,
+                    fontSize: 13,
+                    fontWeight: "700",
+                  }}
+                >
+                  {v === "progress" ? "Feature progress" : "Release readiness"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {view === "release" ? (
+            <View testID="release-verdict" style={{ gap: 8 }}>
+              <Text
+                style={{ color: c.text, fontFamily: FONTS.body, fontSize: 14, fontWeight: "700" }}
+              >
+                Go / no-go: {goNoGo.ready} of {goNoGo.total} phase-1 checklist items ready
+              </Text>
+              <Text
+                style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 12, lineHeight: 17 }}
+              >
+                Not ready means the matrix records no owner-run device evidence for the item.
+                Owner-reported results below are recorded as reported; they have no commit and do
+                not change any status.
+              </Text>
+              <Text
+                style={{
+                  color: c.text,
+                  fontFamily: FONTS.display,
+                  fontSize: 13,
+                  fontWeight: "700",
+                  marginTop: 4,
+                }}
+              >
+                Owner-reported iPhone results
+              </Text>
+              {OWNER_REPORTS.map((r) => (
+                <Text
+                  key={r.capability}
+                  style={{ color: c.text, fontFamily: FONTS.body, fontSize: 12, lineHeight: 17 }}
+                >
+                  <Text style={{ color: r.result === "pass" ? c.ok : c.danger, fontWeight: "700" }}>
+                    {r.result === "pass" ? "Reported pass" : "Reported fail"}
+                  </Text>
+                  {" · "}
+                  {r.capability} · {r.date} · commit not recorded
+                </Text>
+              ))}
+            </View>
+          ) : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {FILTERS.map((f) => (
+            {(view === "progress" ? FILTERS : []).map((f) => (
               <Pressable
                 key={f.id}
                 testID={`readiness-filter-${f.id}`}
@@ -138,7 +227,7 @@ export function ReadinessSection() {
             ))}
           </View>
           <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 12 }}>
-            Showing {shown.length} of {visible.length}
+            {view === "release" ? "Checklist" : "Showing"} {shown.length} of {visible.length}
           </Text>
 
           {shown.map((e) => {
