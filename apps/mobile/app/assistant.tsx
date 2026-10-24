@@ -1,52 +1,37 @@
 import { router } from "expo-router";
-import { createElement, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { confirmAction, runAgentTask, type AgentStep, type PhoneAction } from "../src/ai/agent";
 import { aiErrorText } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { useMicSession } from "../src/ai/use-voice";
+import { readBrokerConfig } from "../src/broker-config";
 import { Icon, type IconName } from "../src/ui/icon";
-import { Btn, Card, Field, Notice } from "../src/ui/kit";
+import { Notice } from "../src/ui/kit";
 import { LangPicker } from "../src/ui/lang-picker";
 import { usePrefs, type Lang } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
-function Orb({ active }: { active: boolean }) {
-  if (Platform.OS !== "web") {
-    return (
-      <View style={{ width: 170, height: 170, borderRadius: 85, backgroundColor: "#3B82F6" }} />
-    );
-  }
-  const wave = "M20 60 Q30 40 40 60 T60 60 T80 60 T100 60 M28 60 Q34 30 44 60 T64 60 T84 60";
-  return createElement(
-    "div",
-    {
-      "aria-hidden": true,
-      style: {
-        width: 180,
-        height: 180,
-        borderRadius: 90,
-        background: "radial-gradient(circle at 35% 30%, #93C5FD, #2563EB 55%, #1E3A8A)",
-        boxShadow: active
-          ? "0 0 0 18px rgba(59,130,246,0.15), 0 0 0 36px rgba(59,130,246,0.08)"
-          : "0 0 0 12px rgba(59,130,246,0.10)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "box-shadow 400ms ease",
-      },
-    },
-    createElement(
-      "svg",
-      { width: 120, height: 120, viewBox: "0 0 120 120", fill: "none" },
-      createElement("path", {
-        d: wave,
-        stroke: "rgba(255,255,255,0.9)",
-        strokeWidth: 2.5,
-        strokeLinecap: "round",
-      }),
-    ),
-  );
+type Source = "mock" | "openrouter";
+
+interface Message {
+  readonly id: number;
+  readonly role: "user" | "assistant";
+  readonly text: string;
+  readonly steps?: readonly AgentStep[];
+  readonly actions?: readonly PhoneAction[];
+  readonly source?: Source;
+  /** A failed request. The retry re-sends the question that caused it. */
+  readonly failedQuestion?: string;
 }
 
 const AGENT_ICON: Record<AgentStep["agent"], IconName> = {
@@ -59,219 +44,553 @@ const AGENT_ICON: Record<AgentStep["agent"], IconName> = {
   Writer: "note",
 };
 
-/** Hear & Talk: speak or type; the multi-agent assistant answers aloud and can research, remember and propose actions. */
+const SUGGESTIONS = ["What can you do?", "Summarise my notes", "Translate a sentence"];
+
+/** Five bars that move while listening or speaking. Restrained: slow and small. */
+function WaveBars({ active, color }: { active: boolean; color: string }) {
+  const bars = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(0.35))).current;
+  useEffect(() => {
+    if (!active) {
+      bars.forEach((b) => b.setValue(0.35));
+      return;
+    }
+    const loops = bars.map((b, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(b, { toValue: 1, duration: 420 + i * 60, useNativeDriver: true }),
+          Animated.timing(b, { toValue: 0.35, duration: 420 + i * 60, useNativeDriver: true }),
+        ]),
+      ),
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [active, bars]);
+  return (
+    <View
+      style={{ flexDirection: "row", alignItems: "center", gap: 3, height: 18 }}
+      accessibilityElementsHidden
+    >
+      {bars.map((b, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 3,
+            height: 18,
+            borderRadius: 2,
+            backgroundColor: color,
+            transform: [{ scaleY: b }],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Assistant: speak or type. The multi-agent assistant answers aloud and can research, remember and propose actions. */
 export default function AssistantScreen() {
   const { c } = useTheme();
   const { prefs } = usePrefs();
   const [lang, setLang] = useState<Lang>(prefs.language);
   const mic = useMicSession("Voice question");
   const [typed, setTyped] = useState("");
-  const [goal, setGoal] = useState<string | null>(null);
-  const [steps, setSteps] = useState<AgentStep[]>([]);
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [actions, setActions] = useState<readonly PhoneAction[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [speaking, setSpeaking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nextId = useRef(1);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const lastAnswer = [...messages]
+    .reverse()
+    .find((m) => m.role === "assistant" && m.failedQuestion === undefined);
+  const brokerSet = readBrokerConfig().ok;
+  const voiceOn = prefs.features.talk;
+
+  const push = (m: Omit<Message, "id">) => {
+    const id = nextId.current++;
+    setMessages((prev) => [...prev, { ...m, id }]);
+  };
 
   const run = async (text: string) => {
-    setGoal(text);
-    setSteps([]);
-    setAnswer(null);
-    setActions([]);
+    const question = text.trim();
+    if (question === "" || busy) {
+      return;
+    }
     setError(null);
+    push({ role: "user", text: question });
     setBusy(true);
+    const steps: AgentStep[] = [];
     try {
-      const r = await runAgentTask(text, lang, (s) => setSteps((x) => [...x, s]));
-      setAnswer(r.answer);
-      setActions(r.actions);
+      const r = await runAgentTask(question, lang, (s) => steps.push(s));
+      push({ role: "assistant", text: r.answer, steps, actions: r.actions, source: r.source });
       setSpeaking(true);
       speak(r.answer, lang, prefs.voiceRate, () => setSpeaking(false));
     } catch (e) {
-      setError(aiErrorText(e));
+      push({
+        role: "assistant",
+        text: aiErrorText(e),
+        failedQuestion: question,
+      });
     } finally {
       setBusy(false);
     }
   };
 
-  const status =
-    mic.listening !== null
-      ? "Listening..."
-      : busy
-        ? "Thinking..."
-        : speaking
-          ? "Speaking..."
-          : "Tap to talk";
-  const action = (label: string, icon: IconName, onPress: () => void, testID: string) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      testID={testID}
-      onPress={onPress}
-      style={{
-        flex: 1,
-        alignItems: "center",
-        gap: 6,
-        backgroundColor: c.surface,
-        borderRadius: 16,
-        paddingVertical: 14,
-        borderWidth: 1,
-        borderColor: c.border,
-      }}
-    >
-      <Icon name={icon} color={c.text} size={24} />
-      <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 12, fontWeight: "600" }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
+  const stopAll = () => {
+    mic.stop();
+    stopSpeaking();
+    setSpeaking(false);
+  };
+
+  const listening = mic.listening !== null;
+  const status = listening ? "Listening…" : busy ? "Thinking…" : speaking ? "Speaking…" : "Ready";
+  const statusColor = listening ? c.danger : busy ? c.accent2 : speaking ? c.accent : c.muted;
+  const providerLabel =
+    lastAnswer?.source === "openrouter"
+      ? "LIVE"
+      : lastAnswer?.source === "mock"
+        ? "MOCK"
+        : brokerSet
+          ? "NOT CHECKED"
+          : "MOCK";
+  const providerTone = providerLabel === "LIVE" ? c.ok : c.accent2;
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={{ padding: 18, gap: 16, paddingBottom: 40, alignItems: "stretch" }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
     >
-      {!prefs.features.talk ? (
-        <Notice tone="warn">Voice questions are switched off in Profile → Features.</Notice>
-      ) : null}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={mic.listening !== null ? "Stop listening" : "Start listening"}
-        testID="talk-mic-button"
-        disabled={busy || !prefs.features.talk}
-        onPress={() => (mic.listening !== null ? mic.stop() : mic.start(lang, (t) => void run(t)))}
-        style={{ alignItems: "center", paddingTop: 12 }}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          paddingHorizontal: 18,
+          paddingTop: 8,
+          paddingBottom: 10,
+        }}
       >
-        <Orb active={mic.listening !== null || speaking} />
-      </Pressable>
-      <View style={{ alignItems: "center", gap: 4 }}>
-        <Text
-          testID="talk-status"
-          style={{ color: c.text, fontFamily: FONTS.display, fontSize: 22, fontWeight: "800" }}
-        >
-          {status}
-        </Text>
-        <Text
-          testID="talk-partial"
+        <View
           style={{
-            color: c.muted,
-            fontFamily: FONTS.body,
-            fontSize: prefs.largeCaptions ? 20 : 14,
-            textAlign: "center",
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            backgroundColor: c.surface2,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          accessibilityElementsHidden
+        >
+          <Icon name="glasses" color={c.accent} size={22} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text
+            accessibilityRole="header"
+            style={{ color: c.text, fontFamily: FONTS.display, fontSize: 20, fontWeight: "800" }}
+          >
+            Assistant
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: statusColor }} />
+            <Text
+              testID="talk-status"
+              accessibilityLiveRegion="polite"
+              style={{
+                color: statusColor,
+                fontFamily: FONTS.body,
+                fontSize: 13,
+                fontWeight: "600",
+              }}
+            >
+              {status}
+            </Text>
+            <WaveBars active={listening || speaking} color={statusColor} />
+          </View>
+        </View>
+        <View
+          testID="provider-badge"
+          accessibilityLabel={`Answers: ${providerLabel === "LIVE" ? "live provider" : "mock, no provider called"}`}
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: providerTone,
           }}
         >
-          {mic.partial !== "" ? mic.partial : "Speak naturally. You can ask anything."}
-        </Text>
+          <Text
+            style={{ color: providerTone, fontFamily: FONTS.body, fontSize: 11, fontWeight: "800" }}
+          >
+            {providerLabel}
+          </Text>
+        </View>
       </View>
-      {mic.listening !== null || speaking ? (
+
+      <View style={{ paddingHorizontal: 18, paddingBottom: 8 }}>
+        <LangPicker prefix="talk-lang" value={lang} onChange={setLang} />
+      </View>
+
+      {!voiceOn ? (
+        <View style={{ paddingHorizontal: 18 }}>
+          <Notice tone="warn">Voice questions are switched off in Profile → Features.</Notice>
+        </View>
+      ) : null}
+      {error === null ? null : (
+        <View style={{ paddingHorizontal: 18, paddingBottom: 8 }}>
+          <Notice testID="talk-error" tone="error">
+            {error}
+          </Notice>
+        </View>
+      )}
+      {mic.error === null ? null : (
+        <View style={{ paddingHorizontal: 18, paddingBottom: 8 }}>
+          <Notice tone="error">{mic.error}</Notice>
+        </View>
+      )}
+
+      <ScrollView
+        ref={scroll}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 18, paddingVertical: 8, gap: 12, flexGrow: 1 }}
+        onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}
+        keyboardShouldPersistTaps="handled"
+      >
+        {messages.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: "center", gap: 14, paddingVertical: 24 }}>
+            <Text
+              style={{
+                color: c.text,
+                fontFamily: FONTS.display,
+                fontSize: 18,
+                fontWeight: "700",
+                textAlign: "center",
+              }}
+            >
+              Ask anything, by voice or text.
+            </Text>
+            <Text
+              style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 14, textAlign: "center" }}
+            >
+              {brokerSet
+                ? "Answers come from the AI service once this phone is enrolled."
+                : "No AI address is set in this build, so answers are mock responses."}
+            </Text>
+            <View
+              style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 }}
+            >
+              {SUGGESTIONS.map((s) => (
+                <Pressable
+                  key={s}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ask: ${s}`}
+                  disabled={!voiceOn || busy}
+                  onPress={() => void run(s)}
+                  style={{
+                    minHeight: 44,
+                    paddingHorizontal: 14,
+                    justifyContent: "center",
+                    borderRadius: 999,
+                    backgroundColor: c.surface,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    opacity: !voiceOn || busy ? 0.5 : 1,
+                  }}
+                >
+                  <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 13 }}>{s}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "center", gap: 10 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open translate"
+                onPress={() => router.push("/translate")}
+                style={{ minHeight: 44, paddingHorizontal: 14, justifyContent: "center" }}
+              >
+                <Text
+                  style={{
+                    color: c.accent,
+                    fontFamily: FONTS.body,
+                    fontSize: 13,
+                    fontWeight: "600",
+                  }}
+                >
+                  Translate
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open See to take a photo"
+                onPress={() => router.push("/capture")}
+                style={{ minHeight: 44, paddingHorizontal: 14, justifyContent: "center" }}
+              >
+                <Text
+                  style={{
+                    color: c.accent,
+                    fontFamily: FONTS.body,
+                    fontSize: 13,
+                    fontWeight: "600",
+                  }}
+                >
+                  See a photo
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {messages.map((m) => (
+          <Bubble
+            key={m.id}
+            message={m}
+            isLast={lastAnswer?.id === m.id}
+            onReplay={() => {
+              setSpeaking(true);
+              speak(m.text, lang, prefs.voiceRate, () => setSpeaking(false));
+            }}
+            onRetry={() => m.failedQuestion !== undefined && void run(m.failedQuestion)}
+            onConfirm={(a) => void confirmAction(a)}
+          />
+        ))}
+        {busy ? (
+          <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 13, paddingLeft: 4 }}>
+            Thinking…
+          </Text>
+        ) : null}
+      </ScrollView>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: 10,
+          paddingHorizontal: 14,
+          paddingTop: 10,
+          paddingBottom: Platform.OS === "ios" ? 24 : 12,
+          borderTopWidth: 1,
+          borderTopColor: c.border,
+          backgroundColor: c.surface,
+        }}
+      >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Stop"
-          testID="talk-interrupt-button"
-          onPress={() => {
-            mic.stop();
-            stopSpeaking();
-            setSpeaking(false);
+          accessibilityLabel={listening ? "Stop listening" : "Speak your question"}
+          testID="talk-mic-button"
+          disabled={busy || !voiceOn}
+          onPress={() => (listening ? mic.stop() : mic.start(lang, (t) => void run(t)))}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: listening ? c.danger : c.surface2,
+            opacity: busy || !voiceOn ? 0.5 : 1,
           }}
-          style={{ alignSelf: "center", alignItems: "center", gap: 4 }}
         >
-          <View
+          <Icon name="mic" color={listening ? "#fff" : c.accent} size={22} />
+        </Pressable>
+        <TextInput
+          testID="talk-typed-input"
+          accessibilityLabel="Your question"
+          value={typed}
+          onChangeText={setTyped}
+          placeholder="Ask a question or give a task"
+          placeholderTextColor={c.muted}
+          editable={voiceOn}
+          multiline
+          style={{
+            flex: 1,
+            minHeight: 48,
+            maxHeight: 120,
+            color: c.text,
+            fontFamily: FONTS.body,
+            fontSize: 15,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            borderRadius: 24,
+            backgroundColor: c.surface2,
+          }}
+        />
+        {busy || speaking || listening ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Stop"
+            testID="talk-interrupt-button"
+            onPress={stopAll}
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: c.danger,
+              width: 48,
+              height: 48,
+              borderRadius: 24,
               alignItems: "center",
               justifyContent: "center",
+              backgroundColor: c.danger,
             }}
           >
-            <View style={{ width: 18, height: 18, borderRadius: 4, backgroundColor: "#fff" }} />
-          </View>
-          <Text style={{ color: c.danger, fontWeight: "600", fontSize: 12 }}>Stop</Text>
-        </Pressable>
-      ) : null}
-      {mic.error === null ? null : <Notice tone="error">{mic.error}</Notice>}
-      <LangPicker prefix="talk-lang" value={lang} onChange={setLang} />
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        {action("Ask", "pin", () => mic.start(lang, (t) => void run(t)), "action-ask")}
-        {action("Translate", "globe", () => router.push("/translate"), "action-translate")}
-        {action("Take Photo", "camera", () => router.push("/capture"), "action-photo")}
+            <Icon name="stop" color="#fff" size={20} />
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Send question"
+            testID="talk-send-button"
+            disabled={typed.trim() === "" || !voiceOn}
+            onPress={() => {
+              const t = typed.trim();
+              setTyped("");
+              void run(t);
+            }}
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: c.accent,
+              opacity: typed.trim() === "" || !voiceOn ? 0.45 : 1,
+            }}
+          >
+            <Icon name="send" color={c.accentInk} size={20} />
+          </Pressable>
+        )}
       </View>
-      <Card>
-        <Field
-          testID="talk-typed-input"
-          label="Or type a question or a task"
-          value={typed}
-          onChange={setTyped}
-          placeholder="Find tomorrow's weather in Hyderabad and remind me at 8 to carry an umbrella"
-        />
-        <Btn
-          testID="talk-send-button"
-          label="Ask the assistant"
-          icon="spark"
-          busy={busy}
-          disabled={typed.trim() === "" || !prefs.features.talk}
-          onPress={() => {
-            const t = typed.trim();
-            setTyped("");
-            void run(t);
+    </KeyboardAvoidingView>
+  );
+}
+
+function Bubble({
+  message,
+  isLast,
+  onReplay,
+  onRetry,
+  onConfirm,
+}: {
+  message: Message;
+  isLast: boolean;
+  onReplay: () => void;
+  onRetry: () => void;
+  onConfirm: (a: PhoneAction) => void;
+}) {
+  const { c } = useTheme();
+  const mine = message.role === "user";
+  const failed = message.failedQuestion !== undefined;
+  return (
+    <View style={{ alignItems: mine ? "flex-end" : "flex-start", gap: 6 }}>
+      <View
+        testID={mine ? "talk-turn-user" : failed ? "talk-turn-error" : "talk-turn-assistant"}
+        accessibilityLabel={`${mine ? "You" : "Assistant"}: ${message.text}`}
+        style={{
+          maxWidth: "86%",
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          borderRadius: 18,
+          borderBottomRightRadius: mine ? 4 : 18,
+          borderBottomLeftRadius: mine ? 18 : 4,
+          backgroundColor: mine ? c.accent : failed ? c.surface2 : c.surface,
+          borderWidth: mine ? 0 : 1,
+          borderColor: failed ? c.danger : c.border,
+        }}
+      >
+        <Text
+          style={{
+            color: mine ? c.accentInk : c.text,
+            fontFamily: FONTS.body,
+            fontSize: 15,
+            lineHeight: 21,
           }}
-        />
-      </Card>
-      {error === null ? null : (
-        <Notice testID="talk-error" tone="error">
-          {error}
-        </Notice>
-      )}
-      {goal === null ? null : (
-        <Card>
-          <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 13 }}>You: {goal}</Text>
-          {steps.map((s, i) => (
+        >
+          {message.text}
+        </Text>
+      </View>
+      {message.steps !== undefined && message.steps.length > 0 ? (
+        <View style={{ maxWidth: "86%", gap: 4, paddingLeft: 4 }}>
+          {message.steps.map((s, i) => (
             <View
               key={i}
               testID="agent-step"
-              style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}
+              style={{ flexDirection: "row", gap: 8, alignItems: "center" }}
             >
               <Icon
                 name={AGENT_ICON[s.agent]}
                 color={s.status === "done" ? c.accent : c.danger}
-                size={18}
+                size={14}
               />
-              <Text style={{ flex: 1, color: c.text, fontFamily: FONTS.body, fontSize: 13 }}>
-                <Text style={{ fontWeight: "700" }}>{s.agent}: </Text>
-                {s.summary}
-              </Text>
-            </View>
-          ))}
-          {answer === null ? null : (
-            <View
-              testID="talk-turn-assistant"
-              style={{ backgroundColor: c.surface2, borderRadius: 14, padding: 12 }}
-            >
               <Text
-                style={{
-                  color: c.text,
-                  fontFamily: FONTS.body,
-                  fontSize: prefs.largeCaptions ? 20 : 15,
-                  lineHeight: prefs.largeCaptions ? 28 : 22,
-                }}
+                style={{ flex: 1, color: c.muted, fontFamily: FONTS.body, fontSize: 12 }}
+                numberOfLines={2}
               >
-                {answer}
+                {s.agent}: {s.summary}
               </Text>
             </View>
-          )}
-          {actions.map((a) => (
-            <Btn
-              key={a.url}
-              testID="agent-action"
-              label={`Confirm: ${a.label}`}
-              tone="ghost"
-              icon="bolt"
-              onPress={() => void confirmAction(a)}
-            />
           ))}
-        </Card>
-      )}
-    </ScrollView>
+        </View>
+      ) : null}
+      {!mine && message.source !== undefined ? (
+        <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 11, paddingLeft: 4 }}>
+          {message.source === "mock" ? "Mock answer · no provider called" : "Live provider answer"}
+        </Text>
+      ) : null}
+      {!mine &&
+        (message.actions ?? []).map((a) => (
+          <Pressable
+            key={a.url}
+            accessibilityRole="button"
+            accessibilityLabel={`Confirm: ${a.label}`}
+            testID="agent-action"
+            onPress={() => onConfirm(a)}
+            style={{
+              minHeight: 44,
+              paddingHorizontal: 14,
+              justifyContent: "center",
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: c.accent,
+            }}
+          >
+            <Text
+              style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}
+            >
+              Confirm: {a.label}
+            </Text>
+          </Pressable>
+        ))}
+      {!mine && failed ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          testID="talk-retry-button"
+          onPress={onRetry}
+          style={{ minHeight: 44, justifyContent: "center", paddingLeft: 4 }}
+        >
+          <Text
+            style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}
+          >
+            Try again
+          </Text>
+        </Pressable>
+      ) : null}
+      {!mine && !failed && isLast ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Replay answer aloud"
+          testID="talk-replay-button"
+          onPress={onReplay}
+          style={{
+            minHeight: 44,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingLeft: 4,
+          }}
+        >
+          <Icon name="speaker" color={c.accent} size={16} />
+          <Text
+            style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}
+          >
+            Replay
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
