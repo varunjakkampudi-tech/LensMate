@@ -231,7 +231,9 @@ export async function translate(
 }
 
 const BLOCKED: Record<string, string> = {
-  NOT_CONFIGURED: "The AI service address is not set in this build.",
+  NOT_CONFIGURED: "No AI service address is set in this build, so answers are mock responses.",
+  LOOPBACK_ON_DEVICE:
+    "This build's AI address points at this PC, which the phone cannot reach. Answers are mock responses until a secure address is set.",
   CONFIG_INVALID: "The AI service address in this build is invalid.",
   NOT_ENROLLED: "Enrol this phone first (Home → More tools → Enrol this phone).",
   CREDENTIAL_INVALID: "This phone's credential is damaged. Ask the owner to enrol it again.",

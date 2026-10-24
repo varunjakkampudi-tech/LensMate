@@ -9,6 +9,7 @@ import { useGlasses } from "../src/ui/glasses";
 import { Icon, type IconName } from "../src/ui/icon";
 import { Body, Btn, Card, H2, Notice, Row } from "../src/ui/kit";
 import { usePrefs, type FeatureKey } from "../src/ui/prefs";
+import { brokerStatusText, readBrokerConfig } from "../src/broker-config";
 import { ReadinessSection } from "../src/readiness/readiness-section";
 import { FONTS, useTheme } from "../src/ui/theme";
 
@@ -185,7 +186,9 @@ function SetupCard({ setup }: { setup: AiSetup }) {
     <Card testID="ai-setup-card">
       <H2>Set up AI on this phone</H2>
       {!setup.configured ? (
-        <Notice tone="warn">The AI service address is not set in this build.</Notice>
+        <Notice tone="info" testID="ai-address-status">
+          {brokerStatusText(readBrokerConfig())}
+        </Notice>
       ) : null}
       <Body muted>1. Enrol with the owner's code {setup.enrolled ? "· done" : ""}</Body>
       {setup.enrolled ? null : (

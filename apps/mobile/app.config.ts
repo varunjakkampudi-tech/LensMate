@@ -1,4 +1,24 @@
 import type { ExpoConfig } from "expo/config";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+// Expo reads .env files only from this folder. The repository keeps its development settings one level up, so copy
+// the public EXPO_PUBLIC_ values from there when they are not already set. Nothing else is copied: secrets such as the
+// OpenRouter key never enter the app environment this way.
+const rootEnvFile = join(
+  typeof __dirname === "undefined" ? process.cwd() : __dirname,
+  "..",
+  "..",
+  ".env.development",
+);
+if (existsSync(rootEnvFile)) {
+  for (const line of readFileSync(rootEnvFile, "utf8").split(/\r?\n/)) {
+    const match = /^(EXPO_PUBLIC_[A-Z0-9_]+)=(.*)$/.exec(line.trim());
+    if (match !== null && match[1] !== undefined && process.env[match[1]] === undefined) {
+      process.env[match[1]] = (match[2] ?? "").replace(/^["']|["']$/g, "");
+    }
+  }
+}
 
 // Continuous Native Generation: native settings live here and in config plugins.
 // ios/ and android/ are generated and never hand-edited (Engineering Standards 1).
