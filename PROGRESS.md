@@ -517,3 +517,9 @@ Expo Go compatibility, as built. "Bundle" means the iOS bundle compiles. "Device
 | Simulator                     | Yes (JS only)                                | Bundle; device not run                                        |
 | Credentials (SecureStore)     | Yes                                          | Unchanged                                                     |
 | Broker (AI)                   | Needs network and LAN base URL               | Mock by default                                               |
+
+## Round 2026-10-25 (end-to-end milestone)
+
+- Added: SEE session state machine and integrated mock-mode tests; notification lifecycle tests; the iPhone HTTPS route decision
+  record (docs/decisions/0003-iphone-broker-https-route.md).
+- Verified here: gates, tests, the iOS bundle, and the Expo dependency check. Not verified here: anything on a phone.

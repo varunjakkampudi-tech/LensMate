@@ -316,3 +316,30 @@ Nothing is ever committed that should not be public, because history stays publi
 - Not verified on an iPhone: the camera, the picker, notification banners, lock-screen delivery and cold-start taps.
   Owner device run is required (see the Expo Go checklist in the final report).
 - Open: the iPhone broker route (see the earlier section): owner decision required.
+
+## ROUND 2026-10-25 (end-to-end iPhone milestone)
+
+- SEE → THINK → TALK, automated in mock mode (src/see/session.ts, session.test.ts, 12 tests). Real: the session state
+  machine, image checks (JPEG or PNG, at most 1,048,576 decoded bytes, the broker's limit), askVision and its request
+  path, the speech module's native branch. Stand-in: the broker transport (mocked, so no provider is called), the speech
+  engine (expo-speech mocked), and the camera (a fixed image). No physical camera, microphone or speaker is exercised.
+  Covered: permission refusal, invalid and oversize images, network failure, broker refusal, cancellation during a
+  request, interruption during speech, and ending the session.
+- Known gap: the SEE screen (app/capture.tsx) still runs its own state logic. The session module is tested but is not yet
+  the screen's driver. Wiring is the next step.
+- Notification lifecycle, automated (src/notify/lifecycle.test.ts, 20 tests): foreground presentation, background or
+  foreground taps, the launch response, duplicate suppression, invalid routes, cancellation, and permission denial.
+  Not tested: physical delivery, lock screen, and a killed app. Owner iPhone run required.
+- Expo dependency check: `expo install --check` reports expo 58.0.17 (expected 58.0.19), expo-router, expo-dev-client
+  and expo-sqlite one patch behind. The Expo-recommended versions were published 2026-10-23 and are still inside the one-day
+  release-age window, so the policy correctly refuses them. An exclusion was briefly added by pnpm and then REVERTED: it
+  would bypass the supply-chain control. Re-run the upgrade after 2026-10-24 23:30 UTC; no exclusion.
+- Expo Go: `expo start --go --lan` runs; the iOS launch bundle compiles (1,498 modules, HTTP 200). The QR code is drawn
+  only in an interactive terminal, so it could not be captured here. Owner must scan it.
+- Broker route: documented in docs/decisions/0003-iphone-broker-https-route.md. Option B (trusted local HTTPS on the LAN)
+  is recommended. Nothing is deployed or exposed. Owner approval required.
+- Gates: frozen install, format, lint, knip, typecheck, schema, Expo config, Expo dependency check, and tests pass.
+  Mobile 362 tests; root 483 broker and core. Audit: one high finding, node-forge (BLOCKER-010), unchanged.
+- One mobile run failed 18 tests; the next run passed all 362. Not reproduced; treat as a timing flake under load.
+- Not done: the screen-by-screen premium and accessibility review (only shared controls checked: 48 pt minimum touch
+  height, accessibility labels present). Needs screenshots or a device.
