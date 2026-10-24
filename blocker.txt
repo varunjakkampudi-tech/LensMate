@@ -343,3 +343,26 @@ Nothing is ever committed that should not be public, because history stays publi
 - One mobile run failed 18 tests; the next run passed all 362. Not reproduced; treat as a timing flake under load.
 - Not done: the screen-by-screen premium and accessibility review (only shared controls checked: 48 pt minimum touch
   height, accessibility labels present). Needs screenshots or a device.
+
+## OWNER-RUN IPHONE EVIDENCE (reported 2026-10-25, Expo Go via QR code)
+
+The owner reported these results from a physical iPhone 15 running Expo Go against the dev server. The agent did not run
+the phone. Evidence is the owner's report, recorded as reported. Commit tested: not stated by the owner; the expected
+commit is b0b1bd3 or the code in the Expo Go launch from the PC checkout at that time.
+
+- PASS: Expo Go opens LensMate through the QR code.
+- PASS: Home, Simulator and Profile navigation work.
+- PASS: SEE requests camera permission and opens a real preview.
+- PASS: Take photo captures and displays a real image.
+- PASS: Upload opens the iPhone photo library.
+- PASS: TALK produces audible speech where supported.
+- PASS: Profile notification test arrives after 10 seconds.
+- PASS: Tapping the notification opens Memory.
+
+Not in the owner's report, so still unverified on the phone:
+- Asking a question about the photo and getting a labelled mock answer (SEE → THINK, through the mock broker).
+- Stopping or interrupting speech during playback.
+- Foreground banner while the app is open; lock-screen delivery; tap after force-closing the app (cold start).
+- Memory on Expo Go: the encrypted-storage message appears and nothing is saved (expected; verify).
+- Permission denial recovery on the phone (camera and notifications), and network loss.
+- Speech input (HEAR): expected unavailable in Expo Go.
