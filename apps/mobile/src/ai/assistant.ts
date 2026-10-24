@@ -46,17 +46,37 @@ export const LANG_NAME = Object.fromEntries(
   Object.entries(LANGS).map(([k, v]) => [k, v.name]),
 ) as Record<Lang, string>;
 
+/**
+ * Thrown when the user cancels a request (Stop). It is not a provider or network failure, so callers must not show it
+ * as an error or append an answer. The broker may still complete and charge the request: see docs/decisions/0004.
+ */
+export class RequestCancelled extends Error {
+  constructor() {
+    super("CANCELLED");
+    this.name = "RequestCancelled";
+  }
+}
+
 async function timed(
   route: LatencyRecord["route"],
   call: (
     signal: AbortSignal,
   ) => Promise<{ text: string; costPaise: number; source: "openrouter" | "mock" }>,
+  external?: AbortSignal,
 ): Promise<AiAnswer> {
+  if (external?.aborted) {
+    throw new RequestCancelled();
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const onCancel = () => controller.abort();
+  external?.addEventListener("abort", onCancel, { once: true });
   const started = Date.now();
   try {
     const reply = await call(controller.signal);
+    if (external?.aborted) {
+      throw new RequestCancelled();
+    }
     const answer = {
       text: plain(reply.text.trim()),
       costPaise: reply.costPaise,
@@ -72,26 +92,38 @@ async function timed(
     });
     return answer;
   } catch (error) {
+    if (external?.aborted) {
+      throw new RequestCancelled();
+    }
     record({ at: started, route, latencyMs: Date.now() - started, costPaise: 0, ok: false });
     throw error;
   } finally {
     clearTimeout(timer);
+    external?.removeEventListener("abort", onCancel);
   }
 }
 
 export type Turn = { readonly role: "user" | "assistant"; readonly content: string };
 
-export function askText(history: readonly Turn[], lang: Lang, extraSystem = ""): Promise<AiAnswer> {
+export function askText(
+  history: readonly Turn[],
+  lang: Lang,
+  extraSystem = "",
+  external?: AbortSignal,
+): Promise<AiAnswer> {
   const system = `${RULES} Reply in ${LANG_NAME[lang]}. ${extraSystem}`.trim();
-  return timed("text", (signal) =>
-    callBroker(
-      {
-        model: TEXT_MODEL,
-        messages: [{ role: "system", content: system }, ...history.slice(-6)],
-        maxOutputTokens: 400,
-      },
-      signal,
-    ),
+  return timed(
+    "text",
+    (signal) =>
+      callBroker(
+        {
+          model: TEXT_MODEL,
+          messages: [{ role: "system", content: system }, ...history.slice(-6)],
+          maxOutputTokens: 400,
+        },
+        signal,
+      ),
+    external,
   );
 }
 
@@ -118,22 +150,25 @@ export function askVision(
 }
 
 /** Live internet research (OpenRouter web search, zero data retention). The broker charges the worst case per call. */
-export function research(question: string, lang: Lang): Promise<AiAnswer> {
-  return timed("research", (signal) =>
-    callBroker(
-      {
-        model: RESEARCH_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: `${RULES} Use current web results. End with up to 3 short source names or domains. Reply in ${LANG_NAME[lang]}.`,
-          },
-          { role: "user", content: question },
-        ],
-        maxOutputTokens: 350,
-      },
-      signal,
-    ),
+export function research(question: string, lang: Lang, external?: AbortSignal): Promise<AiAnswer> {
+  return timed(
+    "research",
+    (signal) =>
+      callBroker(
+        {
+          model: RESEARCH_MODEL,
+          messages: [
+            {
+              role: "system",
+              content: `${RULES} Use current web results. End with up to 3 short source names or domains. Reply in ${LANG_NAME[lang]}.`,
+            },
+            { role: "user", content: question },
+          ],
+          maxOutputTokens: 350,
+        },
+        signal,
+      ),
+    external,
   );
 }
 
@@ -155,22 +190,30 @@ export interface Translation {
 }
 
 /** Text translation with uncertain-word marking (F20, F21). */
-export async function translate(text: string, from: Lang, to: Lang): Promise<Translation> {
+export async function translate(
+  text: string,
+  from: Lang,
+  to: Lang,
+  external?: AbortSignal,
+): Promise<Translation> {
   const system =
     `Translate from ${LANG_NAME[from]} to ${LANG_NAME[to]}. Reply with JSON only: {"translation": string, "uncertain": string[]} ` +
     "where uncertain lists words of the translation you are not sure about (empty if none). Keep names as they are. No commentary.";
-  const answer = await timed("translate", (signal) =>
-    callBroker(
-      {
-        model: TEXT_MODEL,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: text },
-        ],
-        maxOutputTokens: 300,
-      },
-      signal,
-    ),
+  const answer = await timed(
+    "translate",
+    (signal) =>
+      callBroker(
+        {
+          model: TEXT_MODEL,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: text },
+          ],
+          maxOutputTokens: 300,
+        },
+        signal,
+      ),
+    external,
   );
   const match = /\{[\s\S]*\}/.exec(answer.text);
   try {

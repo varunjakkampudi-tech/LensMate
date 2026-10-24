@@ -1,5 +1,5 @@
 import { Linking } from "react-native";
-import { askText, research, translate, type AiAnswer } from "./assistant";
+import { askText, research, RequestCancelled, translate, type AiAnswer } from "./assistant";
 import { relevantNotes } from "../memory/search";
 import { listItems, saveItem } from "../memory/vault";
 import { LANGS, type Lang } from "../ui/prefs";
@@ -111,7 +111,14 @@ export async function runAgentTask(
   goal: string,
   lang: Lang,
   onStep: (s: AgentStep) => void,
+  signal?: AbortSignal,
 ): Promise<AgentResult> {
+  // Checked before every step, so a cancelled task runs no further tools and records no further steps.
+  const stopIfCancelled = () => {
+    if (signal?.aborted) {
+      throw new RequestCancelled();
+    }
+  };
   const steps: AgentStep[] = [];
   const actions: PhoneAction[] = [];
   const findings: string[] = [];
@@ -129,11 +136,14 @@ export async function runAgentTask(
     return a.text;
   };
 
+  stopIfCancelled();
   const plan = await askText(
     [{ role: "user", content: `Goal: ${goal}\nNow: ${new Date().toString()}` }],
     "en",
     PLANNER,
+    signal,
   );
+  stopIfCancelled();
   const calls = parseCalls(charge(plan));
   step({
     agent: "Planner",
@@ -143,9 +153,10 @@ export async function runAgentTask(
 
   for (const call of calls) {
     const input = call.input ?? {};
+    stopIfCancelled();
     try {
       if (call.tool === "web_research") {
-        const text = charge(await research(str(input.query) || goal, lang));
+        const text = charge(await research(str(input.query) || goal, lang, signal));
         findings.push(`Web research: ${text}`);
         step({ agent: "Researcher", summary: text.slice(0, 160), status: "done" });
       } else if (call.tool === "recall_memory") {
@@ -190,6 +201,7 @@ export async function runAgentTask(
           str(input.text),
           code(input.from, "en"),
           code(input.to, lang),
+          signal,
         );
         charge(result.answer);
         findings.push(`Translation: ${result.translation}`);
@@ -207,7 +219,10 @@ export async function runAgentTask(
           status: action === null ? "failed" : "done",
         });
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof RequestCancelled) {
+        throw error;
+      }
       step({
         agent: call.tool === "web_research" ? "Researcher" : "Action agent",
         summary: `${call.tool} failed`,
@@ -216,6 +231,7 @@ export async function runAgentTask(
     }
   }
 
+  stopIfCancelled();
   const final = await askText(
     [
       {
@@ -225,7 +241,9 @@ export async function runAgentTask(
     ],
     lang,
     "You are the writer agent. When agent results exist, base the answer on them and never invent news, prices or saved items; when there are none, answer from your general knowledge. Be concise and concrete. Mention uncertainty. Do not claim an action was done unless the results say so.",
+    signal,
   );
+  stopIfCancelled();
   charge(final);
   step({ agent: "Writer", summary: "Answer ready", status: "done" });
   return { steps, answer: final.text, actions, costPaise: cost, source };
