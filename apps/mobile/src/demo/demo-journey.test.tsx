@@ -45,7 +45,20 @@ describe("demo journey", () => {
       expect(screen.queryByRole("button", { name: DEMO.stop })).toBeNull();
 
       // 6. The event log summary: one photo, one question, one answer, one stop, no errors.
-      expect(screen.getByText(DEMO.logLine(1, 1, 1, 1, 0))).toBeTruthy();
+      expect(
+        screen.getByText(
+          DEMO.logLine({
+            photos: 1,
+            questions: 1,
+            answers: 1,
+            stops: 1,
+            errors: 0,
+            ocr: 0,
+            translationStarts: 0,
+            translationStops: 0,
+          }),
+        ),
+      ).toBeTruthy();
 
       expect(fetchSpy).not.toHaveBeenCalled();
     } finally {

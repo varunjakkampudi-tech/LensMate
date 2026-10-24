@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from "react";
 import type { Gesture } from "@lensmate/core";
-import type { QuestionId, SceneId } from "./demo-catalogue";
+import type { PhraseId, QuestionId, SceneId } from "./demo-catalogue";
 import {
   DEMO_TIMING,
   answerThroughGateway,
@@ -23,6 +23,10 @@ export interface DemoSession {
   stop(): void;
   retry(): void;
   back(): void;
+  readText(): void;
+  startTranslation(): void;
+  speakPhrase(phraseId: PhraseId): void;
+  stopTranslation(): void;
 }
 
 /**
@@ -76,6 +80,20 @@ export function useDemoSession(initial: DemoScenario = "NORMAL"): DemoSession {
     };
   }, [photoCapturing]);
 
+  // The translation countdown advances only while a translation session runs (simulated time, see DEMO_TIMING).
+  const translating = state.glasses.mode === "TRANSLATION";
+  useEffect(() => {
+    if (!translating) {
+      return undefined;
+    }
+    const id = setInterval(() => {
+      dispatch({ type: "TRANSLATION_TICK" });
+    }, DEMO_TIMING.translationTickMs);
+    return () => {
+      clearInterval(id);
+    };
+  }, [translating]);
+
   const gesture = (next: Gesture): void => {
     dispatch({ type: "GESTURE", gesture: next });
   };
@@ -108,6 +126,18 @@ export function useDemoSession(initial: DemoScenario = "NORMAL"): DemoSession {
     },
     back: () => {
       dispatch({ type: "BACK" });
+    },
+    readText: () => {
+      dispatch({ type: "READ_TEXT" });
+    },
+    startTranslation: () => {
+      dispatch({ type: "TRANSLATION_START" });
+    },
+    speakPhrase: (phraseId) => {
+      dispatch({ type: "TRANSLATION_PHRASE", phraseId });
+    },
+    stopTranslation: () => {
+      dispatch({ type: "TRANSLATION_STOP" });
     },
   };
 }

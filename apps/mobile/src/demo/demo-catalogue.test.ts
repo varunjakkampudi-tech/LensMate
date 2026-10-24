@@ -9,8 +9,13 @@ import {
 import { DEMO, DEMO_MOCK_LABEL } from "./demo-strings";
 
 describe("demo catalogue", () => {
-  it("has three synthetic scenes with unique ids and a title and description for each", () => {
-    expect(SCENES.map((scene) => scene.id)).toEqual(["STREET_SIGN", "MEDICINE_LABEL", "MENU"]);
+  it("has four synthetic scenes with unique ids and a title and description for each", () => {
+    expect(SCENES.map((scene) => scene.id)).toEqual([
+      "STREET_SIGN",
+      "MEDICINE_LABEL",
+      "MENU",
+      "PLAIN_WALL",
+    ]);
     for (const scene of SCENES) {
       expect(DEMO.scenes[scene.id].title.length).toBeGreaterThan(0);
       expect(DEMO.scenes[scene.id].description.length).toBeGreaterThan(0);

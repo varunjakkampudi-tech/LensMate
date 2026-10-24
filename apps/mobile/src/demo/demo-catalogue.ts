@@ -2,10 +2,23 @@
  * The demo's synthetic scenes and prerecorded sample questions. Everything here is made up for the demo:
  * no photograph, no real person, no real recording. Titles and copy live in demo-strings.ts.
  */
-export type SceneId = "STREET_SIGN" | "MEDICINE_LABEL" | "MENU";
+export type SceneId = "STREET_SIGN" | "MEDICINE_LABEL" | "MENU" | "PLAIN_WALL";
 
 export type QuestionId =
-  "SIGN_SAYS" | "SIGN_DIRECTION" | "DOSE_FREQUENCY" | "DOSE_LIMIT" | "CHEAPEST_ITEM" | "SOUP_PRICE";
+  | "SIGN_SAYS"
+  | "SIGN_DIRECTION"
+  | "DOSE_FREQUENCY"
+  | "DOSE_LIMIT"
+  | "CHEAPEST_ITEM"
+  | "SOUP_PRICE"
+  | "WALL_TEXT"
+  | "WALL_DESCRIBE";
+
+/** A synthetic English phrase for the translation step. Each is a fixture; no audio is recorded. */
+export type PhraseId = "GREETING" | "STATION" | "NOT_IN_TABLE";
+
+/** The synthetic phrases, in the order the translation step offers them. */
+export const PHRASE_IDS: readonly PhraseId[] = ["GREETING", "STATION", "NOT_IN_TABLE"];
 
 /** One drawn element of a scene. Positions and sizes are percentages of the frame, so it scales. */
 export interface SceneShape {
@@ -107,6 +120,12 @@ export const SCENES: readonly DemoScene[] = [
     ],
     questionIds: ["CHEAPEST_ITEM", "SOUP_PRICE"],
   },
+  {
+    // A synthetic picture with no printed text, for the "could not read it clearly" path.
+    id: "PLAIN_WALL",
+    shapes: [{ kind: "panel", x: 0, y: 0, w: 100, h: 100, tone: "grey" }],
+    questionIds: ["WALL_TEXT", "WALL_DESCRIBE"],
+  },
 ];
 
 export const QUESTIONS: readonly DemoQuestion[] = [
@@ -116,6 +135,8 @@ export const QUESTIONS: readonly DemoQuestion[] = [
   { id: "DOSE_LIMIT", sceneId: "MEDICINE_LABEL" },
   { id: "CHEAPEST_ITEM", sceneId: "MENU" },
   { id: "SOUP_PRICE", sceneId: "MENU" },
+  { id: "WALL_TEXT", sceneId: "PLAIN_WALL" },
+  { id: "WALL_DESCRIBE", sceneId: "PLAIN_WALL" },
 ];
 
 export function sceneById(id: SceneId): DemoScene {

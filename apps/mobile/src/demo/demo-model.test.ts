@@ -1,5 +1,5 @@
-import { IDLE_STATE } from "@lensmate/core";
-import { defaultQuestionOf, type QuestionId, type SceneId } from "./demo-catalogue";
+import { IDLE_STATE, SILENCE_TIMEOUT_MS, TRANSLATION_START_ANNOUNCEMENT } from "@lensmate/core";
+import { SCENES, defaultQuestionOf, type QuestionId, type SceneId } from "./demo-catalogue";
 import {
   ANSWER_COST_MINOR,
   DEMO_CAP_MINOR,
@@ -13,9 +13,11 @@ import {
   initialDemoState,
   isBusy,
   mockAnswerRun,
+  readSceneText,
   reduceDemo,
   summarizeLog,
   toDemoError,
+  translationCountdown,
   visibleAnswer,
   wordCount,
   type AnswerOutcome,
@@ -392,12 +394,206 @@ describe("demo model: summaries and indicator text", () => {
       answers: 1,
       stops: 1,
       errors: 2,
+      ocr: 0,
+      translationStarts: 0,
+      translationStops: 0,
     });
-    expect(DEMO.logLine(1, 1, 1, 1, 0)).toContain("Recorded as kinds only");
+    const counted = {
+      photos: 1,
+      questions: 1,
+      answers: 1,
+      stops: 1,
+      errors: 0,
+      ocr: 2,
+      translationStarts: 1,
+      translationStops: 1,
+    };
+    expect(DEMO.logLine(counted)).toContain("Recorded as kinds only");
+    expect(DEMO.logLine(counted)).toContain("2 text read, 1 translation start, 1 translation stop");
   });
 
   it("shows the indicator as words, and says the camera and microphone are off when idle", () => {
     expect(indicatorText(withScene())).toBe(DEMO.indicatorOff);
     expect(indicatorState(withScene())).toEqual({ camera: false, microphone: false });
+  });
+});
+
+describe("demo model: read the text (MOCK OCR)", () => {
+  it("gives the fixture text for each scene with text, in order", () => {
+    expect(readSceneText("STREET_SIGN")).toEqual({ kind: "TEXT", lines: ["ONE WAY"] });
+    expect(readSceneText("MEDICINE_LABEL")).toEqual({
+      kind: "TEXT",
+      lines: DEMO.ocr.fixtureLines.MEDICINE_LABEL,
+    });
+    expect(readSceneText("MENU")).toEqual({ kind: "TEXT", lines: DEMO.ocr.fixtureLines.MENU });
+  });
+
+  it("reports no legible text for the plain wall", () => {
+    expect(readSceneText("PLAIN_WALL")).toEqual({ kind: "NO_TEXT" });
+  });
+
+  it("uses fixture text that matches the text printed on each synthetic scene", () => {
+    for (const scene of SCENES) {
+      const printed = scene.shapes.flatMap((shape) =>
+        shape.text === undefined ? [] : [shape.text],
+      );
+      expect(DEMO.ocr.fixtureLines[scene.id]).toEqual(printed);
+    }
+  });
+
+  it("reads the chosen scene, logs the kind only, and takes no photo or budget", () => {
+    const after = run(withScene("MENU"), { type: "READ_TEXT" });
+    expect(after.ocr).toEqual({ kind: "TEXT", lines: DEMO.ocr.fixtureLines.MENU });
+    expect(after.log).toEqual(["SCENE", "OCR"]);
+    expect(after.photos).toBe(0);
+    expect(after.photoCapture).toBe(false);
+    expect(after.budget.spentMinor).toBe(0);
+  });
+
+  it("returns the no-text result for the plain wall", () => {
+    expect(run(withScene("PLAIN_WALL"), { type: "READ_TEXT" }).ocr).toEqual({ kind: "NO_TEXT" });
+  });
+
+  it("does nothing before a scene is chosen, or while a photo, hold or answer is running", () => {
+    const empty = initialDemoState();
+    expect(reduceDemo(empty, { type: "READ_TEXT" })).toBe(empty);
+    const holding = run(withScene(), { type: "GESTURE", gesture: "HOLD" });
+    expect(reduceDemo(holding, { type: "READ_TEXT" })).toBe(holding);
+    const photographing = run(withScene(), { type: "GESTURE", gesture: "SINGLE_TAP" });
+    expect(reduceDemo(photographing, { type: "READ_TEXT" })).toBe(photographing);
+    const busy = asked("STREET_SIGN", "SIGN_SAYS");
+    expect(reduceDemo(busy, { type: "READ_TEXT" })).toBe(busy);
+  });
+
+  it("clears the text reading when the scene changes", () => {
+    const read = run(withScene("MENU"), { type: "READ_TEXT" });
+    expect(run(read, { type: "SCENE", sceneId: "STREET_SIGN" }).ocr).toBeNull();
+  });
+});
+
+describe("demo model: live translation (MOCK)", () => {
+  const started = (): DemoState => run(initialDemoState(), { type: "TRANSLATION_START" });
+
+  function translationTicks(state: DemoState, count: number): DemoState {
+    let next = state;
+    for (let index = 0; index < count; index += 1) {
+      next = reduceDemo(next, { type: "TRANSLATION_TICK" });
+    }
+    return next;
+  }
+
+  it("records the announcement in the same step that turns the indicator on", () => {
+    const state = started();
+    expect(state.glasses).toEqual({ mode: "TRANSLATION", speaking: false });
+    expect(state.translation.announcement).toBe(TRANSLATION_START_ANNOUNCEMENT);
+    expect(TRANSLATION_START_ANNOUNCEMENT).toBe(
+      "Translation on. This conversation is being listened to for translation",
+    );
+    expect(state.log).toEqual(["TRANSLATION_START"]);
+    expect(indicatorText(state)).toBe(DEMO.indicatorTranslation);
+    expect(indicatorState(state)).toEqual({ camera: false, microphone: true });
+    expect(translationCountdown(state)).toBe("2:00");
+  });
+
+  it("does not start while an answer runs, a photo is taken, the button is held, or a session runs", () => {
+    const asking = asked("STREET_SIGN", "SIGN_SAYS");
+    expect(reduceDemo(asking, { type: "TRANSLATION_START" })).toBe(asking);
+    const photographing = run(withScene(), { type: "GESTURE", gesture: "SINGLE_TAP" });
+    expect(reduceDemo(photographing, { type: "TRANSLATION_START" })).toBe(photographing);
+    const holding = run(withScene(), { type: "GESTURE", gesture: "HOLD" });
+    expect(reduceDemo(holding, { type: "TRANSLATION_START" })).toBe(holding);
+    const running = started();
+    expect(reduceDemo(running, { type: "TRANSLATION_START" })).toBe(running);
+  });
+
+  it("translates a phrase in the table from the table, with nothing marked unsure", () => {
+    const spoken = run(started(), { type: "TRANSLATION_PHRASE", phraseId: "GREETING" });
+    expect(spoken.translation.result?.source).toBe("PHRASE_TABLE");
+    expect(spoken.translation.result?.english).toBe(DEMO.translation.phrases.GREETING);
+    expect(spoken.translation.result?.unsureWords).toEqual([]);
+    expect(spoken.translation.timer?.lastSpeechMs).toBe(0);
+  });
+
+  it("marks the words that are not in the table as unsure, for a phrase not in the table", () => {
+    const spoken = run(started(), { type: "TRANSLATION_PHRASE", phraseId: "NOT_IN_TABLE" });
+    expect(spoken.translation.result?.source).toBe("WORD_TABLE");
+    expect(spoken.translation.result?.unsureWords).toEqual(["quantum", "orchard"]);
+  });
+
+  it("ignores a phrase when no translation session runs", () => {
+    const idle = initialDemoState();
+    expect(reduceDemo(idle, { type: "TRANSLATION_PHRASE", phraseId: "STATION" })).toBe(idle);
+  });
+
+  it("stops the session after the silence limit, on the simulated countdown", () => {
+    const steps = SILENCE_TIMEOUT_MS / DEMO_TIMING.translationStepMs;
+    const almost = translationTicks(started(), steps - 1);
+    expect(almost.glasses.mode).toBe("TRANSLATION");
+    expect(translationCountdown(almost)).toBe("0:10");
+
+    const ended = reduceDemo(almost, { type: "TRANSLATION_TICK" });
+    expect(ended.glasses).toEqual(IDLE_STATE);
+    expect(ended.translation.endedBy).toBe("SILENCE");
+    expect(ended.translation.announcement).toBeNull();
+    expect(ended.translation.result).toBeNull();
+    expect(ended.log).toEqual(["TRANSLATION_START", "TRANSLATION_STOP"]);
+    expect(indicatorText(ended)).toBe(DEMO.indicatorOff);
+    expect(translationCountdown(ended)).toBeNull();
+  });
+
+  it("restarts the silence limit from each phrase that is taken", () => {
+    const sixTicks = translationTicks(started(), 6);
+    const spoken = run(sixTicks, { type: "TRANSLATION_PHRASE", phraseId: "GREETING" });
+    const later = translationTicks(spoken, 11);
+    expect(later.glasses.mode).toBe("TRANSLATION");
+    expect(translationCountdown(later)).toBe("0:10");
+
+    const stopped = reduceDemo(later, { type: "TRANSLATION_TICK" });
+    expect(stopped.translation.endedBy).toBe("SILENCE");
+  });
+
+  it("stops on the Stop action, clears the phrase and its translation, and logs the kind only", () => {
+    const spoken = run(started(), { type: "TRANSLATION_PHRASE", phraseId: "GREETING" });
+    const stopped = reduceDemo(spoken, { type: "TRANSLATION_STOP" });
+    expect(stopped.glasses).toEqual(IDLE_STATE);
+    expect(stopped.translation.endedBy).toBe("STOP");
+    expect(stopped.translation.result).toBeNull();
+    expect(stopped.translation.announcement).toBeNull();
+    expect(stopped.log).toEqual(["TRANSLATION_START", "TRANSLATION_STOP"]);
+    expect(indicatorState(stopped)).toEqual({ camera: false, microphone: false });
+  });
+
+  it("ignores Stop and Tick when no session runs, and clears the ended note on a new start", () => {
+    const idle = initialDemoState();
+    expect(reduceDemo(idle, { type: "TRANSLATION_STOP" })).toBe(idle);
+    expect(reduceDemo(idle, { type: "TRANSLATION_TICK" })).toBe(idle);
+
+    const stopped = reduceDemo(started(), { type: "TRANSLATION_STOP" });
+    expect(run(stopped, { type: "TRANSLATION_START" }).translation.endedBy).toBeNull();
+  });
+
+  it("runs without the scenario, the gateway or any answer, including in the offline scenario", () => {
+    const offline = run(initialDemoState("OFFLINE"), { type: "TRANSLATION_START" });
+    expect(offline.glasses.mode).toBe("TRANSLATION");
+    const spoken = run(offline, { type: "TRANSLATION_PHRASE", phraseId: "STATION" });
+    expect(spoken.translation.result?.source).toBe("PHRASE_TABLE");
+    expect(spoken.phase).toBe("IDLE");
+    expect(spoken.requestId).toBe(0);
+    expect(spoken.pending).toBeNull();
+  });
+
+  it("counts the OCR reads and the translation starts and stops by kind", () => {
+    const state = run(
+      withScene(),
+      { type: "READ_TEXT" },
+      { type: "TRANSLATION_START" },
+      { type: "TRANSLATION_STOP" },
+    );
+    expect(state.log).toEqual(["SCENE", "OCR", "TRANSLATION_START", "TRANSLATION_STOP"]);
+    expect(summarizeLog(state.log)).toMatchObject({
+      ocr: 1,
+      translationStarts: 1,
+      translationStops: 1,
+    });
   });
 });

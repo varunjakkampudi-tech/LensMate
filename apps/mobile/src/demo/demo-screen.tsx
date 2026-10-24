@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { isCapturing } from "@lensmate/core";
-import { SCENES, sceneById, type QuestionId } from "./demo-catalogue";
+import { SILENCE_TIMEOUT_MS, isCapturing } from "@lensmate/core";
+import { PHRASE_IDS, SCENES, sceneById, type QuestionId } from "./demo-catalogue";
 import { SceneArt } from "./demo-scene-art";
 import { DEMO } from "./demo-strings";
 import {
@@ -9,11 +9,14 @@ import {
   indicatorText,
   isBusy,
   summarizeLog,
+  translationCountdown,
   visibleAnswer,
   type DemoErrorCode,
   type DemoPhase,
   type DemoState,
+  type OcrOutcome,
 } from "./demo-model";
+import type { TranslationResult } from "./demo-translation";
 import { useDemoSession, type DemoSession } from "./use-demo-session";
 
 export interface DemoScreenProps {
@@ -109,6 +112,15 @@ function DemoView({ session, onBack }: DemoViewProps) {
         </>
       )}
       <ChoiceButton
+        label={DEMO.ocr.button}
+        disabled={!hasScene || busy || holding || state.photoCapture}
+        onPress={() => {
+          session.readText();
+        }}
+      />
+      <Text style={styles.note}>{DEMO.ocr.scopeNote}</Text>
+      {state.ocr === null ? null : <OcrBlock ocr={state.ocr} />}
+      <ChoiceButton
         label={DEMO.photo}
         disabled={!hasScene || busy || holding || state.photoCapture}
         onPress={() => {
@@ -190,6 +202,8 @@ function DemoView({ session, onBack }: DemoViewProps) {
         />
       ) : null}
 
+      <TranslateStep session={session} state={state} />
+
       <Text accessibilityRole="header" style={styles.subtitle}>
         {DEMO.budgetTitle}
       </Text>
@@ -208,9 +222,7 @@ function DemoView({ session, onBack }: DemoViewProps) {
       <Text accessibilityRole="header" style={styles.subtitle}>
         {DEMO.logTitle}
       </Text>
-      <Text style={styles.body}>
-        {DEMO.logLine(counts.photos, counts.questions, counts.answers, counts.stops, counts.errors)}
-      </Text>
+      <Text style={styles.body}>{DEMO.logLine(counts)}</Text>
 
       <ChoiceButton label={DEMO.back} onPress={onBack} />
     </ScrollView>
@@ -234,6 +246,107 @@ function statusText(phase: DemoPhase): string {
     case "ERROR":
       return DEMO.errorTitle;
   }
+}
+
+/** The MOCK text reading. The label and the SYNTHETIC source note sit in the same element as the text. */
+function OcrBlock({ ocr }: { readonly ocr: OcrOutcome }) {
+  const result = ocr.kind === "TEXT" ? ocr.lines.join("\n") : DEMO.ocr.noText;
+  return (
+    <View style={styles.card} accessibilityLiveRegion="polite" testID="ocr">
+      <Text style={styles.body}>{`${DEMO.ocr.label}\n${DEMO.ocr.sourceNote}\n${result}`}</Text>
+    </View>
+  );
+}
+
+/** The Translate step: a synthetic two-way session with its announcement, indicator, phrases, result and stop. */
+function TranslateStep({
+  session,
+  state,
+}: {
+  readonly session: DemoSession;
+  readonly state: DemoState;
+}) {
+  const translating = state.glasses.mode === "TRANSLATION";
+  const countdown = translationCountdown(state);
+  const { announcement, result, endedBy } = state.translation;
+  return (
+    <>
+      <Text accessibilityRole="header" style={styles.subtitle}>
+        {DEMO.translation.stepTitle}
+      </Text>
+      <Text style={styles.body}>{DEMO.translation.stepNote}</Text>
+      {translating ? null : (
+        <ChoiceButton
+          label={DEMO.translation.start}
+          disabled={isBusy(state) || isCapturing(state.glasses) || state.photoCapture}
+          onPress={() => {
+            session.startTranslation();
+          }}
+        />
+      )}
+      {translating && announcement !== null ? (
+        <View style={styles.card} accessibilityLiveRegion="polite" testID="announcement">
+          <Text
+            style={styles.body}
+          >{`${DEMO.translation.announcementLabel}\n${announcement}`}</Text>
+        </View>
+      ) : null}
+      {translating ? (
+        <>
+          <Text style={styles.body}>{DEMO.translation.phraseHint}</Text>
+          {PHRASE_IDS.map((phraseId) => (
+            <ChoiceButton
+              key={phraseId}
+              label={DEMO.translation.phraseButton(DEMO.translation.phrases[phraseId])}
+              onPress={() => {
+                session.speakPhrase(phraseId);
+              }}
+            />
+          ))}
+        </>
+      ) : null}
+      {translating && result !== null ? <TranslationBlock result={result} /> : null}
+      {countdown === null ? null : (
+        <Text style={styles.body} testID="countdown">
+          {DEMO.translation.countdown(countdown)}
+        </Text>
+      )}
+      {translating ? (
+        <ChoiceButton
+          label={DEMO.translation.stop}
+          onPress={() => {
+            session.stopTranslation();
+          }}
+        />
+      ) : null}
+      {endedBy === null ? null : (
+        <Text style={styles.body}>
+          {endedBy === "SILENCE"
+            ? DEMO.translation.silenceStopped(Math.round(SILENCE_TIMEOUT_MS / 60_000))
+            : DEMO.translation.stopped}
+        </Text>
+      )}
+    </>
+  );
+}
+
+/** A synthetic transcript and its MOCK translation. Each label sits in the same element as its text. */
+function TranslationBlock({ result }: { readonly result: TranslationResult }) {
+  const lines = result.lines
+    .map((line) =>
+      DEMO.translation.languageLine(DEMO.translation.languages[line.language], line.text),
+    )
+    .join("\n");
+  return (
+    <View style={styles.card} accessibilityLiveRegion="polite" testID="translation">
+      <Text style={styles.label}>
+        {`${DEMO.translation.transcriptLabel}\n${result.english}\n${DEMO.translation.transcriptNote}`}
+      </Text>
+      <Text
+        style={styles.answer}
+      >{`${DEMO.translation.resultLabel}\n${lines}\n${DEMO.translation.resultNote}`}</Text>
+    </View>
+  );
 }
 
 function Transcript({ questionId }: { readonly questionId: QuestionId }) {

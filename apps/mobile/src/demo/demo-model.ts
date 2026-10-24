@@ -2,16 +2,30 @@ import {
   IDLE_STATE,
   ProviderGateway,
   SpendCap,
+  checkSilenceTimer,
   isCapturing,
   onGesture,
+  recordSpeech,
+  silenceRemainingMs,
   speechEnded,
   speechStarted,
+  startListeningSession,
+  startSilenceTimer,
+  stopListeningSession,
   type Gesture,
   type GatewayErrorCode,
   type GlassesState,
   type ProviderRun,
+  type SilenceTimer,
 } from "@lensmate/core";
-import { defaultQuestionOf, questionById, type QuestionId, type SceneId } from "./demo-catalogue";
+import {
+  defaultQuestionOf,
+  questionById,
+  type PhraseId,
+  type QuestionId,
+  type SceneId,
+} from "./demo-catalogue";
+import { formatCountdown, translateTranscript, type TranslationResult } from "./demo-translation";
 import { DEMO } from "./demo-strings";
 
 /**
@@ -47,7 +61,10 @@ export type DemoLogKind =
   | "ANSWER"
   | "STOP"
   | "DONE"
-  | "ERROR";
+  | "ERROR"
+  | "OCR"
+  | "TRANSLATION_START"
+  | "TRANSLATION_STOP";
 
 /** SIMULATED timing. The pace is fixed by the demo, not measured on the device. */
 export const DEMO_TIMING = {
@@ -61,7 +78,36 @@ export const DEMO_TIMING = {
   playbackTicks: 8,
   /** The gateway's per-attempt timeout. */
   timeoutMs: 1500,
+  /** How often the translation countdown advances, in real milliseconds. */
+  translationTickMs: 250,
+  /** How much simulated time each translation tick adds. The countdown is SIMULATED, not real time. */
+  translationStepMs: 10_000,
 } as const;
+
+/** The result of "Read the text" for one scene. The fixture text is shown as MOCK OCR output, never as a reading. */
+export type OcrOutcome =
+  { readonly kind: "TEXT"; readonly lines: readonly string[] } | { readonly kind: "NO_TEXT" };
+
+/** The synthetic translation session. Its timer runs on simulated time; the glasses state holds the mode. */
+interface TranslationState {
+  /** The spoken-announcement text, recorded when the session starts (G15). Null when no session runs. */
+  readonly announcement: string | null;
+  /** Core's silence timer for the running session, or null. */
+  readonly timer: SilenceTimer | null;
+  /** Simulated milliseconds since the session started. */
+  readonly simMs: number;
+  readonly result: TranslationResult | null;
+  /** Why the most recent session ended, or null if none has ended yet. */
+  readonly endedBy: "STOP" | "SILENCE" | null;
+}
+
+const INITIAL_TRANSLATION: TranslationState = {
+  announcement: null,
+  timer: null,
+  simMs: 0,
+  result: null,
+  endedBy: null,
+};
 
 /** MOCK budget figures, in minor units, as the spend cap uses them. The cost is an assumed mock value. */
 export const ANSWER_COST_MINOR = 10;
@@ -107,6 +153,9 @@ export interface DemoState {
   readonly requestId: number;
   /** The request the effect must run. Set when a question is accepted, cleared on reset. */
   readonly pending: DemoRequest | null;
+  /** The MOCK text reading of the chosen scene, or null before "Read the text" is pressed. */
+  readonly ocr: OcrOutcome | null;
+  readonly translation: TranslationState;
   readonly log: readonly DemoLogKind[];
 }
 
@@ -119,7 +168,12 @@ export type DemoAction =
   | { readonly type: "RETRY" }
   | { readonly type: "BACK" }
   | { readonly type: "TICK" }
-  | { readonly type: "ANSWER"; readonly requestId: number; readonly outcome: AnswerOutcome };
+  | { readonly type: "ANSWER"; readonly requestId: number; readonly outcome: AnswerOutcome }
+  | { readonly type: "READ_TEXT" }
+  | { readonly type: "TRANSLATION_START" }
+  | { readonly type: "TRANSLATION_PHRASE"; readonly phraseId: PhraseId }
+  | { readonly type: "TRANSLATION_TICK" }
+  | { readonly type: "TRANSLATION_STOP" };
 
 export type AnswerOutcome =
   | { readonly ok: true; readonly answer: CannedAnswer; readonly costMinor: number }
@@ -148,6 +202,8 @@ export function initialDemoState(scenario: DemoScenario = "NORMAL"): DemoState {
     budget: budgetFor(scenario),
     requestId: 0,
     pending: null,
+    ocr: null,
+    translation: INITIAL_TRANSLATION,
     log: [],
   };
 }
@@ -278,7 +334,113 @@ export function reduceDemo(state: DemoState, action: DemoAction): DemoState {
       return tick(state);
     case "ANSWER":
       return applyAnswer(state, action);
+    case "READ_TEXT":
+      return readText(state);
+    case "TRANSLATION_START":
+      return startTranslation(state);
+    case "TRANSLATION_PHRASE":
+      return speakPhrase(state, action.phraseId);
+    case "TRANSLATION_TICK":
+      return tickTranslation(state);
+    case "TRANSLATION_STOP":
+      return stopTranslation(state);
   }
+}
+
+/** Reads the text of the chosen scene from its fixture. No capture, no camera, no network. */
+export function readSceneText(sceneId: SceneId): OcrOutcome {
+  const lines = DEMO.ocr.fixtureLines[sceneId];
+  return lines.length === 0 ? { kind: "NO_TEXT" } : { kind: "TEXT", lines: [...lines] };
+}
+
+function readText(state: DemoState): DemoState {
+  if (state.sceneId === null || isBusy(state) || isCapturing(state.glasses) || state.photoCapture) {
+    return state;
+  }
+  return { ...state, ocr: readSceneText(state.sceneId), log: [...state.log, "OCR"] };
+}
+
+/**
+ * Starts a translation session through core's rule. The announcement is recorded in the same step that turns
+ * the indicator on, so the indicator never shows a session that has not been announced (G15).
+ */
+function startTranslation(state: DemoState): DemoState {
+  if (isBusy(state) || state.photoCapture) {
+    return state;
+  }
+  const start = startListeningSession(state.glasses, "TRANSLATION");
+  if (!start.accepted || start.announcement === null) {
+    return state;
+  }
+  return {
+    ...state,
+    glasses: start.state,
+    translation: {
+      announcement: start.announcement,
+      timer: startSilenceTimer(0),
+      simMs: 0,
+      result: null,
+      endedBy: null,
+    },
+    log: [...state.log, "TRANSLATION_START"],
+  };
+}
+
+/** A synthetic phrase is taken: the translation is looked up, and the silence timer restarts from it. */
+function speakPhrase(state: DemoState, phraseId: PhraseId): DemoState {
+  const { translation } = state;
+  if (state.glasses.mode !== "TRANSLATION" || translation.timer === null) {
+    return state;
+  }
+  return {
+    ...state,
+    translation: {
+      ...translation,
+      timer: recordSpeech(translation.simMs),
+      result: translateTranscript(DEMO.translation.phrases[phraseId]),
+    },
+  };
+}
+
+/** Advances the simulated clock and applies core's silence limit. The session ends when the limit is reached. */
+function tickTranslation(state: DemoState): DemoState {
+  const { translation } = state;
+  if (state.glasses.mode !== "TRANSLATION" || translation.timer === null) {
+    return state;
+  }
+  const simMs = translation.simMs + DEMO_TIMING.translationStepMs;
+  const check = checkSilenceTimer(state.glasses, translation.timer, simMs);
+  if (check.endedSession === null) {
+    return { ...state, translation: { ...translation, simMs } };
+  }
+  return {
+    ...state,
+    glasses: check.state,
+    translation: { ...INITIAL_TRANSLATION, simMs, endedBy: "SILENCE" },
+    log: [...state.log, "TRANSLATION_STOP"],
+  };
+}
+
+/** The user ends the session. Core's stop rule ends it, and the phrase and its translation are cleared. */
+function stopTranslation(state: DemoState): DemoState {
+  if (state.glasses.mode !== "TRANSLATION") {
+    return state;
+  }
+  return {
+    ...state,
+    glasses: stopListeningSession(state.glasses),
+    translation: { ...INITIAL_TRANSLATION, simMs: state.translation.simMs, endedBy: "STOP" },
+    log: [...state.log, "TRANSLATION_STOP"],
+  };
+}
+
+/** The countdown text for the running session (SIMULATED), or null when none runs. */
+export function translationCountdown(state: DemoState): string | null {
+  const { timer, simMs } = state.translation;
+  if (state.glasses.mode !== "TRANSLATION" || timer === null) {
+    return null;
+  }
+  return formatCountdown(silenceRemainingMs(timer, simMs));
 }
 
 function applyGesture(state: DemoState, gesture: Gesture): DemoState {
@@ -424,6 +586,7 @@ function resetAnswer(state: DemoState): DemoState {
     error: null,
     stopSimulatedMs: null,
     pending: null,
+    ocr: null,
   };
 }
 
@@ -453,6 +616,9 @@ export function indicatorText(state: DemoState): string {
   if (state.photoCapture) {
     return DEMO.indicatorPhoto;
   }
+  if (state.glasses.mode === "TRANSLATION") {
+    return DEMO.indicatorTranslation;
+  }
   if (isCapturing(state.glasses)) {
     return DEMO.indicatorHold;
   }
@@ -465,6 +631,9 @@ export interface LogSummary {
   readonly answers: number;
   readonly stops: number;
   readonly errors: number;
+  readonly ocr: number;
+  readonly translationStarts: number;
+  readonly translationStops: number;
 }
 
 export function summarizeLog(log: readonly DemoLogKind[]): LogSummary {
@@ -475,6 +644,9 @@ export function summarizeLog(log: readonly DemoLogKind[]): LogSummary {
     answers: count("ANSWER"),
     stops: count("STOP"),
     errors: count("ERROR"),
+    ocr: count("OCR"),
+    translationStarts: count("TRANSLATION_START"),
+    translationStops: count("TRANSLATION_STOP"),
   };
 }
 

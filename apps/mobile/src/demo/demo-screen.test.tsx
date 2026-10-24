@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { TRANSLATION_START_ANNOUNCEMENT } from "@lensmate/core";
 import HomeScreen from "../../app/index";
 import { DemoScreen } from "./demo-screen";
 import { DEMO } from "./demo-strings";
@@ -184,5 +185,182 @@ describe("demo screen: errors and limits", () => {
     await press(DEMO.questions.CHEAPEST_ITEM);
     await screen.findByText(DEMO.mockLabel, {}, WAIT);
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+/**
+ * Matches the one element whose text contains every given part, in any order. Used to check that a label and
+ * its output share one element. Each part is escaped, so punctuation such as parentheses is literal.
+ */
+function elementWith(...parts: readonly string[]): RegExp {
+  const escaped = parts.map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(escaped.map((part) => `(?=[\\s\\S]*${part})`).join(""));
+}
+
+describe("demo screen: read the text (MOCK OCR)", () => {
+  let fetchSpy: jest.Mock;
+  let realFetch: typeof fetch;
+
+  beforeEach(() => {
+    realFetch = global.fetch;
+    fetchSpy = jest.fn();
+    global.fetch = fetchSpy as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  it("keeps the read-the-text control off until a scene is chosen", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    expect(
+      screen.getByRole("button", { name: DEMO.ocr.button }).props.accessibilityState.disabled,
+    ).toBe(true);
+  });
+
+  it("shows the fixture text with the MOCK label and the SYNTHETIC note in one element", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.scenes.STREET_SIGN.title);
+    await press(DEMO.ocr.button);
+
+    expect(
+      screen.getByText(elementWith(DEMO.ocr.label, DEMO.ocr.sourceNote, "ONE WAY")),
+    ).toBeTruthy();
+    expect(screen.queryByText(DEMO.ocr.noText)).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("reads each line of a scene with several lines of text", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.scenes.MEDICINE_LABEL.title);
+    await press(DEMO.ocr.button);
+    for (const line of DEMO.ocr.fixtureLines.MEDICINE_LABEL) {
+      expect(screen.getByText(elementWith(DEMO.ocr.label, line))).toBeTruthy();
+    }
+  });
+
+  it("says it could not read the text clearly, with the MOCK label, for the plain wall", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.scenes.PLAIN_WALL.title);
+    await press(DEMO.ocr.button);
+    expect(screen.getByText(elementWith(DEMO.ocr.label, DEMO.ocr.noText))).toBeTruthy();
+  });
+
+  it("clears the reading when another scene is chosen", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.scenes.MENU.title);
+    await press(DEMO.ocr.button);
+    expect(screen.getByText(elementWith(DEMO.ocr.label))).toBeTruthy();
+    await press(DEMO.scenes.STREET_SIGN.title);
+    expect(screen.queryByText(elementWith(DEMO.ocr.label))).toBeNull();
+  });
+});
+
+describe("demo screen: live translation (MOCK)", () => {
+  const WAIT_FOR_SILENCE = { timeout: 12_000 };
+  let fetchSpy: jest.Mock;
+  let realFetch: typeof fetch;
+
+  beforeEach(() => {
+    realFetch = global.fetch;
+    fetchSpy = jest.fn();
+    global.fetch = fetchSpy as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  it("starts with the announcement and the indicator on, and sends nothing", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.translation.start);
+
+    expect(
+      screen.getByText(
+        elementWith(DEMO.translation.announcementLabel, TRANSLATION_START_ANNOUNCEMENT),
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText(DEMO.indicatorTranslation)).toBeTruthy();
+    expect(screen.getByText(elementWith(DEMO.translation.countdown("2:00")))).toBeTruthy();
+    expect(screen.queryByRole("button", { name: DEMO.translation.start })).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("translates a phrase in the table, with the MOCK label in the same element", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.translation.start);
+    await press(DEMO.translation.phraseButton(DEMO.translation.phrases.GREETING));
+
+    expect(
+      screen.getByText(
+        elementWith(
+          DEMO.translation.resultLabel,
+          DEMO.translation.languages.TELUGU,
+          "శుభోదయం",
+          DEMO.translation.languages.HINDI,
+          "सुप्रभात",
+        ),
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        elementWith(DEMO.translation.transcriptLabel, DEMO.translation.phrases.GREETING),
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(elementWith("(unsure)"))).toBeNull();
+  });
+
+  it("marks a word that is not in the table as unsure, for a phrase not in the table", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.translation.start);
+    await press(DEMO.translation.phraseButton(DEMO.translation.phrases.NOT_IN_TABLE));
+
+    expect(
+      screen.getByText(elementWith(DEMO.translation.resultLabel, "quantum (unsure)")),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(elementWith(DEMO.translation.resultLabel, "orchard (unsure)")),
+    ).toBeTruthy();
+  });
+
+  it("stops on the Stop button, clears the translation, and says nothing is kept", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.translation.start);
+    await press(DEMO.translation.phraseButton(DEMO.translation.phrases.GREETING));
+    await press(DEMO.translation.stop);
+
+    expect(screen.getByText(DEMO.translation.stopped)).toBeTruthy();
+    expect(screen.getByText(DEMO.indicatorOff)).toBeTruthy();
+    expect(screen.queryByText(elementWith(DEMO.translation.resultLabel))).toBeNull();
+    expect(screen.queryByText(elementWith(DEMO.translation.countdown("2:00")))).toBeNull();
+    expect(screen.getByRole("button", { name: DEMO.translation.start })).toBeTruthy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("stops by itself after the silence limit, with the countdown shown as SIMULATED", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.translation.start);
+
+    expect(
+      await screen.findByText(DEMO.translation.silenceStopped(2), {}, WAIT_FOR_SILENCE),
+    ).toBeTruthy();
+    expect(screen.getByText(DEMO.indicatorOff)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: DEMO.translation.stop })).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it("refuses a translation while a photo or an answer is running", async () => {
+    await render(<DemoScreen onBack={jest.fn()} />);
+    await press(DEMO.scenes.MENU.title);
+    await press(DEMO.photo);
+    expect(
+      screen.getByRole("button", { name: DEMO.translation.start }).props.accessibilityState
+        .disabled,
+    ).toBe(true);
+    await screen.findByText(DEMO.indicatorOff, {}, WAIT);
+    expect(
+      screen.getByRole("button", { name: DEMO.translation.start }).props.accessibilityState
+        .disabled,
+    ).toBe(false);
   });
 });
