@@ -9,6 +9,16 @@ export const STRINGS = {
   connectFailed: "Could not connect. Try again.",
   openMeasurement: "Open measurement screen",
   openEnrolment: "Enrol this phone",
+  // Owner-approved cloud notice, version 2026-10-24.2 (APPROVED_CLOUD_DISCLOSURE_VERSION). A text change needs a new version.
+  cloudDisclosure: [
+    "LensMate sends only what you choose to the cloud, and only when you ask:",
+    "• Photos you capture and your questions go to LensMate's broker, which forwards them to Google Gemini through OpenRouter with zero data retention and no training on your data.",
+    "• Speech recognition uses your browser's or phone's own speech service (Chrome sends audio to Google to transcribe it). Spoken replies are made on this device.",
+    "• Nothing is recorded in the background. The camera and microphone run only while you hold a session, and the red indicator shows it.",
+    "• Notes, saved photos and reminders stay on this device, encrypted. You can export or delete them at any time.",
+    "• Optional backup: if you choose it, your memory is encrypted on this device with your own passphrase and kept on LensMate's server only for the period you pick (7 days to 1 year). The server cannot read it.",
+    "• Spending is capped at ₹500 a month on the server. When the cap is reached, AI answers stop until next month.",
+  ],
   enrolment: {
     title: "Enrol this phone",
     intro:

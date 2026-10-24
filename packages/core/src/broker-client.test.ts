@@ -10,7 +10,7 @@ import { SpendCap } from "./spend-cap.js";
 
 const TOKEN = "app-1.not-a-real-secret-0123456789";
 const BODY: BrokerChatRequest = {
-  model: "google/gemini-2.5-flash-lite",
+  model: "google/gemini-3.1-flash-lite",
   messages: [{ role: "user", content: "hello" }],
   maxOutputTokens: 32,
 };

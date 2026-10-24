@@ -25,7 +25,7 @@ const SECRET = "not-a-real-device-secret-".repeat(3);
 const APPROVED = "2026-11-01";
 const DISCLOSURE_KEY = "lensmate.cloud-disclosure";
 const REQUEST: BrokerChatRequest = {
-  model: "google/gemini-2.5-flash-lite",
+  model: "google/gemini-3.1-flash-lite",
   messages: [{ role: "user", content: "hello" }],
   maxOutputTokens: 32,
 };
@@ -176,9 +176,9 @@ describe("callBrokerWithPolicy", () => {
 });
 
 describe("the app entry point", () => {
-  it("keeps broker use disabled until the owner approves the disclosure text", async () => {
-    expect(APPROVED_CLOUD_DISCLOSURE_VERSION).toBeNull();
-    // With the approval null (and no address configured in this test run), the entry point refuses before any request.
+  it("uses the owner-approved disclosure version and still refuses without a configured address", async () => {
+    expect(APPROVED_CLOUD_DISCLOSURE_VERSION).toBe("2026-10-24.2");
+    // No address is configured in this test run, so the entry point refuses before any request.
     await expect(callBroker(REQUEST, SIGNAL)).rejects.toBeInstanceOf(BrokerCallBlocked);
   });
 });

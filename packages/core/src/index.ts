@@ -95,12 +95,21 @@ export type {
   SpendCalculation,
   SpendCalculationInput,
 } from "./measurement/spend.js";
-export { BrokerError, brokerProviderRun, enrolDevice, requestBrokerChat } from "./broker-client.js";
+export {
+  BrokerError,
+  brokerProviderRun,
+  enrolDevice,
+  requestBrokerChat,
+  requestBrokerUsage,
+  requestBrokerVision,
+} from "./broker-client.js";
 export type {
   BrokerChatMessage,
   BrokerChatRequest,
   BrokerClientOptions,
   BrokerReply,
+  BrokerUsage,
+  BrokerVisionRequest,
   EnrolledDevice,
 } from "./broker-client.js";
 export type { ClassifiedProviderError } from "./provider-gateway.js";

@@ -110,7 +110,7 @@ async function chat(
 }
 
 const GOOD_BODY = {
-  model: "google/gemini-2.5-flash-lite",
+  model: "google/gemini-3.1-flash-lite",
   messages: [{ role: "user", content: "Translate: good morning" }],
   maxOutputTokens: 64,
 };
@@ -243,7 +243,7 @@ describe("text route: request checks", () => {
 
   it("refuses the vision model on the text route", async () => {
     const { app } = await harness();
-    const response = await chat(app, { ...GOOD_BODY, model: "google/gemini-2.5-flash" });
+    const response = await chat(app, { ...GOOD_BODY, model: "google/gemini-3.5-flash-lite" });
     expect(response.json()).toMatchObject({ code: "MODEL_NOT_ALLOWED" });
   });
 
@@ -374,9 +374,18 @@ describe("concurrency", () => {
     const config = testConfig();
     const cap = worstPaiseFor(GOOD_BODY, config) * 10;
     const store = new InMemoryBudgetStore();
+    // Replies are held until every request has tried to reserve, so no settlement frees budget mid-test.
+    const mock = new MockProvider();
+    const gate = new Promise<void>((resolve) => setTimeout(resolve, 200));
+    const held: ChatProvider = {
+      complete: async (request) => {
+        await gate;
+        return mock.complete(request);
+      },
+    };
     const { app } = await harness(
       { monthlyCapPaise: cap, dailyRequestQuotaPerClient: 1000 },
-      new MockProvider(),
+      held,
       store,
     );
     const responses = await Promise.all(Array.from({ length: 60 }, () => chat(app, GOOD_BODY)));
@@ -391,7 +400,7 @@ describe("concurrency", () => {
 describe("vision route", () => {
   const PNG = `data:image/png;base64,${Buffer.from("tiny-test-bytes").toString("base64")}`;
   const VISION = {
-    model: "google/gemini-2.5-flash",
+    model: "google/gemini-3.5-flash-lite",
     prompt: "What is on the sign?",
     imageDataUrl: PNG,
     maxOutputTokens: 64,

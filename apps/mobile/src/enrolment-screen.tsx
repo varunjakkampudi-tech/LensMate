@@ -180,6 +180,7 @@ export function EnrolmentScreen({ config, onClose, storage, doFetch }: Enrolment
         keyboardType="default"
         maxLength={40}
         placeholder="ABCD-EFGH-JKMN-PQRS"
+        placeholderTextColor="#9AA8C3"
         style={styles.input}
       />
       <Text>{T.codeHint}</Text>
@@ -248,16 +249,16 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: "#1f4e79",
-    borderRadius: 8,
+    borderColor: "#1E6BFF",
+    borderRadius: 14,
     paddingHorizontal: 12,
     fontSize: 18,
   },
   primary: {
     minHeight: 48,
     padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#1f4e79",
+    borderRadius: 14,
+    backgroundColor: "#1E6BFF",
     justifyContent: "center",
   },
   primaryText: { color: "#ffffff", textAlign: "center" },
@@ -265,10 +266,10 @@ const styles = StyleSheet.create({
   secondary: {
     minHeight: 48,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#1f4e79",
+    borderColor: "#1E6BFF",
     justifyContent: "center",
   },
-  secondaryText: { color: "#1f4e79", textAlign: "center" },
+  secondaryText: { color: "#1E6BFF", textAlign: "center" },
 });

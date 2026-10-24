@@ -10,6 +10,13 @@ import type { BudgetStore, ReserveRefusal, ReserveResult } from "./budget.js";
 import { ConcurrencyGuard, TokenBucket } from "./limits.js";
 import { authenticateDevice, redeemEnrolment, type DeviceStore } from "./devices.js";
 import {
+  InMemoryBackupStore,
+  MAX_BACKUP_CHARS,
+  MAX_RETENTION_DAYS,
+  retentionExpiry,
+  type BackupStore,
+} from "./backup.js";
+import {
   actualMicroUsd,
   findModel,
   microUsdToPaise,
@@ -59,6 +66,8 @@ export interface BrokerDependencies {
   /** Registered devices and enrolment codes. */
   readonly devices: DeviceStore;
   readonly provider: ChatProvider;
+  /** Encrypted memory backups. Defaults to an in-memory store (tests and mock mode). */
+  readonly backups?: BackupStore;
   /** Source of time, in milliseconds since the epoch. Injected so tests control day and month boundaries. */
   readonly now: () => number;
   /**
@@ -206,6 +215,68 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     },
   );
 
+  const backups = deps.backups ?? new InMemoryBackupStore();
+  const BACKUP_BODY = {
+    type: "object",
+    additionalProperties: false,
+    required: ["ciphertext", "retentionDays"],
+    properties: {
+      ciphertext: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_BACKUP_CHARS,
+        pattern: "^[A-Za-z0-9+/=.:_-]+$",
+      },
+      retentionDays: { type: "integer", minimum: 1, maximum: MAX_RETENTION_DAYS },
+    },
+  } as const;
+
+  // Backup routes: device-authenticated and rate-limited; the broker stores only opaque ciphertext.
+  app.put<{ Body: { ciphertext: string; retentionDays: number } }>(
+    "/v1/backup",
+    { schema: { body: BACKUP_BODY } },
+    async (request, reply) => {
+      const client = await authenticateDevice(request.headers.authorization, devices);
+      if (client === null) {
+        return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
+      }
+      if (!rate.take(client)) {
+        return reply.code(429).send({ error: "rate_limited", code: "RATE_LIMITED" });
+      }
+      const at = now();
+      const expiresAt = retentionExpiry(at, request.body.retentionDays);
+      await backups.put(client, request.body.ciphertext, at, expiresAt);
+      return { updatedAt: at, expiresAt };
+    },
+  );
+
+  app.get("/v1/backup", async (request, reply) => {
+    const client = await authenticateDevice(request.headers.authorization, devices);
+    if (client === null) {
+      return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
+    }
+    if (!rate.take(client)) {
+      return reply.code(429).send({ error: "rate_limited", code: "RATE_LIMITED" });
+    }
+    const stored = await backups.get(client, now());
+    if (stored === null) {
+      return reply.code(404).send({ error: "not_found", code: "NO_BACKUP" });
+    }
+    return stored;
+  });
+
+  app.delete("/v1/backup", async (request, reply) => {
+    const client = await authenticateDevice(request.headers.authorization, devices);
+    if (client === null) {
+      return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
+    }
+    if (!rate.take(client)) {
+      return reply.code(429).send({ error: "rate_limited", code: "RATE_LIMITED" });
+    }
+    await backups.remove(client);
+    return reply.code(204).send();
+  });
+
   app.get("/v1/usage", async (request, reply) => {
     const client = await authenticateDevice(request.headers.authorization, devices);
     if (client === null) {
@@ -238,7 +309,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
         return reply.code(429).send({ error: "try_later", code: "RATE_LIMITED" });
       }
       const model = findModel(request.body.model);
-      if (model === undefined || model.feature !== "text") {
+      if (model === undefined || (model.feature !== "text" && model.feature !== "research")) {
         return reply.code(400).send({ error: "invalid_request", code: "MODEL_NOT_ALLOWED" });
       }
       if (request.body.maxOutputTokens > config.maxOutputTokensCeiling) {

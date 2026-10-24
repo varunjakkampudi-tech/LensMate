@@ -5,6 +5,7 @@ import { InMemoryDeviceStore, PostgresDeviceStore, type DeviceStore } from "./de
 import { PostgresBudgetStore } from "./postgres-budget.js";
 import { OpenRouterProvider, MockProvider, type ChatProvider } from "./provider.js";
 import { buildServer } from "./server.js";
+import { InMemoryBackupStore, PostgresBackupStore, type BackupStore } from "./backup.js";
 import { verifySchema } from "./schema.js";
 import {
   AnchoredBudgetStore,
@@ -32,6 +33,7 @@ async function main(): Promise<void> {
 
   let budget: BudgetStore;
   let devices: DeviceStore;
+  let backups: BackupStore;
   let pool: Pool | undefined;
   let reaper: (() => Promise<number>) | undefined;
   if (config.databaseUrl !== undefined) {
@@ -84,7 +86,11 @@ async function main(): Promise<void> {
     await checkRevocations(registered, anchor);
     await syncRevocations(registered, anchor);
     devices = registered;
+    backups = new PostgresBackupStore(pool);
+    const backupStore = backups;
     reaper = async () => {
+      // Retention is enforced here too, so an expired backup is deleted even if no device asks for it.
+      await backupStore.purgeExpired(Date.now());
       const settled = await store.reapStale(REAP_AFTER_SECONDS);
       // The reaper can settle reservations from the previous month, so refresh both months it may touch.
       for (const month of recentMonths(monthOf(Date.now()), 2)) {
@@ -95,6 +101,7 @@ async function main(): Promise<void> {
   } else {
     budget = new InMemoryBudgetStore();
     devices = new InMemoryDeviceStore();
+    backups = new InMemoryBackupStore();
   }
 
   if (reaper !== undefined) {
@@ -116,6 +123,7 @@ async function main(): Promise<void> {
     config,
     budget,
     devices,
+    backups,
     provider,
     now: () => Date.now(),
     logger: {

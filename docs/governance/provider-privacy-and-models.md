@@ -31,7 +31,13 @@ old name is retired.
 Not verified: which upstream endpoints serve each allowlisted model under these controls at the time of the call. The
 owner must check the endpoints for each model before live use, and record the result here.
 
-## 4. Model choices (proposed; not approved)
+## 4. Model choices
+
+Update 2026-10-24 (OWNER-DECISION-003): the live allowlist is google/gemini-3.1-flash-lite (text),
+google/gemini-3.1-flash-lite:online (web research) and google/gemini-3.5-flash-lite (vision), because the 2.5 models
+had no zero-data-retention endpoint. The table below is the earlier proposal, kept for history.
+
+### Earlier proposal
 
 | Route                              | Model                          | Input USD per 1M tokens | Output USD per 1M tokens | Context   | Input modalities (catalogue)    |
 | ---------------------------------- | ------------------------------ | ----------------------- | ------------------------ | --------- | ------------------------------- |

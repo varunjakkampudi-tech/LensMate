@@ -3,7 +3,7 @@ import type { DemoScene, SceneShape } from "./demo-catalogue";
 import { DEMO } from "./demo-strings";
 
 const FILL: Readonly<Record<SceneShape["tone"], string>> = {
-  blue: "#1f4e79",
+  blue: "#1E6BFF",
   white: "#ffffff",
   grey: "#9aa5b1",
   ink: "#2b2b2b",
@@ -49,7 +49,7 @@ function shapeStyle(shape: SceneShape): ViewStyle {
     width: `${String(shape.w)}%`,
     height: `${String(shape.h)}%`,
     backgroundColor: shape.kind === "text" ? "transparent" : FILL[shape.tone],
-    borderRadius: 4,
+    borderRadius: 14,
     justifyContent: "center",
     paddingHorizontal: 4,
   };
@@ -60,13 +60,13 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 5 / 3,
     backgroundColor: "#e8edf2",
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#1f4e79",
+    borderColor: "#1E6BFF",
     overflow: "hidden",
   },
   shapeText: { fontSize: 13, fontWeight: "600" },
   textOnBlue: { color: "#ffffff" },
-  textOnLight: { color: "#1a1a1a" },
+  textOnLight: { color: "#0B1B3F" },
   textCenter: { textAlign: "center" },
 });
