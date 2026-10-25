@@ -550,7 +550,7 @@ The commit messages carry no requirement IDs. The mapping below is read from the
 ### Test, CI and audit evidence
 
 - CI run 40178590537 on the dev head: completed, success. Jobs: secret-scan success, quality success, broker-integration success.
-- Full apps/mobile suite: 50 of 50 suites and 470 of 470 tests, in three full runs on a tree identical to the dev head. That tree was checked before integration, with the screen-load fix applied.
+- Full apps/mobile suite, CI quality job on the dev head (run 40178590537): 50 of 50 suites and 470 of 470 tests passed. Local runs on a byte-identical tree (three runs, recorded by the author session, not attached) also showed 50 of 50 and 470 of 470. They are not CI evidence.
 - Broker PostgreSQL integration, from the CI broker-integration job on the dev head: 2 of 2 suites, 48 of 48 tests. postgres-budget 18 and security 30. The broker tree is the same as the earlier PostgreSQL run's tree, because the change since that run touches only two mobile test files. The authentication 3 and enrolment 10 split is the orchestrator's grouping. It was not reproduced from the test names, because the security suite has no describe blocks.
 - Simulator (tools/simulator), run on the dev-head tree: 3 of 3 suites and 58 of 58 tests.
 - `pnpm audit --audit-level=high`: one high finding, node-forge, reached through the Expo CLI in apps/mobile. Owner decision BLOCKER-010 is open and not waived. The agent has not waived it.

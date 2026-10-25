@@ -434,7 +434,7 @@ Not in the owner's report, so still unverified on the phone:
 - BLOCKER-009 (emulator and simulator job capacity): still open. The Maestro flows in e2e/maestro (five flow files in total) are NOT RUN, because emulator and simulator jobs are blocked. Owner check required before they can run.
 - Agy audit: not delivered. The agy identity investigation exists as an investigation record only.
 - CI on dev: run 40178590537 on the dev head completed with success (secret-scan, quality, broker-integration).
-- Full apps/mobile suite: 50 of 50 suites and 470 of 470 tests in three full runs on a tree identical to the dev head.
+- Full apps/mobile suite, CI quality job on the dev head (run 40178590537): 50 of 50 suites and 470 of 470 tests passed. Local runs on a byte-identical tree (not attached) are not CI evidence.
 - Broker PostgreSQL (CI broker-integration on the dev head): 48 of 48 tests in 2 suites (postgres-budget 18, security 30).
 - Simulator (tools/simulator): 3 of 3 suites and 58 of 58 tests.
 - Not verified in this cycle: any real phone, emulator, bench, device, provider or live AI behaviour.
