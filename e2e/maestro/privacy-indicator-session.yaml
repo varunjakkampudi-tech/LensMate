@@ -1,0 +1,12 @@
+# Flow E: a running synthetic translation session keeps its privacy indicator visible.
+# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Run: maestro test e2e/maestro/privacy-indicator-session.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "Try the demo"
+- tapOn: "Menu"
+- tapOn: "Start translation"
+- assertVisible: "Indicator: translation on. The microphone is listening for this session. Camera off."
+- assertVisible: "Announcement to the other person (SIMULATED: no sound is played)"

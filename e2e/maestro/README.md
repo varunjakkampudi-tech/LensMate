@@ -11,9 +11,23 @@ against a build of the app anywhere. They were checked only for YAML syntax and 
   in this build, so enrolment is unavailable.", and goes back with "Back to home".
 - `measurement.yaml` (flow B): opens "Open measurement screen", checks the "Measurement" and "Session" headings,
   scrolls to "Back to home" and goes back.
+- `onboarding-to-assistant.yaml` (flow C): accepts the first-run cloud notice and reaches the Assistant screen.
+- `virtual-glasses-capture-and-ask.yaml` (flow D): uses the synthetic virtual-glasses demo to capture a scene, ask a
+  question and check the canned mock answer.
+- `privacy-indicator-session.yaml` (flow E): starts a synthetic translation session and checks that the microphone
+  recording indicator remains visible.
 
-The flows use only the visible texts from `apps/mobile/src/strings.ts`. They contain no broker address, keys or
-secrets.
+**Evidence level: all flows are NOT RUN.** Emulator and simulator jobs are blocked on BLOCKER-009. Each flow file
+contains its exact command; from the repository root, they are:
+
+```sh
+maestro test e2e/maestro/onboarding-to-assistant.yaml
+maestro test e2e/maestro/virtual-glasses-capture-and-ask.yaml
+maestro test e2e/maestro/privacy-indicator-session.yaml
+```
+
+The flows use only visible app text from `apps/mobile/src/strings.ts` and the synthetic demo strings. They contain no
+broker address, keys or secrets.
 
 ## Required environment
 

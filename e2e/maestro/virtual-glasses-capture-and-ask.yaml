@@ -1,0 +1,17 @@
+# Flow D: synthetic virtual-glasses capture followed by a mock question and answer.
+# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Run: maestro test e2e/maestro/virtual-glasses-capture-and-ask.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "Try the demo"
+- assertVisible: "DEMO ONLY. Every scene, transcript and answer here is synthetic or a mock."
+- tapOn: "Menu"
+- assertVisible: "SYNTHETIC SCENE"
+- tapOn: "Take photo (single tap)"
+- assertVisible: "Photos taken in this demo: 1. A photo is one synthetic frame and is not saved."
+- tapOn: "What is the cheapest item?"
+- assertVisible: "SYNTHETIC TRANSCRIPT"
+- assertVisible: "MOCK RESPONSE — canned demo answer, not AI output"
+- assertVisible: "The tea is the cheapest item on this synthetic menu, at 20."
