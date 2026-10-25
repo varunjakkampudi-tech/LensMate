@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
+      "entry": ["tools/readiness/generate.mjs"],
       "project": ["**/*.{ts,mjs,cjs}"]
     },
     "packages/core": {
@@ -14,5 +15,5 @@
       "entry": ["src/admin-cli.ts", "src/migrate-cli.ts"]
     }
   },
-  "ignore": ["apps/mobile/public/sw.js", "tools/readiness/**"]
+  "ignore": ["apps/mobile/public/sw.js"]
 }

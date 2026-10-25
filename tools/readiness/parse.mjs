@@ -7,7 +7,7 @@ const SECTIONS = {
   "## Table C": "checklist",
 };
 
-export const STATUSES = [
+const STATUSES = [
   "Specified",
   "Unverified",
   "Implemented",

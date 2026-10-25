@@ -1,5 +1,4 @@
 import type { ClassifiedProviderError, GatewayErrorCode } from "./provider-gateway.js";
-import type { ProviderRun } from "./provider-gateway.js";
 
 /**
  * App-side client for the server-side provider broker (Engineering Standards 4; Goal 10A.3).
@@ -145,17 +144,6 @@ async function postForReply(
     return parseReply(text);
   }
   throw refusalFor(response.status, text);
-}
-
-/** Adapts a broker call to the gateway's ProviderRun. The cost is reported in paise, the gateway's unit. */
-export function brokerProviderRun(
-  options: BrokerClientOptions,
-  body: BrokerChatRequest,
-): ProviderRun<BrokerReply> {
-  return async (signal) => {
-    const reply = await requestBrokerChat(options, body, signal);
-    return { value: reply, costMinor: reply.costPaise };
-  };
 }
 
 function refusalFor(status: number, text: string): BrokerError {

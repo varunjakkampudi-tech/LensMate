@@ -1,12 +1,9 @@
 import {
   BrokerError,
-  brokerProviderRun,
   enrolDevice,
   requestBrokerChat,
   type BrokerChatRequest,
 } from "./broker-client.js";
-import { ProviderGateway } from "./provider-gateway.js";
-import { SpendCap } from "./spend-cap.js";
 
 const TOKEN = "app-1.not-a-real-secret-0123456789";
 const BODY: BrokerChatRequest = {
@@ -120,110 +117,6 @@ describe("requestBrokerChat", () => {
     } catch (error) {
       expect(JSON.stringify(error)).not.toContain(TOKEN);
       expect((error as Error).message).not.toContain(TOKEN);
-    }
-  });
-});
-
-describe("broker calls through the gateway", () => {
-  const gatewayOptions = {
-    timeoutMs: 1000,
-    maxAttempts: 2 as const,
-    circuitFailureThreshold: 10,
-    circuitCooldownMs: 1000,
-    now: () => 0,
-  };
-
-  it("reports the reply with its cost and records the spend against the cap", async () => {
-    const cap = new SpendCap(100);
-    const gateway = new ProviderGateway(cap, gatewayOptions);
-    gateway.acceptDisclosure("translation");
-    const result = await gateway.call(
-      "translation",
-      10,
-      brokerProviderRun({ baseUrl: "https://b", token: TOKEN, fetch: reply(200, OK) }, BODY),
-    );
-    expect(result).toEqual({ ok: true, value: OK, costMinor: 3 });
-    expect(cap.spent).toBe(3);
-  });
-
-  it("stops at once on a budget refusal instead of retrying", async () => {
-    let calls = 0;
-    const fetchImpl = (() => {
-      calls += 1;
-      return Promise.resolve(
-        new Response(JSON.stringify({ code: "BUDGET_EXHAUSTED" }), { status: 503 }),
-      );
-    }) as typeof fetch;
-    const gateway = new ProviderGateway(new SpendCap(100), gatewayOptions);
-    gateway.acceptDisclosure("translation");
-    const result = await gateway.call(
-      "translation",
-      10,
-      brokerProviderRun({ baseUrl: "https://b", token: TOKEN, fetch: fetchImpl }, BODY),
-    );
-    expect(result).toEqual({ ok: false, errorCode: "CAP_REACHED" });
-    expect(calls).toBe(1);
-  });
-
-  it("retries a provider outage up to the gateway's attempt limit", async () => {
-    let calls = 0;
-    const fetchImpl = (() => {
-      calls += 1;
-      return Promise.resolve(
-        new Response(JSON.stringify({ code: "PROVIDER_UNAVAILABLE" }), { status: 503 }),
-      );
-    }) as typeof fetch;
-    const gateway = new ProviderGateway(new SpendCap(100), gatewayOptions);
-    gateway.acceptDisclosure("translation");
-    const result = await gateway.call(
-      "translation",
-      10,
-      brokerProviderRun({ baseUrl: "https://b", token: TOKEN, fetch: fetchImpl }, BODY),
-    );
-    expect(result).toEqual({ ok: false, errorCode: "PROVIDER_ERROR" });
-    expect(calls).toBe(2);
-  });
-});
-
-describe("review follow-ups: timeouts and circuit scope", () => {
-  const gatewayOptions = {
-    timeoutMs: 1000,
-    maxAttempts: 3 as const,
-    circuitFailureThreshold: 2,
-    circuitCooldownMs: 60_000,
-    now: () => 0,
-  };
-
-  it("does not retry a broker timeout, because the broker already retried within its own bound", async () => {
-    let calls = 0;
-    const fetchImpl = (() => {
-      calls += 1;
-      return Promise.resolve(new Response(JSON.stringify({ code: "TIMEOUT" }), { status: 503 }));
-    }) as typeof fetch;
-    const gateway = new ProviderGateway(new SpendCap(100), gatewayOptions);
-    gateway.acceptDisclosure("translation");
-    const result = await gateway.call(
-      "translation",
-      10,
-      brokerProviderRun({ baseUrl: "https://b", token: TOKEN, fetch: fetchImpl }, BODY),
-    );
-    expect(result).toEqual({ ok: false, errorCode: "TIMEOUT" });
-    expect(calls).toBe(1);
-  });
-
-  it("does not open the circuit on budget refusals, so the real reason keeps being reported", async () => {
-    const fetchImpl = (() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ code: "BUDGET_EXHAUSTED" }), { status: 503 }),
-      )) as typeof fetch;
-    const gateway = new ProviderGateway(new SpendCap(100), gatewayOptions);
-    gateway.acceptDisclosure("translation");
-    const run = brokerProviderRun({ baseUrl: "https://b", token: TOKEN, fetch: fetchImpl }, BODY);
-    for (let index = 0; index < 4; index += 1) {
-      expect(await gateway.call("translation", 10, run)).toEqual({
-        ok: false,
-        errorCode: "CAP_REACHED",
-      });
     }
   });
 });

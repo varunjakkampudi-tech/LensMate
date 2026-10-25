@@ -62,8 +62,10 @@ There is no shared broker secret, and none goes in the app. Each phone enrols on
 1. The owner runs `docker compose -p lensmate-broker -f docker-compose.yml -f docker-compose.admin.yml run --rm broker node dist/admin-cli.js enrol-code`. This prints a
    code once. It is single use, valid for 10 minutes, and stored only as a hash.
 2. The owner types the code into the app. The app calls `POST /v1/enrol` and receives its own device id and secret.
-3. The app keeps the secret in secure device storage. Secure storage is not yet wired into the app (it needs an
-   Expo dependency that has not been approved), so the app cannot enrol yet.
+3. The native app submits the code through its broker client and stores the returned device credential in the
+   platform keychain or keystore. The web preview uses browser storage and is not a secure credential store. Enrolment
+   and revocation flows are implemented; production use still depends on the owner completing the deployment, HTTPS,
+   and live-service gates below.
 4. To revoke a phone, run `docker compose -p lensmate-broker -f docker-compose.yml -f docker-compose.admin.yml run --rm broker node dist/admin-cli.js revoke <deviceId>`. It takes effect on the next request.
 5. The same command with `list-devices` shows ids, labels and status. It never prints a secret.
 

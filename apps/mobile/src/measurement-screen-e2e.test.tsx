@@ -47,23 +47,23 @@ describe("measurement screen end to end (virtual glasses)", () => {
     await render(<MeasurementScreen glasses={glasses} clock={clock} />);
 
     await fireEvent.press(screen.getByRole("button", { name: TEXT.connectVirtual }));
-    await screen.findByText(STRINGS.statusConnected, FIND);
+    await screen.findByText(STRINGS.statusConnected, {}, FIND);
 
     await fillProvenance();
     await fireEvent.press(screen.getByRole("button", { name: TEXT.startSession }));
-    expect(await screen.findByText(`${TEXT.sessionRunning}: English`, FIND)).toBeTruthy();
+    expect(await screen.findByText(`${TEXT.sessionRunning}: English`, {}, FIND)).toBeTruthy();
 
     await fireEvent.press(screen.getByRole("radio", { name: "Telugu" }));
     for (let index = 0; index < 3; index += 1) {
       await fireEvent.press(screen.getByRole("button", { name: TEXT.sendTap }));
     }
-    expect(await screen.findByText(TEXT.tallyLine("Telugu", 3, 3, 0), FIND)).toBeTruthy();
+    expect(await screen.findByText(TEXT.tallyLine("Telugu", 3, 3, 0), {}, FIND)).toBeTruthy();
 
     await fireEvent.press(screen.getByRole("button", { name: TEXT.endSession }));
-    expect(await screen.findByText(TEXT.sessionIdle, FIND)).toBeTruthy();
+    expect(await screen.findByText(TEXT.sessionIdle, {}, FIND)).toBeTruthy();
 
     await fireEvent.press(screen.getByRole("button", { name: TEXT.exportButton }));
-    expect(await screen.findByText(TEXT.exportSummary(3, 0), FIND)).toBeTruthy();
+    expect(await screen.findByText(TEXT.exportSummary(3, 0), {}, FIND)).toBeTruthy();
 
     const csvField = screen.getByLabelText(TEXT.exportTextLabel);
     const csv = String(csvField.props.value);
@@ -90,7 +90,7 @@ describe("measurement screen end to end (virtual glasses)", () => {
     const glasses = new VirtualGlasses(new ProtocolCodec(loadBundledProtocolRoot()), clock);
     await render(<MeasurementScreen glasses={glasses} clock={clock} />);
     await fireEvent.press(screen.getByRole("button", { name: TEXT.connectVirtual }));
-    await screen.findByText(STRINGS.statusConnected, FIND);
+    await screen.findByText(STRINGS.statusConnected, {}, FIND);
     await fillProvenance();
     await fireEvent.press(screen.getByRole("button", { name: TEXT.startSession }));
 
@@ -99,7 +99,7 @@ describe("measurement screen end to end (virtual glasses)", () => {
     await fireEvent.press(screen.getByRole("button", { name: TEXT.sendTap }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.sendTap }));
 
-    expect(await screen.findByText(TEXT.tallyLine("English", 1, 1, 0), FIND)).toBeTruthy();
+    expect(await screen.findByText(TEXT.tallyLine("English", 1, 1, 0), {}, FIND)).toBeTruthy();
     expect(screen.getByText(TEXT.tallyLine("Hindi", 2, 2, 0))).toBeTruthy();
   });
 
@@ -108,7 +108,7 @@ describe("measurement screen end to end (virtual glasses)", () => {
     const glasses = new VirtualGlasses(new ProtocolCodec(loadBundledProtocolRoot()), clock);
     await render(<MeasurementScreen glasses={glasses} clock={clock} />);
     await fireEvent.press(screen.getByRole("button", { name: TEXT.connectVirtual }));
-    await screen.findByText(STRINGS.statusConnected, FIND);
+    await screen.findByText(STRINGS.statusConnected, {}, FIND);
     await fillProvenance();
     await fireEvent.press(screen.getByRole("button", { name: TEXT.startSession }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.sendTap }));
@@ -116,7 +116,7 @@ describe("measurement screen end to end (virtual glasses)", () => {
 
     // Provenance is locked while a session runs and is used as recorded, so the export is complete.
     await fireEvent.press(screen.getByRole("button", { name: TEXT.exportButton }));
-    const summary = await screen.findByText(TEXT.exportSummary(1, 0), FIND);
+    const summary = await screen.findByText(TEXT.exportSummary(1, 0), {}, FIND);
     expect(summary).toBeTruthy();
     const region = within(screen.getByLabelText(TEXT.exportRejected));
     expect(region.queryByText(/Line /)).toBeNull();
@@ -127,13 +127,13 @@ describe("measurement screen end to end (virtual glasses)", () => {
     const glasses = new VirtualGlasses(new ProtocolCodec(loadBundledProtocolRoot()), clock);
     await render(<MeasurementScreen glasses={glasses} clock={clock} />);
     await fireEvent.press(screen.getByRole("button", { name: TEXT.connectVirtual }));
-    await screen.findByText(STRINGS.statusConnected, FIND);
+    await screen.findByText(STRINGS.statusConnected, {}, FIND);
     await fillProvenance();
     await fireEvent.press(screen.getByRole("button", { name: TEXT.startSession }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.sendTap }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.endSession }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.exportButton }));
-    await screen.findByText(TEXT.exportSummary(1, 0), FIND);
+    await screen.findByText(TEXT.exportSummary(1, 0), {}, FIND);
 
     const csv = String(screen.getByLabelText(TEXT.exportTextLabel).props.value);
     expect(csv).toContain(",simulator,same_clock_simulator,");
@@ -149,14 +149,14 @@ describe("timestamp correctness", () => {
     const glasses = new VirtualGlasses(new ProtocolCodec(loadBundledProtocolRoot()), glassesClock);
     await render(<MeasurementScreen glasses={glasses} clock={screenClock} />);
     await fireEvent.press(screen.getByRole("button", { name: TEXT.connectVirtual }));
-    await screen.findByText(STRINGS.statusConnected, FIND);
+    await screen.findByText(STRINGS.statusConnected, {}, FIND);
     await fillProvenance();
     await fireEvent.press(screen.getByRole("button", { name: TEXT.startSession }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.sendTap }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.endSession }));
     await fireEvent.press(screen.getByRole("button", { name: TEXT.exportButton }));
 
-    expect(await screen.findByText(TEXT.exportSummary(1, 0), FIND)).toBeTruthy();
+    expect(await screen.findByText(TEXT.exportSummary(1, 0), {}, FIND)).toBeTruthy();
     expect(screen.getByText(TEXT.tallyLine("English", 1, 0, 1))).toBeTruthy();
     const csv = String(screen.getByLabelText(TEXT.exportTextLabel).props.value);
     expect(csv).toContain("phone clock is earlier than the glasses timestamp; try not timed");

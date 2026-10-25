@@ -1,5 +1,15 @@
 # PROGRESS
 
+## Repository cleanup and engineering baseline (2026-10-26)
+
+- Audited the tracked JavaScript/TypeScript files with Knip for unused files, exports, dependencies, and unlisted dependencies. Removed the test-only `brokerProviderRun` adapter, its package export, and its adapter-only tests after confirming it had no production caller; the standalone `ProviderGateway` remains exercised by its own tests and the app's simulator demo. No source module or image was otherwise orphaned: the available assets are referenced by Expo config, the web app manifest/head tags, or the PWA service-worker shell.
+- ESLint now includes `apps/mobile` TypeScript and TSX, excluding only Expo-generated `.expo` output and the separately tested public service worker. Mobile files use non-type-aware ESLint rules; the app's TypeScript project remains the typecheck gate. The newly enabled lint run passes after resolving its findings.
+- Confirmed that the only local environment files are the root development and production files. Both remain ignored by Git; no example environment files are present. The app configuration exposes only `EXPO_PUBLIC_*` values.
+- Refreshed the root, mobile, broker, simulator, end-to-end, and documentation-index readmes to match the current implementation and verification limits. The older dated progress checkpoints below are retained as history.
+- Verification on this cleanup tree: workspace build and typecheck pass; ESLint passes with mobile coverage; Prettier format/check passes after applying the formatter; Knip reports no unused files, exports, dependencies, or unlisted dependencies with the readiness generator included; schema generation check, Expo public config, and readiness-registry freshness check pass.
+- Root Jest on the cleaned tree: 34 suites and 505 tests pass; the 2 PostgreSQL integration suites (48 tests) are skipped because this run had no integration database configured. Mobile Jest passes all 50 suites and 470 tests when run serially. The initial parallel run timed out in two long UI journey tests under concurrent full-repository checks; both passed on the isolated serial rerun.
+- Updated mobile measurement UI tests to use Testing Library's current `findBy*` timeout argument position after the suite reported its deprecation warning. Production behavior is unchanged by this test-only adjustment.
+
 ## UI accessibility pass (2026-10-26)
 
 - On `dev`, raised previously undersized shared and screen controls to the 48 dp target across Home, Assistant, Capture, Simulator, Profile, translation controls, the global shell, and readiness disclosures. The web font token now uses the loaded Plus Jakarta Sans family with the Telugu fallback.

@@ -131,7 +131,6 @@ export default function CaptureScreen() {
       session.speak();
     }
     // Only a new answer triggers this; re-renders must not read it again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [see.answer]);
 
   const photo = see.photo;

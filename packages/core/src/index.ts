@@ -97,7 +97,6 @@ export type {
 } from "./measurement/spend.js";
 export {
   BrokerError,
-  brokerProviderRun,
   enrolDevice,
   requestBrokerChat,
   requestBrokerUsage,

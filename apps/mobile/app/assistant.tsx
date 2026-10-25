@@ -179,7 +179,6 @@ export default function AssistantScreen() {
       stopSpeaking();
     },
     // The guard and microphone session live for the screen's lifetime.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 

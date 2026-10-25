@@ -1,6 +1,7 @@
 import { REGISTRY } from "./registry";
 import { inFilter, summarise } from "./readiness-section";
 import { stateOf } from "./model";
+import { OWNER_REPORTS } from "./owner-reports";
 
 describe("readiness filters and summary", () => {
   it("counts every entry in exactly one state", () => {
@@ -31,7 +32,6 @@ describe("readiness filters and summary", () => {
 
 describe("owner-reported results", () => {
   it("records no commit for owner reports, because the tested build was not named", () => {
-    const { OWNER_REPORTS } = require("./owner-reports") as typeof import("./owner-reports");
     expect(OWNER_REPORTS.length).toBeGreaterThan(0);
     expect(OWNER_REPORTS.every((r) => r.commit === null)).toBe(true);
   });

@@ -34,12 +34,9 @@ export function useAiSetup(): AiSetup {
     let alive = true;
     void (async () => {
       const configured = readBrokerConfig().ok;
-      let enrolled = false;
-      try {
-        enrolled = (await loadDeviceCredential(secureStorage)).status === "enrolled";
-      } catch {
-        enrolled = false;
-      }
+      const enrolled = await loadDeviceCredential(secureStorage)
+        .then((credential) => credential.status === "enrolled")
+        .catch(() => false);
       const accepted = await isCloudDisclosureAccepted(
         APPROVED_CLOUD_DISCLOSURE_VERSION,
         secureStorage,
