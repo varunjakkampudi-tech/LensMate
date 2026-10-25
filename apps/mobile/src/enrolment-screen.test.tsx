@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import type { BrokerConfig } from "./broker-config";
 import {
   DEVICE_CREDENTIAL_KEY,
@@ -9,6 +10,10 @@ import { EnrolmentScreen, normaliseCode } from "./enrolment-screen";
 import { STRINGS } from "./strings";
 
 const T = STRINGS.enrolment;
+
+// Loads the React Native components and the global Response the tests use at file load, not inside a test.
+void [Pressable, ScrollView, Text, TextInput, View, Response];
+
 const CONFIG: BrokerConfig = { ok: true, baseUrl: "https://broker.example" };
 const DEVICE_ID = "11111111-2222-4333-8444-555555555555";
 const SECRET = "not-a-real-device-secret-".repeat(3);

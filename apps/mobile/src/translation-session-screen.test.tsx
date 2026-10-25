@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { StyleSheet } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   SILENCE_TIMEOUT_MS,
   TRANSLATION_START_ANNOUNCEMENT,
@@ -12,6 +12,9 @@ import { TranslationSessionScreen } from "./translation-session-screen";
 import type { TranslationSessionLink } from "./use-translation-session";
 
 const T = STRINGS.translationSession;
+
+// Loads the React Native components the screen renders at file load, not inside the first test.
+void [ActivityIndicator, Pressable, ScrollView, Text, View];
 
 /** A short real tick, so the screen's interval runs during the test without making it slow. */
 const TICK_MS = 5;
