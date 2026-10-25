@@ -2,7 +2,8 @@
 
 **Status: these flows have NOT been run.** This machine has no Android emulator, and the flows have not been run
 against a build of the app anywhere. They were checked only for YAML syntax and for the texts they match against
-`apps/mobile/src/strings.ts`. The first real run is an owner decision (see below).
+the relevant mobile sources: `apps/mobile/src/strings.ts`, `apps/mobile/app/*.tsx`, and
+`apps/mobile/src/demo/demo-strings.ts`. The first real run is an owner decision (see below).
 
 ## Flows
 
@@ -26,8 +27,8 @@ maestro test e2e/maestro/virtual-glasses-capture-and-ask.yaml
 maestro test e2e/maestro/privacy-indicator-session.yaml
 ```
 
-The flows use only visible app text from `apps/mobile/src/strings.ts` and the synthetic demo strings. They contain no
-broker address, keys or secrets.
+The flows use only visible app text from `apps/mobile/src/strings.ts` and `apps/mobile/app/*.tsx`, plus the synthetic
+demo strings in `apps/mobile/src/demo/demo-strings.ts`. They contain no broker address, keys or secrets.
 
 ## Required environment
 

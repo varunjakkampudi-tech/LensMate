@@ -2,12 +2,12 @@
 
 Date: 2026-10-25
 
-## Conclusion
+## Inference
 
-`C:\Users\Admin\AppData\Local\agy\bin\agy.exe` is the **Antigravity CLI**, not an unrelated product. It is the command-line companion to the Antigravity desktop application. The CLI and desktop application have separate executable/version identities:
+The available evidence supports the inference that `agy.exe` is the **Antigravity CLI**, not an unrelated product, and is the command-line companion to the Antigravity desktop application. The CLI and desktop application have separate executable/version identities:
 
-- CLI: `agy.exe`, changelog release `1.4.7`.
-- Desktop: `Antigravity.exe`, ProductName `Antigravity`, CompanyName `Google`, ProductVersion `2.26.0.0`, FileVersion `2.26.0`.
+- CLI: `%LOCALAPPDATA%\agy\bin\agy.exe`, changelog release `1.4.7`.
+- Desktop: `%LOCALAPPDATA%\Programs\antigravity\Antigravity.exe`, ProductName `Antigravity`, CompanyName `Google`, ProductVersion `2.26.0.0`, FileVersion `2.26.0`.
 
 ## Read-only evidence
 
@@ -19,7 +19,7 @@ Date: 2026-10-25
    - `1.0.5` says CLI permissions merge settings shared with Antigravity.
    - `1.4.7` is the current changelog heading and includes normal CLI agent, MCP, plugin, hook, and model behavior.
 3. `ao agent ls --json` lists an installed, authorized harness with `"id": "agy"` and `"label": "Agy"`.
-4. The desktop installation at `C:\Users\Admin\AppData\Local\Programs\antigravity` contains `Antigravity.exe`; its file metadata reports ProductName `Antigravity`, CompanyName `Google`, and version `2.26.0`. The installation also contains `resources\app.asar`, `resources\app-update.yml`, and a `version` file (`44.4.3`).
+4. The desktop installation at `%LOCALAPPDATA%\Programs\antigravity` contains `Antigravity.exe`; its file metadata reports ProductName `Antigravity`, CompanyName `Google`, and version `2.26.0`. The installation also contains `resources\app.asar`, `resources\app-update.yml`, and a `version` file (`44.4.3`).
 
 ## Remaining uncertainty
 
