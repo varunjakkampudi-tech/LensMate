@@ -22,36 +22,36 @@ function findBash(): string {
 }
 
 function runBash(args: string[]) {
-  const probe = spawnSync(BASH, ["-c", "exit 0"], { encoding: "utf8" });
-  if (probe.error !== undefined || probe.status !== 0) {
-    const detail = probe.error?.message ?? probe.stderr;
-    throw new Error(`could not run bash executable ${BASH}: ${detail}`);
+  const result = spawnSync(BASH, args, { encoding: "utf8" });
+  if (result.error !== undefined) {
+    throw new Error(`could not run bash executable ${BASH}: ${result.error.message}`);
   }
-  return spawnSync(BASH, args, { encoding: "utf8" });
+  return result;
 }
 
-function refused(url: string): boolean {
+function refusedMany(urls: string[]): boolean[] {
   const result = runBash([
     "-c",
-    'source "$1"; refuse_password_in_url "$2" backup',
+    'source "$1" || exit $?; shift; for url in "$@"; do (refuse_password_in_url "$url" backup >/dev/null 2>&1); printf "%s\\n" "$?"; done',
     "guard",
     LIB,
-    url,
+    ...urls,
   ]);
-  if (result.status === 0) {
-    return false;
+  if (result.status !== 0) {
+    throw new Error(
+      `backup guard command failed with status ${String(result.status)}: ${result.stderr}`,
+    );
   }
-  if (result.status === 1) {
-    return true;
+  const statuses = result.stdout.trim().split(/\r?\n/).map(Number);
+  if (statuses.length !== urls.length || statuses.some((status) => status !== 0 && status !== 1)) {
+    throw new Error(`backup guard returned unexpected statuses: ${result.stdout}`);
   }
-  throw new Error(
-    `backup guard command failed with status ${String(result.status)}: ${result.stderr}`,
-  );
+  return statuses.map((status) => status === 1);
 }
 
 describe("backup connection guard (lib.sh)", () => {
   it("refuses every form that puts a password on the command line", () => {
-    for (const url of [
+    const urls = [
       "postgres://broker_backup:fixture-pass@db:5432/broker",
       "postgres://broker_backup:fixture/with-slash@db:5432/broker",
       "postgres://db/broker?password=fixture-pass",
@@ -59,21 +59,25 @@ describe("backup connection guard (lib.sh)", () => {
       "host=db dbname=broker password=fixture-pass",
       "dbname=broker password = fixture-pass",
       "mysql://broker_backup@db/broker",
-    ]) {
-      expect(refused(url)).toBe(true);
-    }
+    ];
+    expect(refusedMany(urls)).toEqual([true, true, true, true, true, true, true]);
   });
 
   it("accepts a password-free postgres URL", () => {
-    expect(refused("postgres://broker_backup@db:5432/broker")).toBe(false);
-    expect(refused("postgresql://db:5432/broker")).toBe(false);
+    expect(
+      refusedMany(["postgres://broker_backup@db:5432/broker", "postgresql://db:5432/broker"]),
+    ).toEqual([false, false]);
   });
 });
 
 describe("backup guard additions", () => {
   it("refuses libpq parameters whose names contain pass, such as sslpassword", () => {
-    expect(refused("postgres://db/broker?sslpassword=fixture-pass")).toBe(true);
-    expect(refused("postgres://db/broker?passfile=/tmp/x")).toBe(true);
+    expect(
+      refusedMany([
+        "postgres://db/broker?sslpassword=fixture-pass",
+        "postgres://db/broker?passfile=/tmp/x",
+      ]),
+    ).toEqual([true, true]);
   });
 
   it("refuses an encryption key and an integrity key that are the same file", () => {
@@ -139,8 +143,12 @@ describe("backup guard additions", () => {
 
 describe("backup guard, percent-encoded names and whitespace-only key differences", () => {
   it("refuses percent-encoded parameter names, which libpq decodes", () => {
-    expect(refused("postgres://db/broker?%70assword=fixture-pass")).toBe(true);
-    expect(refused("postgres://db/broker?p%61ssword=fixture-pass")).toBe(true);
+    expect(
+      refusedMany([
+        "postgres://db/broker?%70assword=fixture-pass",
+        "postgres://db/broker?p%61ssword=fixture-pass",
+      ]),
+    ).toEqual([true, true]);
   });
 
   it("treats two key files that differ only by a trailing newline as the same key", () => {
