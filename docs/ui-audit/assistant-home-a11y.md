@@ -1,0 +1,22 @@
+# Assistant and Home Accessibility Audit
+
+**Evidence level:** Static review only. No VoiceOver, TalkBack, emulator, or 200% text-scale run was performed.
+
+**Scope:** `apps/mobile/app/assistant.tsx`, `apps/mobile/app/index.tsx`, and the directly imported UI components used by these screens (`src/ui/kit.tsx`, `src/ui/lang-picker.tsx`, and `src/ui/icon.tsx`).
+
+Engineering Standards section 3 requires accessible labels and roles, touch targets of at least 48 dp, information not conveyed by colour alone, and usable text at 200% scaling.
+
+## Findings
+
+| # | Severity | File and lines | Requirement broken | Finding |
+|---|---|---|---|---|
+| 1 | High | `apps/mobile/app/assistant.tsx:331-343`, `350-358`, `367-375`, `584-596`, `605-612`, `621-631` | Touch targets must be at least 48 dp | The suggestion, Translate, See-a-photo, agent-confirm, retry, and replay controls all use `minHeight: 44`. Their hit areas therefore remain below the 48 dp minimum. |
+| 2 | High | `apps/mobile/src/ui/kit.tsx:137-159` (used by `apps/mobile/src/ui/lang-picker.tsx:17-25`) | Touch targets must be at least 48 dp | `Chip` language selectors have only `paddingVertical: 9` around a 13 px label and no minimum height. The resulting radio hit areas are below 48 dp. |
+| 3 | Medium | `apps/mobile/app/index.tsx:311-337` | Touch targets must be at least 48 dp | Each “More tools” row has `paddingVertical: 10` and no `minHeight`. With the 20 px icon and 15 px text, the row is approximately 40 dp high, below the required target size. |
+| 4 | Medium | `apps/mobile/app/assistant.tsx:554-564` | Meaningful state must not be conveyed by colour alone | Agent-step completion is represented by the icon colour (`c.accent` for `done`, `c.danger` otherwise), while the adjacent text exposes only the agent and summary. A user who cannot distinguish the colours is not given an explicit completion/error state. Add state text or an equivalent non-colour marker and include it in the accessible announcement. |
+
+## Review notes
+
+- The primary interactive controls in both routes have explicit roles and labels. The assistant status has polite live text, the provider badge has an accessibility label, and the home tiles expose link roles.
+- The home tiles, provider badge, and spend bar include text or numeric context in addition to colour; no separate colour-only defect was found there.
+- Text styles do not disable font scaling, which is appropriate, but this static review cannot establish usable layout at 200%. The fixed `maxHeight: 120` on the multiline question input (`apps/mobile/app/assistant.tsx:435-455`) and the compact header/provider row (`apps/mobile/app/assistant.tsx:214-268`) should be checked at 200% on both platforms for clipping, overlap, and reachable controls.
