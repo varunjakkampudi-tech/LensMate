@@ -5,7 +5,7 @@ import type { ReadinessEntry } from "./model";
 
 export const REGISTRY_VERSION = 1;
 export const MATRIX_DATE = "2026-10-24";
-export const MATRIX_COMMIT = "b717692";
+export const MATRIX_COMMIT = "31c886a";
 
 export const REGISTRY: readonly ReadinessEntry[] = [
   {
@@ -17,8 +17,10 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1 (simulated), P2",
     p1Scope: true,
     status: "Unverified",
-    evidence: "MOCK (broker vision route); no phone camera path",
-    remaining: "Phone image path, app screen, live calls, image-ceiling measurement",
+    evidence:
+      "MOCK (broker vision route; mock-mode Live Vision controller, unit tests); no phone camera path",
+    remaining:
+      "Phone camera frames (Live Vision is mock-mode only), live calls, image-ceiling measurement",
     blocker: "BLOCKER-006 (keys, hosting, live calls)",
   },
   {
@@ -43,8 +45,9 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1, P1",
     p1Scope: true,
     status: "Unverified",
-    evidence: "MOCK (text route only); no speech input or output, no streaming",
-    remaining: "Speech recognition, speech output, streamed answer",
+    evidence:
+      "MOCK (text route; a Stop cancels the in-flight request, unit tests). Owner-reported iPhone observation (Expo Go, commit not stated), not counted as real-phone evidence: TALK speech audible where supported; speech input unavailable in Expo Go",
+    remaining: "Speech recognition, streamed answer, speech output on the broker route",
     blocker: "BLOCKER-006 (speech provider choice)",
   },
   {
@@ -56,8 +59,9 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1 (simulated), P2",
     p1Scope: true,
     status: "Unverified",
-    evidence: "Simulator (capture effect and indicator cycle only; no image)",
-    remaining: "Frame data path, save to phone, retention on saved photo",
+    evidence:
+      "Simulator (capture effect and indicator cycle, no image). Owner-reported iPhone observation (Expo Go, commit not stated), not counted as real-phone evidence because no tested commit or record backs it: capture displays a real image; saving to phone not reported. Maestro flow virtual-glasses-capture-and-ask: NOT RUN",
+    remaining: "Save to phone, retention on saved photo, frame data path check on the phone",
     blocker: "None for software; P2 hardware for real frames",
   },
   {
@@ -526,8 +530,9 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1 (indicator logic), P2 (hardware)",
     p1Scope: true,
     status: "Implemented",
-    evidence: "Simulator",
-    remaining: "Hardware proof (checklist 39); on-phone indicator display",
+    evidence: "Simulator (58 simulator tests in the CI quality job)",
+    remaining:
+      "Hardware proof (checklist 39); on-phone indicator display; Maestro privacy-indicator flow: NOT RUN",
     blocker: "Owner hardware (P0 to P2) for electrical proof",
   },
   {
@@ -656,7 +661,7 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P2 (full); basics in P-1",
     p1Scope: true,
     status: "Unverified",
-    evidence: "Unit label tests only; no screen reader or emulator run",
+    evidence: "Unit label tests only; Maestro flows NOT RUN; no screen reader or emulator run",
     remaining:
       "Speech rate and volume settings, high-contrast controls, VoiceOver and TalkBack pass",
     blocker: "BLOCKER-009 (emulator CI capacity); owner VoiceOver run",
@@ -1241,10 +1246,10 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     tier: "High",
     phase: "P-1 (software)",
     p1Scope: true,
-    status: "Unverified",
-    evidence: "Simulator (static absence test; capture rules tested in simulator)",
-    remaining:
-      "Hidden-capture tests across the app and simulator; voice identification absence on any future audio path",
+    status: "Implemented",
+    evidence:
+      "Unit (static guard: camera and photo-library imports limited to the capture module, CI quality job). Simulator (capture and gesture tests)",
+    remaining: "Voice identification absence on any future audio path (no audio path exists yet)",
     blocker: "None (software)",
   },
   {
@@ -1256,7 +1261,7 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1 (software)",
     p1Scope: true,
     status: "Unverified",
-    evidence: "Unit (retention rule only)",
+    evidence: "Unit (retention rule fails closed; CI quality job)",
     remaining: "Stored data types, deletion UI, export (not built)",
     blocker: "BLOCKER-007 (G13 proposed)",
   },
@@ -1269,9 +1274,9 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1 (software)",
     p1Scope: true,
     status: "Implemented",
-    evidence: "MOCK (cap logic and gateway with mock providers; broker cap with mock tests)",
-    remaining:
-      "Gateway not wired to any app screen; speech calls not built; PostgreSQL ledger tests with real database",
+    evidence:
+      "MOCK (cap logic and gateway with mock providers). PostgreSQL ledger integration in CI: 48 tests passed (postgres-budget 18, security 30; run 40178590537); database tests, not device",
+    remaining: "Gateway not wired to any app screen; speech calls not built",
     blocker: "BLOCKER-006 (cap approval, live test budget)",
   },
   {
@@ -1452,7 +1457,8 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1 (states in P-1); emergency, walk and companion in later phases",
     p1Scope: true,
     status: "Implemented",
-    evidence: "Simulator",
+    evidence:
+      "Simulator (speech and cutoff precedence tests; 58 simulator tests in the CI quality job)",
     remaining:
       "Precedence items 0 (emergency), 4 (walk) and 6 (companion) are not built and are NOT_DUE",
     blocker: "None (software)",
@@ -1675,7 +1681,7 @@ export const REGISTRY: readonly ReadinessEntry[] = [
     phase: "P-1 (software)",
     p1Scope: true,
     status: "Unverified",
-    evidence: "Unit label tests only (no emulator or screen reader run)",
+    evidence: "Unit label tests only; Maestro flows NOT RUN; no emulator or screen reader run",
     remaining: "Full coverage, emulator flows, VoiceOver and TalkBack runs",
     blocker: "BLOCKER-009; owner VoiceOver run",
   },
