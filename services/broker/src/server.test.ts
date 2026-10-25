@@ -683,12 +683,19 @@ describe("enrolment rate limit (per client, with a global ceiling)", () => {
   it("caps total guessing across many clients with the global ceiling", async () => {
     const devices = new InMemoryDeviceStore();
     const { app } = await harnessWithDevices(devices);
-    // 12 clients x 5 requests uses the 60-request ceiling exactly.
-    for (let client = 0; client < 12; client += 1) {
-      for (let index = 0; index < 5; index += 1) {
-        await enrol(app, `spread-${String(client)}`, "AAAA-AAAA-AAAA-AAAA");
-      }
-    }
+    // 12 clients x 5 concurrent requests uses each per-client burst and the 60-request global ceiling exactly.
+    const batches = await Promise.all(
+      Array.from({ length: 12 }, (_, client) =>
+        Promise.all(
+          Array.from({ length: 5 }, () =>
+            enrol(app, `spread-${String(client)}`, "AAAA-AAAA-AAAA-AAAA"),
+          ),
+        ),
+      ),
+    );
+    const statuses = batches.flat().map((response) => response.statusCode);
+    expect(statuses.filter((status) => status === 403)).toHaveLength(60);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(0);
     expect((await enrol(app, "spread-new", "AAAA-AAAA-AAAA-AAAA")).statusCode).toBe(429);
   });
 
