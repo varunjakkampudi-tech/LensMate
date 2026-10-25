@@ -93,6 +93,48 @@ describe("backup guard additions", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("accepts distinct encryption and integrity key files", () => {
+    const dir = mkdtempSync(join(tmpdir(), "guard-distinct-keys-"));
+    try {
+      const encryptionKey = join(dir, "encryption.key");
+      const integrityKey = join(dir, "integrity.key");
+      writeFileSync(encryptionKey, "k".repeat(40));
+      writeFileSync(integrityKey, "m".repeat(40));
+      const result = runBash([
+        "-c",
+        'source "$1"; require_distinct_keys "$2" "$3" backup',
+        "guard",
+        LIB,
+        encryptionKey,
+        integrityKey,
+      ]);
+      expect(result.status).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses keys that match after trimming a leading newline", () => {
+    const dir = mkdtempSync(join(tmpdir(), "guard-leading-newline-"));
+    try {
+      const encryptionKey = join(dir, "encryption.key");
+      const integrityKey = join(dir, "integrity.key");
+      writeFileSync(encryptionKey, `\n${"k".repeat(40)}`);
+      writeFileSync(integrityKey, "k".repeat(40));
+      const result = runBash([
+        "-c",
+        'source "$1"; require_distinct_keys "$2" "$3" backup',
+        "guard",
+        LIB,
+        encryptionKey,
+        integrityKey,
+      ]);
+      expect(result.status).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("backup guard, percent-encoded names and whitespace-only key differences", () => {
