@@ -426,3 +426,15 @@ Not in the owner's report, so still unverified on the phone:
 - OCR and object tests (owner decision 3): synthetic fixtures and accuracy tests are authorized and not yet built.
   Real iPhone photographs are the owner's test.
 - Done this round: simulator redesign, Profile reorganisation and the mock-mode live-vision controller (3a17c6a).
+
+## ROUND 2026-10-25 (integration cycle on dev): evidence and open blockers
+
+- Status of this entry: evidence record only. It waives nothing and changes no owner decision.
+- BLOCKER-010 (node-forge, high): still OPEN and not waived. The current `pnpm audit --audit-level=high` reports one high finding, node-forge, reached through the Expo CLI in apps/mobile. The agent cannot waive it. Owner decision required: options (a), (b) or (c) in the BLOCKER-010 section above.
+- BLOCKER-009 (emulator and simulator job capacity): still open. The Maestro flows in e2e/maestro (five flow files in total) are NOT RUN, because emulator and simulator jobs are blocked. Owner check required before they can run.
+- Agy audit: not delivered. The agy identity investigation exists as an investigation record only.
+- CI on dev: run 40178590537 on the dev head completed with success (secret-scan, quality, broker-integration).
+- Full apps/mobile suite: 50 of 50 suites and 470 of 470 tests in three full runs on a tree identical to the dev head.
+- Broker PostgreSQL (CI broker-integration on the dev head): 48 of 48 tests in 2 suites (postgres-budget 18, security 30).
+- Simulator (tools/simulator): 3 of 3 suites and 58 of 58 tests.
+- Not verified in this cycle: any real phone, emulator, bench, device, provider or live AI behaviour.

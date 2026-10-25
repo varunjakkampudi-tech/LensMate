@@ -528,3 +528,37 @@ Expo Go compatibility, as built. "Bundle" means the iOS bundle compiles. "Device
 
 - Capture screen runs on the SEE session module; diagnostics screen added; Expo Go bundle compiles.
 - Not verified here: the wired screen on an iPhone. Owner run pending.
+
+## Integration cycle on dev (dev head, 2026-10-25)
+
+Evidence level for everything in this section: simulator, MOCK, or hosted CI on Linux runners. No real-phone, emulator, bench or device result exists in this cycle. The matrices (FEATURE_MATRIX, GAP_MATRIX, TEST_MATRIX) are unchanged: no row has direct evidence beyond simulator or MOCK.
+
+### Integrated worker work, by requirement ID
+
+The commit messages carry no requirement IDs. The mapping below is read from the matrix text. Partial means the work touches the row but does not complete it.
+
+- F1 (vision help): Live Vision wired into the camera screen, with a mock-mode controller that sends bounded periodic frames. Partial. The matrix has no Live Vision row of its own.
+- F3 (spoken answers): assistant requests cancel on Stop, and stale results are dropped. Decision 0004 records what cannot be refunded. Partial.
+- F26 (barge-in) and session and gesture rules: simulator tests for speech precedence (press to stop speech) and for cutoff precedence. Tests only.
+- F40 (indicator): simulator gesture tests confirm the indicator state through cutoff. Tests only.
+- CL17 (no hidden capture): camera and photo-library import guard, covering dynamic import, require and picker calls, limited to the capture module. Partial.
+- CL18 (auto-delete and export): temporary retention now fails closed, and log redaction covers whole secret values. Partial.
+- CL19 (spend cap): cumulative development-test cap; paid calls are off by default; every paid call is charged to both the monthly and the development-test caps. Mock provider behaviour is tested. MOCK level.
+- Maestro journeys (P-1): three flow files were added this cycle (flows C to E); e2e/maestro holds five in total. The flows are NOT RUN (see below). They map to F40 (privacy indicator session), F1 and F4 (virtual glasses capture and ask), and no matrix row (onboarding to assistant).
+- No matrix row: assistant and profile UI redesign, the readiness tracker, simulator labels, broker backup-guard and rate-limit test changes, and the mobile test-stability fix (the first render of two screen test files now loads its React Native components before the first timed test).
+
+### Test, CI and audit evidence
+
+- CI run 40178590537 on the dev head: completed, success. Jobs: secret-scan success, quality success, broker-integration success.
+- Full apps/mobile suite: 50 of 50 suites and 470 of 470 tests, in three full runs on a tree identical to the dev head. That tree was checked before integration, with the screen-load fix applied.
+- Broker PostgreSQL integration, from the CI broker-integration job on the dev head: 2 of 2 suites, 48 of 48 tests. postgres-budget 18 and security 30. The broker tree is the same as the earlier PostgreSQL run's tree, because the change since that run touches only two mobile test files. The authentication 3 and enrolment 10 split is the orchestrator's grouping. It was not reproduced from the test names, because the security suite has no describe blocks.
+- Simulator (tools/simulator), run on the dev-head tree: 3 of 3 suites and 58 of 58 tests.
+- `pnpm audit --audit-level=high`: one high finding, node-forge, reached through the Expo CLI in apps/mobile. Owner decision BLOCKER-010 is open and not waived. The agent has not waived it.
+- Maestro flows (e2e/maestro): NOT RUN. Emulator and simulator jobs are blocked on BLOCKER-009.
+- Agy audit: not delivered. The agy identity investigation is recorded as an investigation only, not as an audit.
+
+### Still open
+
+- BLOCKER-010 (node-forge, high): owner decision required.
+- BLOCKER-009 (emulator and simulator job capacity): owner check required before the Maestro flows can run.
+- All real-phone, device, provider and live-AI behaviour: not verified in this cycle.
