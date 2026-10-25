@@ -83,6 +83,13 @@ describe("redactText", () => {
     expect(redactText(SYNTHETIC.phone)).toBe(REDACTED);
   });
 
+  it("redacts basic-auth credentials, key=value secrets and inline base64 images", () => {
+    expect(redactText("Basic SYNTHETICBASICCRED0001==")).toBe(REDACTED);
+    expect(redactText("api_key=SYNTHETIC-KEY-0001 failed")).toBe(`${REDACTED} failed`);
+    expect(redactText("password: SYNTHETIC-PASSWORD-0001")).toBe(REDACTED);
+    expect(redactText(`image ${SYNTHETIC.imageBase64} sent`)).toBe(`image ${REDACTED} sent`);
+  });
+
   it("leaves ordinary text untouched", () => {
     expect(redactText("provider timed out after 800 ms")).toBe("provider timed out after 800 ms");
   });

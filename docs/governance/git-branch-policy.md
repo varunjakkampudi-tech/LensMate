@@ -71,3 +71,18 @@ Before adding any collaborator: confirm the ruleset still restricts updates, and
 ## Security, testing and review
 
 The branch policy does not relax any requirement. Secret scanning, tests, coverage thresholds, schema drift checks, the independent review for sensitive code (BLOCKER-008) and the release gates all still apply on `dev` and before any promotion.
+
+## Exception: temporary AO worker branches (dated 2026-10-25)
+
+- Date: 2026-10-25
+- Approved by: owner (Varun, Viswatra)
+- Scope: narrow. It applies only to LensMate and only to AO orchestrator worker sessions.
+- This exception is an addition to the policy above. Rules 1 and 2 and the "No other permanent or temporary branches" rule still apply to all other work.
+
+Rules for the exception:
+
+1. An AO orchestrator worker may create a temporary `ao/*` branch, and only inside its own git worktree.
+2. `dev` remains the sole integration branch. Worker branches are integrated into `dev` and are never a permanent branch.
+3. Workers never push to `dev`, never force-push, and never merge into `main`.
+4. A temporary `ao/*` branch is deleted after its work is verified and integrated into `dev`.
+5. The `main` ruleset, its bypass actor, its required status checks and its restrictions are unchanged by this exception.

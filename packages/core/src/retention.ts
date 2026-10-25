@@ -12,7 +12,11 @@ export interface TemporaryItem {
   readonly sessionEnded: boolean;
 }
 
+/** An item with an unreadable creation time is treated as expired, so it cannot be kept forever. */
 export function isTemporaryItemExpired(item: TemporaryItem, nowMs: number): boolean {
+  if (!Number.isFinite(item.createdAtMs)) {
+    return true;
+  }
   return item.sessionEnded || nowMs - item.createdAtMs >= TEMPORARY_RETENTION_MS;
 }
 
