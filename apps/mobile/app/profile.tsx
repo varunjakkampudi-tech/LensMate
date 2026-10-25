@@ -7,7 +7,6 @@ import { AiConnectionCard } from "../src/ai/connection-card";
 import { canListen, canSpeak, hasVoiceFor } from "../src/ai/speech";
 import { rupees, useAiSetup } from "../src/ai/use-ai-setup";
 import { readBrokerConfig } from "../src/broker-config";
-import { NotificationTestCard } from "../src/notify/test-card";
 import { Disclosure } from "../src/profile/disclosure";
 import { DEFAULT_OPEN, PROFILE_SECTIONS, sectionTitle } from "../src/profile/sections";
 import { STRINGS } from "../src/strings";
@@ -214,7 +213,20 @@ export default function MoreScreen() {
         />
       </>
     ),
-    notifications: <NotificationTestCard />,
+    notifications: (
+      <>
+        <Body muted size={14}>
+          Reminders and alerts use phone notifications. Permission is asked for and checked in
+          Diagnostics.
+        </Body>
+        <Btn
+          label="Check notification permission"
+          tone="ghost"
+          icon="gear"
+          onPress={() => router.push("/diagnostics" as "/")}
+        />
+      </>
+    ),
     accessibility: (
       <>
         <Row>

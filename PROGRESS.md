@@ -555,7 +555,7 @@ The commit messages carry no requirement IDs. The mapping below is read from the
 - Simulator (tools/simulator), run on the dev-head tree: 3 of 3 suites and 58 of 58 tests.
 - `pnpm audit --audit-level=high`: one high finding, node-forge, reached through the Expo CLI in apps/mobile. Owner decision BLOCKER-010 is open and not waived. The agent has not waived it.
 - Maestro flows (e2e/maestro): NOT RUN. Emulator and simulator jobs are blocked on BLOCKER-009.
-- Agy audit: not delivered. The agy identity investigation is recorded as an investigation only, not as an audit.
+- Agy audit: not delivered. The agy investigation note was removed in the cleanup round because it recorded owner-machine details; it was never an audit.
 
 ### Still open
 

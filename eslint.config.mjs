@@ -9,6 +9,7 @@ export default tseslint.config(
       "apps/mobile/**",
       "firmware/**",
       "**/coverage/**",
+      ".claude/**",
     ],
   },
   js.configs.recommended,
