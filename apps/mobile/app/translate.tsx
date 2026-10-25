@@ -154,13 +154,13 @@ export default function TranslateScreen() {
       accessibilityLabel={label}
       testID={testID}
       onPress={onPress}
-      style={{ alignItems: "center", gap: 6, width: 80 }}
+      style={{ alignItems: "center", justifyContent: "center", gap: 6, width: 80, minHeight: 64 }}
     >
       <View
         style={{
-          width: 46,
-          height: 46,
-          borderRadius: 23,
+          width: 48,
+          height: 48,
+          borderRadius: 24,
           backgroundColor: c.surface,
           alignItems: "center",
           justifyContent: "center",
@@ -194,6 +194,7 @@ export default function TranslateScreen() {
             setResult(null);
             setOriginal(null);
           }}
+          style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}
         >
           <Icon name="swap" color={c.accent} size={24} />
         </Pressable>

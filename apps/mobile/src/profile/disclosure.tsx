@@ -27,7 +27,7 @@ export function Disclosure({
         accessibilityLabel={title}
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen(!open)}
-        style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 }}
+        style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
       >
         <View style={{ flex: 1, gap: 2 }}>
           <Text

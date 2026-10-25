@@ -22,8 +22,91 @@ import { Icon } from "../src/ui/icon";
 import { usePrefs } from "../src/ui/prefs";
 import { FONTS } from "../src/ui/theme";
 
-const SAMPLE_SCENE =
-  "https://images.pexels.com/photos/16813081/pexels-photo-16813081.jpeg?auto=compress&cs=tinysrgb&w=900";
+function SampleSceneFallback() {
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="Illustrated sample street sign. This is not a live camera view."
+      testID="simulator-sample-fallback"
+      style={{ flex: 1, backgroundColor: "#BFD8EB", overflow: "hidden" }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          top: "13%",
+          right: "12%",
+          width: 54,
+          height: 54,
+          borderRadius: 27,
+          backgroundColor: "#F7D47A",
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          left: "-12%",
+          right: "-12%",
+          bottom: "-14%",
+          height: "48%",
+          borderRadius: 240,
+          backgroundColor: "#718A78",
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          left: "48%",
+          top: "34%",
+          bottom: "15%",
+          width: 12,
+          borderRadius: 6,
+          backgroundColor: "#66717C",
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          left: "20%",
+          top: "27%",
+          width: "60%",
+          minHeight: 90,
+          borderRadius: 14,
+          backgroundColor: "#1E6BFF",
+          alignItems: "center",
+          justifyContent: "center",
+          borderWidth: 4,
+          borderColor: "#FFFFFF",
+        }}
+      >
+        <Text style={{ color: "#FFFFFF", fontFamily: FONTS.body, fontWeight: "800", fontSize: 22 }}>
+          ONE WAY
+        </Text>
+        <Text style={{ color: "#FFFFFF", fontFamily: FONTS.body, fontSize: 12, marginTop: 3 }}>
+          Synthetic preview
+        </Text>
+      </View>
+      <View
+        style={{
+          position: "absolute",
+          left: 16,
+          right: 16,
+          bottom: 18,
+          borderRadius: 14,
+          backgroundColor: "rgba(5,7,11,0.78)",
+          padding: 12,
+        }}
+      >
+        <Text style={{ color: "#FFFFFF", fontFamily: FONTS.body, fontSize: 14, fontWeight: "700" }}>
+          Sample view
+        </Text>
+        <Text style={{ color: "#E4EAF3", fontFamily: FONTS.body, fontSize: 12, marginTop: 4 }}>
+          Choose a photo or open the camera to try visual questions.
+        </Text>
+      </View>
+    </View>
+  );
+}
 
 /** Virtual glasses view: what the glasses camera would see, with the glasses' capture modes. */
 export default function SimulatorScreen() {
@@ -153,12 +236,14 @@ export default function SimulatorScreen() {
       <View style={{ flex: 1 }}>
         {live ? (
           <CameraPreview ref={camera} onError={onError} />
+        ) : photo === null ? (
+          <SampleSceneFallback />
         ) : (
           <Image
-            source={{ uri: photo ?? SAMPLE_SCENE }}
+            source={{ uri: photo }}
             style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
             resizeMode="cover"
-            accessibilityLabel={photo === null ? "Sample glasses view" : "Captured glasses view"}
+            accessibilityLabel="Captured glasses view"
           />
         )}
 
@@ -179,8 +264,8 @@ export default function SimulatorScreen() {
             testID="simulator-close"
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             style={{
-              minWidth: 44,
-              minHeight: 44,
+              minWidth: 48,
+              minHeight: 48,
               borderRadius: 22,
               backgroundColor: "rgba(0,0,0,0.5)",
               alignItems: "center",
@@ -287,7 +372,7 @@ export default function SimulatorScreen() {
               testID={`sim-mode-${m.toLowerCase()}`}
               onPress={() => setMode(m)}
               style={{
-                minHeight: 40,
+                minHeight: 48,
                 minWidth: 64,
                 paddingHorizontal: 12,
                 alignItems: "center",
@@ -362,23 +447,10 @@ export default function SimulatorScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Analyse sample scene"
+            accessibilityLabel="Open guided demo"
             testID="sim-sample"
             disabled={busy}
-            onPress={() =>
-              void fetch(SAMPLE_SCENE)
-                .then((r) => r.blob())
-                .then(
-                  (b) =>
-                    new Promise<string>((res) => {
-                      const fr = new FileReader();
-                      fr.onload = () => res(String(fr.result));
-                      fr.readAsDataURL(b);
-                    }),
-                )
-                .then((d) => analyse(d, "sample"))
-                .catch(() => setResult("Sample scene unavailable."))
-            }
+            onPress={() => router.push("/demo")}
             style={{
               width: 48,
               height: 48,
@@ -404,7 +476,7 @@ export default function SimulatorScreen() {
               testID="sim-retake"
               onPress={retake}
               style={{
-                minHeight: 44,
+                minHeight: 48,
                 paddingHorizontal: 18,
                 flexDirection: "row",
                 alignItems: "center",
@@ -429,7 +501,7 @@ export default function SimulatorScreen() {
               testID="sim-stop"
               onPress={stopAll}
               style={{
-                minHeight: 44,
+                minHeight: 48,
                 paddingHorizontal: 18,
                 flexDirection: "row",
                 alignItems: "center",

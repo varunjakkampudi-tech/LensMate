@@ -247,7 +247,7 @@ export function ReadinessSection() {
                   borderTopColor: c.border,
                   paddingTop: 10,
                   gap: 6,
-                  minHeight: 44,
+                  minHeight: 48,
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>

@@ -328,7 +328,7 @@ export default function AssistantScreen() {
                   disabled={!voiceOn || busy}
                   onPress={() => void run(s)}
                   style={{
-                    minHeight: 44,
+                    minHeight: 48,
                     paddingHorizontal: 14,
                     justifyContent: "center",
                     borderRadius: 999,
@@ -347,7 +347,7 @@ export default function AssistantScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Open translate"
                 onPress={() => router.push("/translate")}
-                style={{ minHeight: 44, paddingHorizontal: 14, justifyContent: "center" }}
+                style={{ minHeight: 48, paddingHorizontal: 14, justifyContent: "center" }}
               >
                 <Text
                   style={{
@@ -364,7 +364,7 @@ export default function AssistantScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Open See to take a photo"
                 onPress={() => router.push("/capture")}
-                style={{ minHeight: 44, paddingHorizontal: 14, justifyContent: "center" }}
+                style={{ minHeight: 48, paddingHorizontal: 14, justifyContent: "center" }}
               >
                 <Text
                   style={{
@@ -581,7 +581,7 @@ function Bubble({
             testID="agent-action"
             onPress={() => onConfirm(a)}
             style={{
-              minHeight: 44,
+              minHeight: 48,
               paddingHorizontal: 14,
               justifyContent: "center",
               borderRadius: 14,
@@ -602,7 +602,7 @@ function Bubble({
           accessibilityLabel="Try again"
           testID="talk-retry-button"
           onPress={onRetry}
-          style={{ minHeight: 44, justifyContent: "center", paddingLeft: 4 }}
+          style={{ minHeight: 48, justifyContent: "center", paddingLeft: 4 }}
         >
           <Text
             style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}
@@ -618,7 +618,7 @@ function Bubble({
           testID="talk-replay-button"
           onPress={onReplay}
           style={{
-            minHeight: 44,
+            minHeight: 48,
             flexDirection: "row",
             alignItems: "center",
             gap: 6,

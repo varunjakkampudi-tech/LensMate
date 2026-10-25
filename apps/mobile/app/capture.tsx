@@ -170,6 +170,7 @@ export default function CaptureScreen() {
       testID={testID}
       onPress={onPress}
       style={{
+        minHeight: 48,
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
@@ -300,6 +301,7 @@ export default function CaptureScreen() {
                 disabled={vision.phase === "running"}
                 onPress={() => setVisionEvery(ms)}
                 style={{
+                  minHeight: 48,
                   paddingHorizontal: 12,
                   paddingVertical: 8,
                   borderRadius: 12,
@@ -387,8 +389,8 @@ export default function CaptureScreen() {
           disabled={busy || photo === null || question.trim() === ""}
           onPress={() => ask(question)}
           style={{
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             borderRadius: 12,
             backgroundColor: c.accent,
             opacity: busy || photo === null || question.trim() === "" ? 0.45 : 1,
@@ -408,6 +410,7 @@ export default function CaptureScreen() {
             disabled={photo === null || busy}
             onPress={() => ask(q)}
             style={{
+              minHeight: 48,
               paddingHorizontal: 12,
               paddingVertical: 8,
               borderRadius: 12,
@@ -493,6 +496,7 @@ export default function CaptureScreen() {
                 disabled={busy}
                 onPress={() => ask(f)}
                 style={{
+                  minHeight: 48,
                   paddingHorizontal: 12,
                   paddingVertical: 9,
                   borderRadius: 12,

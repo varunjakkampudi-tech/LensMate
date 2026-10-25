@@ -49,8 +49,8 @@ type Palette = typeof light;
 
 export const FONTS = {
   display:
-    Platform.OS === "web" ? "'Bricolage Grotesque', 'Noto Sans Telugu', sans-serif" : undefined,
-  body: Platform.OS === "web" ? "'Figtree', 'Noto Sans Telugu', sans-serif" : undefined,
+    Platform.OS === "web" ? "'Plus Jakarta Sans', 'Noto Sans Telugu', sans-serif" : undefined,
+  body: Platform.OS === "web" ? "'Plus Jakarta Sans', 'Noto Sans Telugu', sans-serif" : undefined,
   mono: Platform.OS === "web" ? "'JetBrains Mono', monospace" : undefined,
 };
 
@@ -71,7 +71,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     link.href = FONT_HREF;
     document.head.appendChild(link);
     const style = document.createElement("style");
-    // Legacy screens set no font family; give them the app font.
+    // All web screens use the same bundled design font; Telugu falls back to Noto Sans Telugu.
     style.textContent =
       "[data-lm-legacy] * { font-family: 'Plus Jakarta Sans', 'Noto Sans Telugu', sans-serif; }";
     document.head.appendChild(style);

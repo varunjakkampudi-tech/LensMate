@@ -186,8 +186,10 @@ export function Chip({
       testID={testID}
       onPress={onPress}
       style={{
+        minHeight: 48,
+        justifyContent: "center",
         paddingHorizontal: 14,
-        paddingVertical: 9,
+        paddingVertical: 10,
         borderRadius: 999,
         borderWidth: 1,
         borderColor: active ? c.accent : c.border,

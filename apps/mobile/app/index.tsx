@@ -317,8 +317,9 @@ export default function HomeScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
+              minHeight: 48,
               gap: 12,
-              paddingVertical: 10,
+              paddingVertical: 12,
               borderTopWidth: 1,
               borderTopColor: c.border,
             }}

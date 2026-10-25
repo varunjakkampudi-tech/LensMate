@@ -109,7 +109,7 @@ function Header() {
         accessibilityLabel="Settings"
         testID="header-settings"
         onPress={() => router.navigate("/profile")}
-        style={{ padding: 6 }}
+        style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}
       >
         <Icon name="gear" color={c.text} size={22} />
       </Pressable>
@@ -146,6 +146,7 @@ function IndicatorBar() {
         testID="capture-stop-button"
         onPress={stopAll}
         style={{
+          minHeight: 48,
           flexDirection: "row",
           gap: 6,
           alignItems: "center",
@@ -228,6 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <View
           testID="bottom-nav"
           style={{
+            minHeight: 48,
             flexDirection: "row",
             borderTopWidth: 1,
             borderTopColor: c.border,
@@ -245,7 +247,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 accessibilityLabel={tab.label}
                 testID={`nav-${tab.label.toLowerCase()}`}
                 onPress={() => router.navigate(tab.href)}
-                style={{ flex: 1, alignItems: "center", gap: 3 }}
+                style={{
+                  flex: 1,
+                  minHeight: 48,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 3,
+                }}
               >
                 <Icon name={tab.icon} color={on ? c.accent : c.muted} size={22} />
                 <Text

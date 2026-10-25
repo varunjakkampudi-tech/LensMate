@@ -455,3 +455,11 @@ Not in the owner's report, so still unverified on the phone:
 - OPEN (unchanged): BLOCKER-010 node-forge high advisory, no patched release. The agent does not waive it.
 - Push: the cleaned dev commit is pushed to origin/dev (fast-forward on top of the existing origin/dev head). No other branch exists locally or on origin besides main and dev. main was not touched.
 - Not verified in this round: real iPhone, Android emulator, iOS Simulator, provider calls (none made), native modules, firmware. Simulator and emulator results are not hardware evidence (Standards 7.3).
+
+## BLOCKER-011 — UI accessibility pass independent review (2026-10-26)
+- Priority: medium. Requirements: Goal sections 10A.2, 13 and 16; Engineering Standards sections 3 and 7.
+- Scope: shared selection chips and navigation, Home, Assistant, Capture, Simulator, Profile, translation actions, readiness disclosure, and web font tokens.
+- Status: independent review pending. The current execution environment does not permit a separate review agent session. No self-review is counted as independent review.
+- Local evidence: the local Expo web app was started and Home, Capture, Assistant, and Virtual Glasses were inspected in the browser. This is browser-only visual evidence. Device, 200% text-scale, VoiceOver, TalkBack, and switch-access validation remain outstanding.
+- Follow-up: obtain a fresh-context review of the diff and test evidence before treating the change as independently reviewed. No sensitive code was changed.
+- Validation result (2026-10-26): monorepo `pnpm typecheck` (including workspace builds) passed; `pnpm lint` passed; `pnpm format:check` passed; mobile Jest passed (50 suites, 470 tests). Jest emitted existing `findBy*` timeout-option deprecation warnings. No device or assistive-technology checks were run.

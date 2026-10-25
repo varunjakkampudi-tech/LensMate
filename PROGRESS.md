@@ -1,5 +1,11 @@
 # PROGRESS
 
+## UI accessibility pass (2026-10-26)
+
+- On `dev`, raised previously undersized shared and screen controls to the 48 dp target across Home, Assistant, Capture, Simulator, Profile, translation controls, the global shell, and readiness disclosures. The web font token now uses the loaded Plus Jakarta Sans family with the Telugu fallback.
+- Reviewed Home, Capture, Assistant, and Virtual Glasses in the local Expo web build. Browser rendering is the only visual evidence from this pass; no device or assistive-technology run was made.
+- Validation and independent review status for this change are recorded in `blocker.txt` under BLOCKER-011.
+
 ## Checkpoint 3 (after the Stage B and C slice)
 
 Added: gesture precedence (Stage B), Locked-feature absence test (Stage B), log redaction allowlist and temporary retention (Stage B, partial), provider gateway with mocks and disclosure gate (Stage C, partial), and a scheduled dependency audit that is blocked on the owner waiver decision (BLOCKER-010). Local gates pass: typecheck, lint, format, knip, 102 root tests, 4 mobile tests.
@@ -562,3 +568,5 @@ The commit messages carry no requirement IDs. The mapping below is read from the
 - BLOCKER-010 (node-forge, high): owner decision required.
 - BLOCKER-009 (emulator and simulator job capacity): owner check required before the Maestro flows can run.
 - All real-phone, device, provider and live-AI behaviour: not verified in this cycle.
+
+Validation for the UI pass: monorepo typecheck/build, repository lint, and Prettier check passed. Mobile Jest: 50 suites and 470 tests passed. Jest printed existing `findBy*` timeout-option deprecation warnings. Independent review remains pending (BLOCKER-011); device and assistive-technology checks were not run.
