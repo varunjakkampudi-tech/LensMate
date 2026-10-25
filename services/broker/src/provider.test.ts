@@ -1,4 +1,5 @@
 import {
+  MockProvider,
   OpenRouterProvider,
   ProviderFailure,
   ProviderTimeoutError,
@@ -27,6 +28,50 @@ const OK_BODY = {
   choices: [{ message: { content: "hi there" } }],
   usage: { prompt_tokens: 12, completion_tokens: 3 },
 };
+
+describe("MockProvider", () => {
+  it("returns a deterministic mock reply with usage bounded by the request", async () => {
+    const provider = new MockProvider();
+    const input = request();
+
+    await expect(provider.complete(input)).resolves.toEqual({
+      text: "mock reply: the broker is running without provider calls",
+      promptTokens: Math.ceil(JSON.stringify(input.messages).length / 8),
+      completionTokens: 16,
+      source: "mock",
+    });
+    expect(provider.attemptCount).toBe(1);
+
+    await expect(provider.complete({ ...input, maxOutputTokens: 3 })).resolves.toMatchObject({
+      completionTokens: 3,
+      source: "mock",
+    });
+    expect(provider.attemptCount).toBe(2);
+  });
+
+  it("scripts an unavailable attempt and then succeeds without a provider call", async () => {
+    const provider = new MockProvider(["unavailable", "ok"]);
+
+    await expect(provider.complete(request())).rejects.toMatchObject({
+      reason: "UNAVAILABLE",
+      retryable: true,
+      status: 503,
+    });
+    await expect(provider.complete(request())).resolves.toMatchObject({ source: "mock" });
+    expect(provider.attemptCount).toBe(2);
+  });
+
+  it("rejects a hanging mock attempt when its signal is aborted", async () => {
+    const controller = new AbortController();
+    const provider = new MockProvider(["hang"]);
+    const attempt = provider.complete(request(controller.signal));
+
+    controller.abort();
+
+    await expect(attempt).rejects.toBeInstanceOf(ProviderTimeoutError);
+    expect(provider.attemptCount).toBe(1);
+  });
+});
 
 describe("OpenRouterProvider request shape", () => {
   it("sends the key only in the Authorization header and routes to zero-retention providers", async () => {
