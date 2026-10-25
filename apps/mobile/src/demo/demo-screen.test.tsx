@@ -12,7 +12,17 @@ jest.mock("expo-router", () => ({
   router: { push: (...args: unknown[]) => mockPush(...args), navigate: jest.fn() },
 }));
 
-/** Waits longer than the demo's simulated pace, without making the suite slow. */
+// The demo paces streaming, photo capture and playback with real timers. Fake timers make that pace virtual, so each
+// wait below depends on the simulated pace and not on how loaded the machine is.
+beforeEach(() => {
+  jest.useFakeTimers();
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+/** A wait budget in virtual time, longer than the demo's simulated pace. */
 const WAIT = { timeout: 4000 };
 
 async function press(name: string): Promise<void> {
