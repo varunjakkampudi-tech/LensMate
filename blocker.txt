@@ -463,3 +463,4 @@ Not in the owner's report, so still unverified on the phone:
 - Local evidence: the local Expo web app was started and Home, Capture, Assistant, and Virtual Glasses were inspected in the browser. This is browser-only visual evidence. Device, 200% text-scale, VoiceOver, TalkBack, and switch-access validation remain outstanding.
 - Follow-up: obtain a fresh-context review of the diff and test evidence before treating the change as independently reviewed. No sensitive code was changed.
 - Validation result (2026-10-26): monorepo `pnpm typecheck` (including workspace builds) passed; `pnpm lint` passed; `pnpm format:check` passed; mobile Jest passed (50 suites, 470 tests). Jest emitted existing `findBy*` timeout-option deprecation warnings. No device or assistive-technology checks were run.
+- CI evidence: GitHub Actions push run 40232952151 passed `quality`, `secret-scan`, and `broker-integration`.
