@@ -21,7 +21,7 @@ export const REDACTED = "[REDACTED]";
 const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
   /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
   /\bBasic\s+[A-Za-z0-9+/]{8,}=*/gi,
-  /\b(?:api[_-]?key|access[_-]?token|token|secret|password|passwd|otp|authorization)\s*[=:]\s*[^\s,;"'&]+/gi,
+  /\b(?:api[_-]?key|access[_-]?token|token|secret|password|passwd|otp|authorization)\s*[=:]\s*[^\r\n]+/gi,
   /data:[\w.+-]+\/[\w.+-]+;base64,[A-Za-z0-9+/=]+/gi,
   /\bsk-[A-Za-z0-9_-]{8,}/g,
   /[\w.+-]+@[\w-]+\.[\w.-]+/g,

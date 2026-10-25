@@ -85,9 +85,16 @@ describe("redactText", () => {
 
   it("redacts basic-auth credentials, key=value secrets and inline base64 images", () => {
     expect(redactText("Basic SYNTHETICBASICCRED0001==")).toBe(REDACTED);
-    expect(redactText("api_key=SYNTHETIC-KEY-0001 failed")).toBe(`${REDACTED} failed`);
+    expect(redactText("api_key=SYNTHETIC-KEY-0001")).toBe(REDACTED);
     expect(redactText("password: SYNTHETIC-PASSWORD-0001")).toBe(REDACTED);
     expect(redactText(`image ${SYNTHETIC.imageBase64} sent`)).toBe(`image ${REDACTED} sent`);
+  });
+
+  it("redacts a key=value secret whose value contains spaces, to the end of the line", () => {
+    const redacted = redactText("password=alpha beta gamma");
+    expect(redacted).toBe(REDACTED);
+    expect(redacted).not.toContain("beta");
+    expect(redacted).not.toContain("gamma");
   });
 
   it("leaves ordinary text untouched", () => {

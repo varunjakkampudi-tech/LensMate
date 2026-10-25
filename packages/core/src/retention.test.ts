@@ -42,6 +42,15 @@ describe("temporary item retention", () => {
     ).toBe(true);
   });
 
+  it("expires every item when the current time is not a finite number, so it cannot fail open", () => {
+    expect(isTemporaryItemExpired(item("a"), Number.NaN)).toBe(true);
+    expect(isTemporaryItemExpired(item("a"), Number.POSITIVE_INFINITY)).toBe(true);
+  });
+
+  it("expires an item created in the future, so a clock error cannot keep it", () => {
+    expect(isTemporaryItemExpired(item("a", { createdAtMs: CREATED + 1 }), CREATED)).toBe(true);
+  });
+
   it("returns empty lists for no items", () => {
     expect(sweepTemporaryItems([], CREATED)).toEqual({ keep: [], expired: [] });
   });
