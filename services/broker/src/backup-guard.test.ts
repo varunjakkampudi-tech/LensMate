@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -8,14 +8,45 @@ import { join, resolve } from "node:path";
  * refused before any database tool runs. The URLs below are fixtures; the passwords are not real.
  */
 const LIB = resolve(__dirname, "../deploy/backup/lib.sh");
+const BASH = findBash();
+
+function findBash(): string {
+  if (process.platform !== "win32") {
+    return "bash";
+  }
+  const candidates = [
+    join(process.env.ProgramFiles ?? "C:\\Program Files", "Git", "bin", "bash.exe"),
+    join(process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)", "Git", "bin", "bash.exe"),
+  ];
+  return candidates.find(existsSync) ?? "bash";
+}
+
+function runBash(args: string[]) {
+  const probe = spawnSync(BASH, ["-c", "exit 0"], { encoding: "utf8" });
+  if (probe.error !== undefined || probe.status !== 0) {
+    const detail = probe.error?.message ?? probe.stderr;
+    throw new Error(`could not run bash executable ${BASH}: ${detail}`);
+  }
+  return spawnSync(BASH, args, { encoding: "utf8" });
+}
 
 function refused(url: string): boolean {
-  const result = spawnSync(
-    "bash",
-    ["-c", 'source "$1"; refuse_password_in_url "$2" backup', "guard", LIB, url],
-    { encoding: "utf8" },
+  const result = runBash([
+    "-c",
+    'source "$1"; refuse_password_in_url "$2" backup',
+    "guard",
+    LIB,
+    url,
+  ]);
+  if (result.status === 0) {
+    return false;
+  }
+  if (result.status === 1) {
+    return true;
+  }
+  throw new Error(
+    `backup guard command failed with status ${String(result.status)}: ${result.stderr}`,
   );
-  return result.status !== 0;
 }
 
 describe("backup connection guard (lib.sh)", () => {
@@ -50,12 +81,14 @@ describe("backup guard additions", () => {
     try {
       const key = join(dir, "same.key");
       writeFileSync(key, "k".repeat(40));
-      const result = spawnSync(
-        "bash",
-        ["-c", 'source "$1"; require_distinct_keys "$2" "$2" backup', "guard", LIB, key],
-        { encoding: "utf8" },
-      );
-      expect(result.status).not.toBe(0);
+      const result = runBash([
+        "-c",
+        'source "$1"; require_distinct_keys "$2" "$2" backup',
+        "guard",
+        LIB,
+        key,
+      ]);
+      expect(result.status).toBe(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -75,12 +108,15 @@ describe("backup guard, percent-encoded names and whitespace-only key difference
       const b = join(dir, "b.key");
       writeFileSync(a, "k".repeat(40));
       writeFileSync(b, `${"k".repeat(40)}\n`);
-      const result = spawnSync(
-        "bash",
-        ["-c", 'source "$1"; require_distinct_keys "$2" "$3" backup', "guard", LIB, a, b],
-        { encoding: "utf8" },
-      );
-      expect(result.status).not.toBe(0);
+      const result = runBash([
+        "-c",
+        'source "$1"; require_distinct_keys "$2" "$3" backup',
+        "guard",
+        LIB,
+        a,
+        b,
+      ]);
+      expect(result.status).toBe(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -95,12 +131,15 @@ describe("backup guard, first-line key match", () => {
       const second = join(dir, "mac.key");
       writeFileSync(first, `${"k".repeat(40)}\nextra material`);
       writeFileSync(second, `${"k".repeat(40)}\nother material`);
-      const result = spawnSync(
-        "bash",
-        ["-c", 'source "$1"; require_distinct_keys "$2" "$3" backup', "guard", LIB, first, second],
-        { encoding: "utf8" },
-      );
-      expect(result.status).not.toBe(0);
+      const result = runBash([
+        "-c",
+        'source "$1"; require_distinct_keys "$2" "$3" backup',
+        "guard",
+        LIB,
+        first,
+        second,
+      ]);
+      expect(result.status).toBe(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
