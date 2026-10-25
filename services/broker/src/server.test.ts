@@ -133,15 +133,36 @@ function worstPaiseFor(
 }
 
 describe("authentication", () => {
+  let authHarness: Harness | undefined;
+
+  beforeAll(async () => {
+    authHarness = await harness();
+    const openIndex = open.indexOf(authHarness.app);
+    if (openIndex !== -1) {
+      open.splice(openIndex, 1);
+    }
+  });
+
+  afterAll(async () => {
+    await authHarness?.app.close();
+  });
+
+  function getAuthApp(): FastifyInstance {
+    if (authHarness === undefined) {
+      throw new Error("authentication harness was not initialized");
+    }
+    return authHarness.app;
+  }
+
   it("refuses a request with no credentials", async () => {
-    const { app } = await harness();
+    const app = getAuthApp();
     const response = await chat(app, GOOD_BODY, null);
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({ error: "unauthorized", code: "UNAUTHORIZED" });
   });
 
   it("refuses a wrong secret and an unknown client id, with the same response", async () => {
-    const { app } = await harness();
+    const app = getAuthApp();
     const wrong = await chat(
       app,
       GOOD_BODY,
@@ -153,7 +174,7 @@ describe("authentication", () => {
   });
 
   it("protects the usage endpoint the same way", async () => {
-    const { app } = await harness();
+    const app = getAuthApp();
     expect((await request(app, { method: "GET", url: "/v1/usage" })).statusCode).toBe(401);
   });
 });
