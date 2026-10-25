@@ -49,6 +49,40 @@ describe("VirtualGlasses", () => {
     });
   });
 
+  it("delivers ignored session gestures without allowing them to claim effects", async () => {
+    const { glasses, fromGlasses } = setup();
+    await glasses.connect();
+    await glasses.send(sessionMessage("SESSION_TYPE_TRANSLATION", "SESSION_PHASE_ACTIVE"));
+
+    glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_DOUBLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_HOLD");
+    glasses.pressButton("BUTTON_ACTION_RELEASE");
+    expect(glasses.gestureEffects).toEqual([]);
+    expect(fromGlasses.filter((message) => message.button !== undefined)).toEqual([
+      {
+        protocolVersion: PROTOCOL_VERSION,
+        sequence: 2,
+        button: { action: "BUTTON_ACTION_SINGLE_TAP" },
+      },
+      {
+        protocolVersion: PROTOCOL_VERSION,
+        sequence: 3,
+        button: { action: "BUTTON_ACTION_DOUBLE_TAP" },
+      },
+      {
+        protocolVersion: PROTOCOL_VERSION,
+        sequence: 4,
+        button: { action: "BUTTON_ACTION_HOLD" },
+      },
+      {
+        protocolVersion: PROTOCOL_VERSION,
+        sequence: 5,
+        button: { action: "BUTTON_ACTION_RELEASE" },
+      },
+    ]);
+  });
+
   it("turns the indicator on for a capture session and off after it ends", async () => {
     const { glasses, fromGlasses } = setup();
     await glasses.connect();

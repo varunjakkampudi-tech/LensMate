@@ -96,6 +96,23 @@ describe("VirtualGlasses gestures", () => {
     expect(glasses.indicatorOn).toBe(true);
   });
 
+  it("lets speech precedence block every session gesture except press-to-stop", async () => {
+    const { glasses } = await connected();
+    await glasses.send(sessionMessage("SESSION_TYPE_TRANSLATION", "SESSION_PHASE_ACTIVE", 1));
+    glasses.speak("A translated answer");
+
+    glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_DOUBLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_HOLD");
+    glasses.pressButton("BUTTON_ACTION_RELEASE");
+    expect(glasses.gestureEffects).toEqual([]);
+    expect(glasses.isSpeaking).toBe(true);
+
+    glasses.pressButton("BUTTON_ACTION_PRESS");
+    expect(glasses.gestureEffects).toEqual(["STOP_SPEECH"]);
+    expect(glasses.indicatorOn).toBe(true);
+  });
+
   it("refuses to start translation from the app while a hold is active", async () => {
     const { glasses, fromGlasses } = await connected();
     glasses.pressButton("BUTTON_ACTION_HOLD");
@@ -258,7 +275,11 @@ describe("VirtualGlasses session rules (v9 section 21)", () => {
     glasses.pressButton("BUTTON_ACTION_HOLD");
     glasses.cutOff();
     expect(glasses.indicatorOn).toBe(false);
+    glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_DOUBLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_HOLD");
     glasses.pressButton("BUTTON_ACTION_RELEASE");
+    glasses.pressButton("BUTTON_ACTION_PRESS");
     expect(glasses.gestureEffects).toEqual(["START_PUSH_TO_TALK"]);
   });
 

@@ -303,6 +303,29 @@ describe("simulator event log: announcements and indicator changes", () => {
       OFF,
     ]);
   });
+
+  it("logs gestures after cutoff while the cutoff precedence blocks every effect", async () => {
+    const glasses = await connected();
+    await glasses.send(appSession("SESSION_TYPE_TRANSLATION", "SESSION_PHASE_ACTIVE", 1));
+    glasses.cutOff();
+    const before = glasses.eventLog.length;
+
+    glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_DOUBLE_TAP");
+    glasses.pressButton("BUTTON_ACTION_HOLD");
+    glasses.pressButton("BUTTON_ACTION_RELEASE");
+    glasses.pressButton("BUTTON_ACTION_PRESS");
+
+    expect(glasses.eventLog.slice(before)).toEqual([
+      { kind: "BUTTON", action: "BUTTON_ACTION_SINGLE_TAP" },
+      { kind: "BUTTON", action: "BUTTON_ACTION_DOUBLE_TAP" },
+      { kind: "BUTTON", action: "BUTTON_ACTION_HOLD" },
+      { kind: "BUTTON", action: "BUTTON_ACTION_RELEASE" },
+      { kind: "BUTTON", action: "BUTTON_ACTION_PRESS" },
+    ]);
+    expect(glasses.gestureEffects).toEqual([]);
+    expect(glasses.indicatorOn).toBe(false);
+  });
 });
 
 describe("simulator taps during a translation session", () => {
