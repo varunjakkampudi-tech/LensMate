@@ -125,9 +125,14 @@ export class MockProvider implements ChatProvider {
     }
     if (action === "hang") {
       return new Promise((_resolve, reject) => {
-        request.signal.addEventListener("abort", () => {
+        const timeout = () => {
           reject(new ProviderTimeoutError());
-        });
+        };
+        if (request.signal.aborted) {
+          timeout();
+          return;
+        }
+        request.signal.addEventListener("abort", timeout, { once: true });
       });
     }
     const promptBytes = JSON.stringify(request.messages).length;

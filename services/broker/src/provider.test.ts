@@ -36,7 +36,8 @@ describe("MockProvider", () => {
 
     await expect(provider.complete(input)).resolves.toEqual({
       text: "mock reply: the broker is running without provider calls",
-      promptTokens: Math.ceil(JSON.stringify(input.messages).length / 8),
+      // Pin the fixture result instead of repeating MockProvider's token calculation here.
+      promptTokens: 5,
       completionTokens: 16,
       source: "mock",
     });
@@ -64,12 +65,35 @@ describe("MockProvider", () => {
   it("rejects a hanging mock attempt when its signal is aborted", async () => {
     const controller = new AbortController();
     const provider = new MockProvider(["hang"]);
-    const attempt = provider.complete(request(controller.signal));
+    let settled = false;
+    const attempt = provider.complete(request(controller.signal)).then(
+      (reply) => {
+        settled = true;
+        return reply;
+      },
+      (error: unknown) => {
+        settled = true;
+        throw error;
+      },
+    );
+
+    await Promise.resolve();
+    expect(settled).toBe(false);
 
     controller.abort();
 
     await expect(attempt).rejects.toBeInstanceOf(ProviderTimeoutError);
     expect(provider.attemptCount).toBe(1);
+  });
+
+  it("rejects a hanging mock attempt when its signal was already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const provider = new MockProvider(["hang"]);
+
+    await expect(provider.complete(request(controller.signal))).rejects.toBeInstanceOf(
+      ProviderTimeoutError,
+    );
   });
 });
 
