@@ -756,3 +756,11 @@ Not in the owner's report, so still unverified on the phone:
   2. The native phone speech recogniser (expo-speech-recognition), which can report the spoken language on device. It needs a development build verified on a phone (Apple account for iOS, or Android build). Blocked until the device is available.
 - F26 native listening (saying stop on phones) is the same native recogniser route as above. Not built.
 - Not verified on a device: every feature in the register. Under the register rule, Verified needs a device test note, so no feature can reach 100% verified before device testing.
+
+## ROUND 2026-10-26 (F22 route decided: native phone recogniser)
+
+- Owner decision: F22 uses the native phone recogniser (not a broker speech-to-text service).
+- Built in code, off in this build: auto-detect mode in src/ai/native-listen.ts. Android is asked to detect only English, Telugu and Hindi (EXTRA_ENABLE_LANGUAGE_DETECTION and the allowed-languages extra). A detection is used only when confidence is at least 0.5 (MIN_DETECTION_CONFIDENCE). langFromTag maps tags to en, te or hi. Without detect mode the start options are unchanged.
+- Limits: iOS has no language-detection option, so iPhone uses the chosen language and gets no detection. The translate screen does not use the detected language yet.
+- Tests: native-listen.test.ts (new auto-detect tests; subscription count now 4). AI suite 66 of 66 pass; typecheck and lint pass.
+- Not verified. Enabling native listening needs a development build tested on Android (and iPhone for the fallback). F12 is skipped by owner decision.

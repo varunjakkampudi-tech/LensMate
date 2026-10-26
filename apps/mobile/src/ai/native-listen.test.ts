@@ -1,5 +1,6 @@
 import { LANGS } from "../ui/prefs";
 import {
+  langFromTag,
   nativeListenErrorText,
   NATIVE_LISTENING_ENABLED,
   startNativeListening,
@@ -9,7 +10,13 @@ import {
 // The tests inject their own recogniser; the real native module is not loaded.
 jest.mock("expo-speech-recognition", () => ({ ExpoSpeechRecognitionModule: {} }));
 
-type Event = { isFinal?: boolean; results?: { transcript: string }[]; error?: string };
+type Event = {
+  isFinal?: boolean;
+  results?: { transcript: string }[];
+  error?: string;
+  detectedLanguage?: string;
+  confidence?: number;
+};
 
 /** A recogniser stand-in. Tests fire its events directly; nothing here touches a microphone. */
 function fakeRecognizer(
@@ -133,7 +140,8 @@ describe("native speech input", () => {
     expect(h.onFinal).toHaveBeenCalledTimes(1);
     expect(h.onFinal).toHaveBeenCalledWith("ఎక్కడ నా కీస్");
     expect(h.onEnd).toHaveBeenCalledTimes(1);
-    expect(removed.length).toBe(3);
+    // Result, error, end and language detection are each removed once the session ends.
+    expect(removed.length).toBe(4);
   });
 
   it("stops at once when the user taps stop, and does not report a final result afterwards", async () => {
@@ -175,5 +183,51 @@ describe("native speech input", () => {
     expect(nativeListenErrorText("ON_DEVICE_UNAVAILABLE")).toMatch(
       /will not send your voice to a cloud service/,
     );
+  });
+});
+
+describe("language auto-detect (F22)", () => {
+  it("maps a BCP-47 tag to English, Telugu or Hindi, and to nothing else", () => {
+    expect(langFromTag("te-IN")).toBe("te");
+    expect(langFromTag("hi_IN")).toBe("hi");
+    expect(langFromTag("en-GB")).toBe("en");
+    expect(langFromTag("ta-IN")).toBeNull();
+    expect(langFromTag("")).toBeNull();
+  });
+
+  it("asks Android to detect only English, Telugu and Hindi, and starts in the chosen language", async () => {
+    const { recognizer } = fakeRecognizer({ granted: true });
+    startNativeListening("en", handlers(), recognizer, true, true);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(recognizer.start).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lang: LANGS.en.locale,
+        androidIntentOptions: {
+          EXTRA_ENABLE_LANGUAGE_DETECTION: true,
+          EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES: [
+            LANGS.en.locale,
+            LANGS.te.locale,
+            LANGS.hi.locale,
+          ],
+        },
+      }),
+    );
+  });
+
+  it("sends no detection options when auto-detect is off", async () => {
+    const { recognizer } = fakeRecognizer({ granted: true });
+    startNativeListening("te", handlers(), recognizer, true);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(recognizer.start.mock.calls[0]?.[0]).not.toHaveProperty("androidIntentOptions");
+  });
+
+  it("reports a confident detection of a supported language, and ignores an unsure one", () => {
+    const { recognizer, fire } = fakeRecognizer({ granted: true });
+    const onDetected = jest.fn();
+    startNativeListening("en", { ...handlers(), onDetected }, recognizer, true, true);
+    fire("languagedetection", { detectedLanguage: "te-IN", confidence: 0.8 });
+    fire("languagedetection", { detectedLanguage: "hi-IN", confidence: 0.2 });
+    fire("languagedetection", { detectedLanguage: "ta-IN", confidence: 0.9 });
+    expect(onDetected.mock.calls).toEqual([["te"]]);
   });
 });

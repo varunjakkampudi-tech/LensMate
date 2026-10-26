@@ -32,6 +32,20 @@ export interface NativeListenHandlers {
   onFinal: (text: string) => void;
   onError: (code: NativeListenError) => void;
   onEnd: () => void;
+  /** Called when the recogniser reports the language that was spoken (auto-detect mode only). */
+  onDetected?: (lang: Lang) => void;
+}
+
+/** The languages auto-detect can pick: English, Telugu and Hindi (F22). */
+export const AUTO_DETECT_LANGS: readonly Lang[] = ["en", "te", "hi"];
+
+/** Detections below this confidence are ignored, so an unsure guess never changes the language. */
+export const MIN_DETECTION_CONFIDENCE = 0.5;
+
+/** Maps a BCP-47 tag such as "te-IN" to one of the auto-detect languages, or null for any other language. */
+export function langFromTag(tag: string): Lang | null {
+  const base = tag.trim().toLowerCase().split(/[-_]/)[0];
+  return AUTO_DETECT_LANGS.find((lang) => lang === base) ?? null;
 }
 
 /** The subset of the package's module this file uses. Injected in tests. */
@@ -45,14 +59,20 @@ export interface NativeRecognizer {
     interimResults: boolean;
     continuous: boolean;
     requiresOnDeviceRecognition: boolean;
+    androidIntentOptions?: {
+      EXTRA_ENABLE_LANGUAGE_DETECTION: boolean;
+      EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES: string[];
+    };
   }): void;
   stop(): void;
   addListener(
-    event: "result" | "error" | "end",
+    event: "result" | "error" | "end" | "languagedetection",
     listener: (event: {
       isFinal?: boolean;
       results?: { transcript: string }[];
       error?: string;
+      detectedLanguage?: string;
+      confidence?: number;
     }) => void,
   ): { remove(): void };
 }
@@ -70,6 +90,7 @@ export function startNativeListening(
   handlers: NativeListenHandlers,
   recognizer: NativeRecognizer | undefined,
   enabled: boolean = NATIVE_LISTENING_ENABLED,
+  detect = false,
 ): () => void {
   const refuse = (code: NativeListenError) => {
     handlers.onError(code);
@@ -95,6 +116,12 @@ export function startNativeListening(
         finalText = text;
       } else {
         handlers.onPartial(text);
+      }
+    }),
+    recognizer.addListener("languagedetection", (event) => {
+      const detected = langFromTag(event.detectedLanguage ?? "");
+      if (detected !== null && (event.confidence ?? 0) >= MIN_DETECTION_CONFIDENCE) {
+        handlers.onDetected?.(detected);
       }
     }),
     recognizer.addListener("error", () => {
@@ -133,6 +160,18 @@ export function startNativeListening(
       interimResults: true,
       continuous: false,
       requiresOnDeviceRecognition: true,
+      // Android only: the recogniser reports the spoken language, limited to the three languages. iOS has no such
+      // option, so there the chosen language is used and no detection is reported.
+      ...(detect
+        ? {
+            androidIntentOptions: {
+              EXTRA_ENABLE_LANGUAGE_DETECTION: true,
+              EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES: AUTO_DETECT_LANGS.map(
+                (l) => DEFAULT_LOCALES[l],
+              ),
+            },
+          }
+        : {}),
     });
   })().catch(() => finish("ENGINE_ERROR"));
 
