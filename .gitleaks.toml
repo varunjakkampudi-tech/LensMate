@@ -1,8 +1,7 @@
 # Gitleaks configuration for LensMate. It extends the default rules and does not turn any rule off.
 #
-# The only allowlist entry covers the synthetic test placeholder that our tests use for device secrets and client
-# secrets. Every such value starts with "not-a-real-", which no real credential does. Any value that does not carry
-# that marker is still scanned and blocks the build.
+# The one allowlist entry names two exact commits whose test fixtures hold synthetic placeholders (not-a-real-...).
+# Those commits are fixed in history, so the entry stays exact. Every other commit and every new value is still scanned.
 
 title = "LensMate gitleaks configuration"
 
@@ -10,6 +9,8 @@ title = "LensMate gitleaks configuration"
 useDefault = true
 
 [[allowlists]]
-description = "Synthetic test placeholders named not-a-real-; never a credential"
-regexTarget = "match"
-regexes = ['''not-a-real-''']
+description = "Synthetic not-a-real test placeholders in two historical commits (generic-api-key false positives)"
+commits = [
+  "3089624c41c72ca47b800e606049b0be143f51a2",
+  "d4341f90a52b9a7b68ab4d91311b82250ff57ccc",
+]
