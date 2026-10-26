@@ -135,7 +135,57 @@ const TRIGGERS = [
   "broker_budget_reserved_consistent",
   "broker_reservation_reserved_consistent",
   "broker_reservation_closed_final",
+  "broker_reservation_settles_buckets",
 ];
+
+/**
+ * The database, not the application, moves money between buckets. When a reservation closes (reserved to settled or
+ * released), this trigger releases its reserved amount and records the actual cost in every bucket it holds, in the
+ * same statement as the state change. The application can no longer close a reservation without its spend being
+ * recorded. A settled reservation must carry a non-negative actual cost, and a released one must carry none.
+ */
+const SETTLEMENT_SQL = `
+CREATE OR REPLACE FUNCTION broker_apply_settlement() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
+DECLARE
+  charged bigint;
+  touched integer;
+BEGIN
+  IF OLD.state = 'reserved' AND NEW.state IN ('settled', 'released') THEN
+    IF NEW.state = 'settled' THEN
+      IF NEW.actual_paise IS NULL OR NEW.actual_paise < 0 THEN
+        RAISE EXCEPTION 'a settled reservation needs a non-negative actual cost';
+      END IF;
+      charged := NEW.actual_paise;
+    ELSE
+      IF NEW.actual_paise IS NOT NULL THEN
+        RAISE EXCEPTION 'a released reservation carries no actual cost';
+      END IF;
+      charged := 0;
+    END IF;
+    UPDATE broker_budget_month
+      SET reserved_paise = reserved_paise - OLD.amount_paise, spent_paise = spent_paise + charged
+      WHERE month = OLD.month;
+    GET DIAGNOSTICS touched = ROW_COUNT;
+    IF touched <> 1 THEN
+      RAISE EXCEPTION 'no budget row for the reservation month';
+    END IF;
+    IF OLD.dev_test THEN
+      UPDATE broker_budget_month
+        SET reserved_paise = reserved_paise - OLD.amount_paise, spent_paise = spent_paise + charged
+        WHERE month = 'DEV-TEST-CUMULATIVE';
+      GET DIAGNOSTICS touched = ROW_COUNT;
+      IF touched <> 1 THEN
+        RAISE EXCEPTION 'no development-test budget row';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+DROP TRIGGER IF EXISTS broker_reservation_settles_buckets ON broker_reservation;
+CREATE TRIGGER broker_reservation_settles_buckets BEFORE UPDATE ON broker_reservation
+  FOR EACH ROW EXECUTE FUNCTION broker_apply_settlement();
+`;
 
 /**
  * A reservation moves once: from reserved to settled or released. After that its state, actual spend and close time are
@@ -283,6 +333,7 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
     await client.query(REDEEM_SQL);
     await client.query(RESERVED_SQL);
     await client.query(CLOSED_FINAL_SQL);
+    await client.query(SETTLEMENT_SQL);
     await client.query(GENESIS_SQL);
     await client.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
     // Temporary tables would shadow the ledger tables for a session; no role needs them.

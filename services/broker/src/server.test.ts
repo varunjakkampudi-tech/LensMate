@@ -701,10 +701,10 @@ describe("enrolment rate limit (per client, with a global ceiling)", () => {
     expect(statuses.filter((status) => status === 429)).toHaveLength(15);
   });
 
-  it("caps total guessing across many clients with the global ceiling", async () => {
+  it("gives each client its own enrolment budget, so one caller cannot block enrolment for others", async () => {
     const devices = new InMemoryDeviceStore();
     const { app } = await harnessWithDevices(devices);
-    // 12 clients x 5 concurrent requests uses each per-client burst and the 60-request global ceiling exactly.
+    // 12 clients x 5 requests each uses one per-client burst per client. No shared ceiling exists.
     const batches = await Promise.all(
       Array.from({ length: 12 }, (_, client) =>
         Promise.all(
@@ -717,7 +717,8 @@ describe("enrolment rate limit (per client, with a global ceiling)", () => {
     const statuses = batches.flat().map((response) => response.statusCode);
     expect(statuses.filter((status) => status === 403)).toHaveLength(60);
     expect(statuses.filter((status) => status === 429)).toHaveLength(0);
-    expect((await enrol(app, "spread-new", "AAAA-AAAA-AAAA-AAAA")).statusCode).toBe(429);
+    // A new client is not blocked by the others.
+    expect((await enrol(app, "spread-new", "AAAA-AAAA-AAAA-AAAA")).statusCode).toBe(403);
   });
 
   it("refuses a replayed code from any client, and counts the replay against that client", async () => {

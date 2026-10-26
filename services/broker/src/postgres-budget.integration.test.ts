@@ -37,6 +37,12 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
   let pools: Pool[] = [];
   let store: PostgresBudgetStore;
 
+  function appPool(): Pool {
+    const pool = pools[0];
+    if (pool === undefined) throw new Error("no pool was created for this test");
+    return pool;
+  }
+
   beforeAll(async () => {
     const admin = new Pool({ connectionString: URL_VALUE, max: 1 });
     await admin.query(
@@ -102,6 +108,44 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
       spentPaise: 25,
       reservedPaise: 0,
     });
+  });
+
+  it("charges the spend in the database when a reservation is closed directly, so a skipped charge is impossible", async () => {
+    await store.reserve(reserveInput("direct", { amountPaise: 60 }));
+    await appPool().query(
+      "UPDATE broker_reservation SET state = 'settled', actual_paise = 25, closed_at = now() WHERE reservation_id = $1",
+      ["direct"],
+    );
+    expect(await store.summary("2026-10")).toEqual({
+      month: "2026-10",
+      spentPaise: 25,
+      reservedPaise: 0,
+    });
+  });
+
+  it("refuses a settled close that carries no actual cost", async () => {
+    await store.reserve(reserveInput("nocost", { amountPaise: 60 }));
+    await expect(
+      appPool().query(
+        "UPDATE broker_reservation SET state = 'settled', actual_paise = NULL, closed_at = now() WHERE reservation_id = $1",
+        ["nocost"],
+      ),
+    ).rejects.toThrow(/non-negative actual cost/);
+    expect(await store.summary("2026-10")).toEqual({
+      month: "2026-10",
+      spentPaise: 0,
+      reservedPaise: 60,
+    });
+  });
+
+  it("refuses a release that carries an actual cost", async () => {
+    await store.reserve(reserveInput("relcost", { amountPaise: 60 }));
+    await expect(
+      appPool().query(
+        "UPDATE broker_reservation SET state = 'released', actual_paise = 5, closed_at = now() WHERE reservation_id = $1",
+        ["relcost"],
+      ),
+    ).rejects.toThrow(/carries no actual cost/);
   });
 
   it("releases a failed attempt back to the budget", async () => {

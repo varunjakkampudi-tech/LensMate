@@ -140,7 +140,7 @@ export class PostgresBudgetStore implements BudgetStore {
         [maxAgeSeconds],
       );
       for (const row of stale.rows) {
-        await chargeBuckets(client, row.dev_test, row.month, row.amount_paise, row.amount_paise);
+        // The settlement trigger in the database charges every bucket the reservation holds.
         await client.query(
           "UPDATE broker_reservation SET state = 'settled', actual_paise = $2, closed_at = now() WHERE reservation_id = $1",
           [row.reservation_id, row.amount_paise],
@@ -164,26 +164,15 @@ export class PostgresBudgetStore implements BudgetStore {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const found = await client.query<{
-        month: string;
-        amount_paise: string;
-        state: string;
-        dev_test: boolean;
-      }>(
-        "SELECT month, amount_paise, state, dev_test FROM broker_reservation WHERE reservation_id = $1 FOR UPDATE",
+      const found = await client.query<{ state: string }>(
+        "SELECT state FROM broker_reservation WHERE reservation_id = $1 FOR UPDATE",
         [reservationId],
       );
       const row = found.rows[0];
       if (row === undefined || row.state !== "reserved") {
         throw new ReservationError("reservation is not open");
       }
-      await chargeBuckets(
-        client,
-        row.dev_test,
-        row.month,
-        row.amount_paise,
-        state === "settled" ? actualPaise : 0,
-      );
+      // The settlement trigger in the database charges every bucket the reservation holds, in this same statement.
       await client.query(
         "UPDATE broker_reservation SET state = $2, actual_paise = $3, closed_at = now() WHERE reservation_id = $1",
         [reservationId, state, state === "settled" ? actualPaise : null],
@@ -217,27 +206,6 @@ async function lockBucket(client: PoolClient, bucket: string): Promise<BucketLoc
 
 function exceeds(bucket: BucketLock, amount: bigint, cap: bigint): boolean {
   return bucket.spent + bucket.reserved + amount > cap;
-}
-
-/**
- * Moves one reservation out of reserved in every bucket it holds: the monthly bucket, and the development-test bucket
- * when the reservation was flagged. `amount` is the reserved worst case; `spent` is what is billed (the worst case when
- * reaping, the actual cost when settling, zero when released).
- */
-async function chargeBuckets(
-  client: PoolClient,
-  devTest: boolean,
-  month: string,
-  amount: string,
-  spent: string | number,
-): Promise<void> {
-  const buckets = devTest ? [month, DEV_TEST_BUCKET] : [month];
-  for (const bucket of buckets) {
-    await client.query(
-      "UPDATE broker_budget_month SET reserved_paise = reserved_paise - $2, spent_paise = spent_paise + $3 WHERE month = $1",
-      [bucket, amount, spent],
-    );
-  }
 }
 
 async function rollbackQuietly(client: PoolClient): Promise<void> {
