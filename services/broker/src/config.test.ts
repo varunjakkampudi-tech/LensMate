@@ -5,7 +5,7 @@ import { ConfigError, loadConfig } from "./config.js";
 
 const BASE_MOCK = {
   BROKER_MONTHLY_CAP_PAISE: "50000",
-  BROKER_FX_PAISE_PER_USD: "9000",
+  BROKER_FX_PAISE_PER_USD: "10000",
 };
 
 /** A clearly fake provider key used only to check that secrets never reach error messages. */
@@ -51,7 +51,7 @@ describe("loadConfig", () => {
   });
 
   it("requires the monthly cap and the exchange rate, with no hidden default", () => {
-    expect(() => loadConfig({ BROKER_FX_PAISE_PER_USD: "9000" })).toThrow(
+    expect(() => loadConfig({ BROKER_FX_PAISE_PER_USD: "10000" })).toThrow(
       /BROKER_MONTHLY_CAP_PAISE is required/,
     );
     expect(() => loadConfig({ BROKER_MONTHLY_CAP_PAISE: "50000" })).toThrow(

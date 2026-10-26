@@ -31,16 +31,8 @@ export const MODEL_ALLOWLIST: readonly ModelPrice[] = [
     acceptsImages: false,
     feature: "text",
   },
-  {
-    // OpenRouter's web plugin (up to 5 results at 4 USD per 1000) under zero-data-retention routing, checked 2026-10-24.
-    id: "google/gemini-3.1-flash-lite:online",
-    inputMicroUsdPerMillion: 450_000,
-    outputMicroUsdPerMillion: 2_700_000,
-    maxContextTokens: 1_048_576,
-    acceptsImages: false,
-    feature: "research",
-    webSearchMicroUsd: 25_000,
-  },
+  // google/gemini-3.1-flash-lite:online is disabled (owner decision, 2026-10-26) until its zero-data-retention
+  // compatibility is verified. Re-add it only with that verification and a reviewed price snapshot.
   {
     id: "google/gemini-3.5-flash-lite",
     inputMicroUsdPerMillion: 540_000,
