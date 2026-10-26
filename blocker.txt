@@ -574,3 +574,13 @@ Not in the owner's report, so still unverified on the phone:
 - oraone.in still returns HTTP 200 after the change.
 - The broker is still in mock mode: no provider call, no billing. The FX rate (10000) and monthly cap (50000) are placeholders awaiting owner confirmation (BLOCKER-006 items c and h).
 - Still open: the proxy network link to the LensMate broker is runtime-only (see the previous record). Owner decision needed on making it permanent.
+
+## ROUND 2026-10-26 (LensMate static landing page is LIVE at https://lensmate.tech/)
+
+- Source: infra/lensmate/landing/index.html (static, no scripts, no external resources; "In development" wording, no unverified claims).
+- Routing on the shared proxy: "/" and other pages serve the landing page; /healthz and /v1/* go to the broker. Verified: https://lensmate.tech/ returns 200 with the LensMate title; /healthz returns {"status":"ok"}; https://oraone.in/ returns 200.
+- Persistence caveats (owner decision needed):
+  1. The landing files were copied into the OraOne proxy container at /srv/lensmate with docker cp. They are in the container's writable layer and are lost if that container is recreated. A permanent fix mounts the folder in /opt/oraone/docker-compose.prod.yml.
+  2. /etc/caddy/Caddyfile in the proxy is a read-only bind mount. Its inode went stale after an in-place edit on the host, so the running config was reloaded from a copy in the container's /tmp (caddy reload --config /tmp/Caddyfile). The host file /opt/oraone/Caddyfile is the source of truth and is current. A restart of the proxy reads it again.
+  3. The LensMate network link from the proxy (lensmate-broker_egress) is still runtime-only (see the earlier record).
+- Backups of OraOne's proxy config on the host: /opt/oraone/Caddyfile.pre-lensmate.bak and /opt/oraone/Caddyfile.pre-landing.bak (created before the changes; the second is the one before the landing-page edit).
