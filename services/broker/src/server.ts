@@ -34,6 +34,8 @@ import {
   type ProviderReply,
   type StreamReply,
 } from "./provider.js";
+import { registerHealthRoute } from "./routes/health.js";
+import { registerUsageRoute } from "./routes/usage.js";
 
 /** Tokens allowed per message for role and separators (upper bound). */
 const PER_MESSAGE_OVERHEAD_TOKENS = 8;
@@ -185,14 +187,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     return reply.code(400).send({ error: "invalid_request", code: "VALIDATION" });
   });
 
-  app.get("/healthz", async (_request, reply) => {
-    try {
-      await budget.ping();
-      return { status: "ok" };
-    } catch {
-      return reply.code(503).send({ status: "unavailable" });
-    }
-  });
+  registerHealthRoute(app, budget);
 
   app.post<{ Body: { code: string; label: string } }>(
     "/v1/enrol",
@@ -298,25 +293,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     return reply.code(204).send();
   });
 
-  app.get("/v1/usage", async (request, reply) => {
-    const client = await authenticateDevice(request.headers.authorization, devices);
-    if (client === null) {
-      return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
-    }
-    const month = utcMonth(now());
-    const summary = await budget.summary(month);
-    return {
-      month,
-      capPaise: config.monthlyCapPaise,
-      spentPaise: summary.spentPaise,
-      reservedPaise: summary.reservedPaise,
-      remainingPaise: Math.max(
-        0,
-        config.monthlyCapPaise - summary.spentPaise - summary.reservedPaise,
-      ),
-      source: config.mode === "live" ? "openrouter" : "mock",
-    };
-  });
+  registerUsageRoute(app, { config, budget, devices, now, monthFor: utcMonth });
 
   app.post<{ Body: ChatBody }>(
     "/v1/ai/text",
