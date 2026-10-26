@@ -25,7 +25,7 @@ import {
  * The owner-approved cloud-processing disclosure version (owner decision (e), approved in chat on 2026-10-24 for the
  * preview with real AI under the INR 500 cap; .2 adds the optional encrypted backup). The text is STRINGS.cloudDisclosure. Changing the text needs a new version.
  */
-export const APPROVED_CLOUD_DISCLOSURE_VERSION: string | null = "2026-10-24.2";
+export const APPROVED_CLOUD_DISCLOSURE_VERSION: string | null = "2026-10-26.1";
 
 /** Thrown before any network request when a precondition for broker use is missing (BLOCKER-006). */
 export class BrokerCallBlocked extends Error {

@@ -177,7 +177,7 @@ describe("callBrokerWithPolicy", () => {
 
 describe("the app entry point", () => {
   it("uses the owner-approved disclosure version and still refuses without a configured address", async () => {
-    expect(APPROVED_CLOUD_DISCLOSURE_VERSION).toBe("2026-10-24.2");
+    expect(APPROVED_CLOUD_DISCLOSURE_VERSION).toBe("2026-10-26.1");
     // No address is configured in this test run, so the entry point refuses before any request.
     await expect(callBroker(REQUEST, SIGNAL)).rejects.toBeInstanceOf(BrokerCallBlocked);
   });
