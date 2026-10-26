@@ -46,6 +46,17 @@ describe("toBrokerLogEntry", () => {
     expect(toBrokerLogEntry(line)).toMatchObject({ level: "error", errorCode: "PROVIDER_TIMEOUT" });
   });
 
+  it("replaces unmatched-route messages that carry a URL or query string", () => {
+    const line = pinoLine({
+      level: 30,
+      msg: `Route GET:/v1/chat?token=${SECRET} not found`,
+      reqId: "req-3",
+    });
+    const entry = toBrokerLogEntry(line);
+    expect(entry).toMatchObject({ event: "unknown_event", requestId: "req-3" });
+    expect(JSON.stringify(entry)).not.toContain("token=");
+  });
+
   it("reports an unparseable line without echoing it", () => {
     const entry = toBrokerLogEntry(`not json ${SECRET}`);
     expect(entry).toEqual({ level: "error", event: "unparseable_log_line" });
@@ -65,8 +76,9 @@ describe("createSafeLogStream", () => {
     stream.end();
 
     expect(written).toHaveLength(2);
-    expect(JSON.parse(written[0]!)).toMatchObject({ event: "one", requestId: "a" });
-    expect(JSON.parse(written[1]!)).toMatchObject({ requestId: "b" });
+    const [firstLine = "", secondLine = ""] = written;
+    expect(JSON.parse(firstLine)).toMatchObject({ event: "one", requestId: "a" });
+    expect(JSON.parse(secondLine)).toMatchObject({ requestId: "b" });
     expect(written.join("")).not.toContain("SYNTHETIC-TOKEN-0001");
   });
 });

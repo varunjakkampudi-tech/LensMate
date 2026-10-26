@@ -132,7 +132,7 @@ export function ReadinessSection() {
                 }}
                 style={{
                   flex: 1,
-                  minHeight: 40,
+                  minHeight: 48,
                   borderRadius: 12,
                   alignItems: "center",
                   justifyContent: "center",
@@ -207,7 +207,7 @@ export function ReadinessSection() {
                 style={{
                   paddingHorizontal: 12,
                   paddingVertical: 8,
-                  minHeight: 36,
+                  minHeight: 48,
                   borderRadius: 999,
                   backgroundColor: filter === f.id ? c.accent : c.surface2,
                   justifyContent: "center",

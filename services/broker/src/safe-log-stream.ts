@@ -11,6 +11,12 @@ const LEVEL_NAMES: Readonly<Record<number, string>> = {
 };
 
 /**
+ * Event text is free text in the allowlist, so only plain words pass. Fastify writes unmatched routes as
+ * "Route GET:/path?query not found", and a URL or query string must never reach stdout.
+ */
+const EVENT_WORDS = /^[A-Za-z][A-Za-z ._-]{0,59}$/;
+
+/**
  * Turns one Pino JSON line into an allowlisted entry. Request bodies, headers, URLs and error messages are never
  * copied; only the fields in `ALLOWED_LOG_FIELDS` survive, and their text is redacted.
  */
@@ -28,7 +34,12 @@ export function toBrokerLogEntry(line: string): LogEntry {
     timestamp: typeof raw.time === "number" ? raw.time : undefined,
     level: typeof raw.level === "number" ? (LEVEL_NAMES[raw.level] ?? "info") : "info",
     service: "broker",
-    event: typeof raw.msg === "string" ? raw.msg : undefined,
+    event:
+      typeof raw.msg === "string"
+        ? EVENT_WORDS.test(raw.msg)
+          ? raw.msg
+          : "unknown_event"
+        : undefined,
     requestId: typeof raw.reqId === "string" ? raw.reqId : undefined,
     durationMs: typeof raw.responseTime === "number" ? Math.round(raw.responseTime) : undefined,
     errorCode: typeof err?.code === "string" ? err.code : undefined,

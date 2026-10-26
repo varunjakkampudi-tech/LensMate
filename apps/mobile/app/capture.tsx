@@ -232,6 +232,7 @@ export default function CaptureScreen() {
             accessibilityRole="button"
             accessibilityLabel="Remove photo"
             testID="remove-photo"
+            hitSlop={9}
             onPress={() => session.removePhoto()}
             style={{
               position: "absolute",
@@ -296,6 +297,10 @@ export default function CaptureScreen() {
                 key={ms}
                 accessibilityRole="button"
                 accessibilityLabel={`Analyse every ${ms / 1000} seconds`}
+                accessibilityState={{
+                  selected: visionEvery === ms,
+                  disabled: vision.phase === "running",
+                }}
                 testID={`live-interval-${ms / 1000}`}
                 disabled={vision.phase === "running"}
                 onPress={() => setVisionEvery(ms)}
