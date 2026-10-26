@@ -117,12 +117,12 @@ Because features live in the phone app and the broker, most new features reach t
 
 ### 10.2 Continuous updates
 
-| What changes | How it reaches the owner | Risk control |
-|---|---|---|
-| Phone app features | Web build now, Android development build, later an over-the-air update (Expo Updates) | Every release passes CI on `dev`; `main` only after owner approval |
-| Broker and AI behaviour | Server deploy after CI and approval | Spend cap, audit log, rollback to the previous image |
-| Glasses firmware | Signed firmware image sent over Bluetooth, with a version check | A failed update keeps the old firmware; a new version is first tested on one pair of glasses |
-| Glasses protocol | New message numbers only; old readers skip unknown fields | The protocol version is checked on every connection |
+| What changes            | How it reaches the owner                                                              | Risk control                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Phone app features      | Web build now, Android development build, later an over-the-air update (Expo Updates) | Every release passes CI on `dev`; `main` only after owner approval                           |
+| Broker and AI behaviour | Server deploy after CI and approval                                                   | Spend cap, audit log, rollback to the previous image                                         |
+| Glasses firmware        | Signed firmware image sent over Bluetooth, with a version check                       | A failed update keeps the old firmware; a new version is first tested on one pair of glasses |
+| Glasses protocol        | New message numbers only; old readers skip unknown fields                             | The protocol version is checked on every connection                                          |
 
 ### 10.3 Build order
 
