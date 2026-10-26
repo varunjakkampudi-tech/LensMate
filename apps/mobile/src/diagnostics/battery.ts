@@ -6,8 +6,7 @@ import type { BatteryReading } from "./checks";
  */
 export async function readBattery(): Promise<BatteryReading | null> {
   const nav = globalThis.navigator as
-    | (Navigator & { getBattery?: () => Promise<{ level: number; charging: boolean }> })
-    | undefined;
+    (Navigator & { getBattery?: () => Promise<{ level: number; charging: boolean }> }) | undefined;
   if (typeof nav?.getBattery !== "function") {
     return null;
   }

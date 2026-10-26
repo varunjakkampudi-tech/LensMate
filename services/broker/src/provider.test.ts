@@ -297,7 +297,7 @@ describe("OpenRouter streaming reader", () => {
   it("sends stream and the usage option, and never the key in an error", async () => {
     let sent = "";
     const provider = new OpenRouterProvider(KEY, "https://example.test/api/v1", (_url, init) => {
-      sent = String(init.body);
+      sent = typeof init.body === "string" ? init.body : "";
       return Promise.resolve(sseResponse(["data: [DONE]\n\n"]));
     });
     await provider.stream(request(), () => undefined);

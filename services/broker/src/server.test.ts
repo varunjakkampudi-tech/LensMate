@@ -876,9 +876,9 @@ describe("streamed text route", () => {
   it("ends the stream with an error event after a partial reply, and still charges the worst case", async () => {
     const provider: ChatProvider = {
       complete: () => Promise.reject(new ProviderFailure("UNAVAILABLE", false, 500)),
-      stream: async (_request, onDelta) => {
+      stream: (_request, onDelta) => {
         onDelta("Partial ");
-        throw new ProviderFailure("UNAVAILABLE", false, 500);
+        return Promise.reject(new ProviderFailure("UNAVAILABLE", false, 500));
       },
     };
     const { app, store } = await harness({}, provider);
@@ -898,9 +898,9 @@ describe("streamed text route", () => {
   it("charges the worst case when the provider reports no usage, never zero", async () => {
     const provider: ChatProvider = {
       complete: () => Promise.reject(new ProviderFailure("REJECTED", false, 400)),
-      stream: async (_request, onDelta) => {
+      stream: (_request, onDelta) => {
         onDelta("Hello.");
-        return { text: "Hello.", usage: null, source: "openrouter" };
+        return Promise.resolve({ text: "Hello.", usage: null, source: "openrouter" });
       },
     };
     const { app, store } = await harness({}, provider);

@@ -10,7 +10,8 @@ import type { NotifyPermission } from "../notify/local";
 export type CheckStatus = "configured" | "ok" | "low" | "off" | "unavailable" | "needs_device";
 
 export interface CheckResult {
-  readonly id: "broker" | "camera" | "speech-output" | "speech-input" | "notifications" | "memory" | "battery";
+  readonly id:
+    "broker" | "camera" | "speech-output" | "speech-input" | "notifications" | "memory" | "battery";
   readonly label: string;
   readonly status: CheckStatus;
   readonly detail: string;
@@ -36,7 +37,7 @@ export interface BatteryReading {
 }
 
 /** Below this level, and not charging, the check asks for a charge. */
-export const LOW_BATTERY_LEVEL = 0.2;
+const LOW_BATTERY_LEVEL = 0.2;
 
 export function batteryResult(battery: BatteryReading | null): CheckResult {
   if (battery === null) {

@@ -37,10 +37,10 @@ export interface NativeListenHandlers {
 }
 
 /** The languages auto-detect can pick: English, Telugu and Hindi (F22). */
-export const AUTO_DETECT_LANGS: readonly Lang[] = ["en", "te", "hi"];
+const AUTO_DETECT_LANGS: readonly Lang[] = ["en", "te", "hi"];
 
 /** Detections below this confidence are ignored, so an unsure guess never changes the language. */
-export const MIN_DETECTION_CONFIDENCE = 0.5;
+const MIN_DETECTION_CONFIDENCE = 0.5;
 
 /** Maps a BCP-47 tag such as "te-IN" to one of the auto-detect languages, or null for any other language. */
 export function langFromTag(tag: string): Lang | null {

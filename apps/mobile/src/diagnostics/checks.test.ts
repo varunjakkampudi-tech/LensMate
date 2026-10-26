@@ -100,7 +100,13 @@ describe("battery check", () => {
   });
 
   it("reports a charging or healthy battery as ok", () => {
-    expect(batteryResult({ level: 0.12, charging: true })).toMatchObject({ status: "ok", detail: "12%, charging." });
-    expect(batteryResult({ level: 0.8, charging: false })).toMatchObject({ status: "ok", detail: "80%." });
+    expect(batteryResult({ level: 0.12, charging: true })).toMatchObject({
+      status: "ok",
+      detail: "12%, charging.",
+    });
+    expect(batteryResult({ level: 0.8, charging: false })).toMatchObject({
+      status: "ok",
+      detail: "80%.",
+    });
   });
 });
