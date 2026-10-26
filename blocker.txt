@@ -510,14 +510,14 @@ Not in the owner's report, so still unverified on the phone:
 - Still owner-only: (a) to (i) and the FX value. The recommendation's "initial live-test budget INR 0" means no live call until the owner changes it.
 
 ## OWNER-DECISION-005 (2026-10-26, owner chat instruction, ACTIVE): BLOCKER-006 configuration
-- Decided by: Varun (owner), in the owner chat on 2026-10-26. Recorded by the agent; wording summarised.
+- Decided by: Varun (owner), in the owner chat on 2026-10-26. Source: the owner's reply "Approved. Proceed with the following owner decisions for LensMate BLOCKER-006", items 1 to 9, which followed the owner's approval of the recommended configuration. Recorded by the agent; wording summarised. This entry supersedes the open items for these decisions in the 2026-10-26 verification entry above.
 - Exchange rate: approved BROKER_FX_PAISE_PER_USD = 10000 (INR 100 per USD, a conservative budgeting rate; market rate read 2026-10-26 about INR 95). Applied in services/broker/src/test-config.ts, config.test.ts, pricing.test.ts and deploy/test/failure-paths.sh. Replaces the earlier 9000 (INR 90, which understated cost).
 - Monthly hard cap: unchanged at 50000 paise (INR 500). Live mode still requires BROKER_OWNER_CAP_CONFIRMATION_PAISE to equal it.
 - Google privacy: the account-level setting stays "Safety retention allowed" for now. The broker sends zdr: true and data_collection: "deny" on every request (provider.ts, tested in provider.test.ts). No fallback setting is sent. If no compliant endpoint exists, the call fails as REJECTED and is not retried. Nothing falls back to a non-ZDR provider in code.
 - :online variant: DISABLED. google/gemini-3.1-flash-lite:online removed from MODEL_ALLOWLIST (services/broker/src/pricing.ts), so the broker refuses it with MODEL_NOT_ALLOWED. Re-enable only after ZDR compatibility is verified and the price snapshot is reviewed. pricing.test.ts asserts the refusal.
 - Models: google/gemini-3.1-flash-lite (text) and google/gemini-3.5-flash-lite (vision) remain CONDITIONAL. They are not production-verified.
 - API key: the LensMate key keeps its USD 0.50 lifetime limit during testing. Not raised. No paid traffic without owner approval.
-- Initial live-test budget: INR 0 (owner accepted the recommendation). No live call is authorized.
+- Initial live-test budget: INR 0. Source: the owner's approval of the recommended configuration, which listed "Initial live-test budget INR 0 for now". No live call is authorized.
 - Deployment: mock mode is authorized in principle. Production live AI traffic is NOT authorized.
 
 ## ROUND 2026-10-26 (BLOCKER-006 work, agent record, no approvals made by the agent)
@@ -534,4 +534,13 @@ Not in the owner's report, so still unverified on the phone:
 - Open accounting finding (owner instruction 3, deferred, NOT investigated): the approximately USD 0.098 difference between the OpenRouter LensMate key usage (USD 0.125) and the broker ledger. Recorded as unresolved. No usage records were deleted or reset. The spending cap is NOT production-verified until reconciliation and enforcement tests pass.
 - Note on the earlier "INR 50 dev-test limit not built" statement (2026-10-25): it is built and enforced (see the 2026-10-26 verification entry). A live test still needs owner approval.
 - Not done: VPS read-only discovery (needs owner-run script or authorized access), isolated deployment on the VPS (needs VPS access), any live provider call, any paid operation, any change to OraOne.
+- Independent review of cb60c01 (fresh-context reviewer, 2026-10-26): verdict REJECT as committed. Status of each finding:
+  - Restored infra/dev/compose.yaml and infra/dev/.env.example from 3be4e6b. cb60c01 had removed them without saying so; the rename to infra/lensmate was in 3be4e6b and its removal half was not. Whether infra/dev should be removed is an owner decision, not made here.
+  - OWNER-DECISION-005 source now cited (owner's reply items 1 to 9 and the approval of the recommended configuration). The reviewer's point that these were approved without a source is answered by that citation.
+  - The provider-doc :free exclusion is now attributed to the agent evaluation, not the owner.
+  - Cap test (postgres-budget "holds the cap across two separate connection pools"): one failure in the earlier runs, no assertion text captured. Five further isolated runs of the suite all passed (18 of 18 each). The failure frame pointed at the test's opening line, which is how Jest reports a timeout, so a 5-second timeout under load is the likely cause. NOT confirmed, and the race in the cap logic is NOT ruled out by these runs. Open.
+  - OPEN, out of this commit's scope: apps/mobile/src/ai/assistant.ts:8 still requests google/gemini-3.1-flash-lite:online, so in-app research now gets MODEL_NOT_ALLOWED. Mobile change needed, not made here.
+  - OPEN, low: server.ts:329 still accepts feature "research"; webSearchMicroUsd remains in pricing.ts without tests. No current bypass, since the provider receives only allowlist ids. Add a server-level test for the :online and :free refusals.
+  - OPEN, low: the monthly cap value 50000 is not pinned in code (config.ts:80 default 0). Live mode requires owner confirmation to equal the cap, but the cap itself is operator-set.
+  - OPEN, low: OpenRouter's handling of fallbacks under zdr: true is assumed, not verified against the live API.
 - HELD, NOT PUSHED: the code commit (pricing.ts :online removal, FX 10000 in tests and the failure-path script) touches provider-broker code. Owner exception 3 (OWNER-APPROVAL-001, conditions still in force under OWNER-DECISION-002) requires an independent fresh-context review before any push. That review is NOT yet done. The commit is local on dev until it passes and is recorded here. The docs-only commit fd71bc3 and 209115f were pushed earlier and do not touch provider code.

@@ -39,8 +39,9 @@ had no zero-data-retention endpoint.
 
 Update 2026-10-26 (OWNER-DECISION-005): the :online variant is DISABLED and removed from the allowlist until its
 zero-data-retention compatibility is verified. The live allowlist is google/gemini-3.1-flash-lite (text) and
-google/gemini-3.5-flash-lite (vision), both conditional and not production-verified. OpenRouter's :free variants are
-not adopted: a free endpoint's use may be logged and used for improvement, which data_collection: "deny" excludes.
+google/gemini-3.5-flash-lite (vision), both conditional and not production-verified. The exclusion of OpenRouter's
+:free variants is an agent evaluation (2026-10-26), not an owner decision: a free endpoint's use may be logged and
+used for improvement, which data_collection: "deny" excludes.
 The exchange rate is INR 100 per USD (10000 paise), approved in OWNER-DECISION-005. The table below is the earlier
 proposal, kept for history.
 
