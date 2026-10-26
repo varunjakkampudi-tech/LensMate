@@ -32,6 +32,10 @@ services:
       BROKER_PORT: "8080"
       BROKER_MONTHLY_CAP_PAISE: ${BROKER_MONTHLY_CAP_PAISE:?set the owner-confirmed cap in paise}
       BROKER_OWNER_CAP_CONFIRMATION_PAISE: ${BROKER_OWNER_CAP_CONFIRMATION_PAISE:-}
+      # Paid calls stay off unless the owner sets on. The live-test budget (dev-test bucket) is passed through, so the
+      # USD 0.50 limit is enforced in the container and not only in the env file.
+      BROKER_PAID_CALLS: ${BROKER_PAID_CALLS:-off}
+      BROKER_DEV_TEST_CAP_PAISE: ${BROKER_DEV_TEST_CAP_PAISE:-}
       BROKER_FX_PAISE_PER_USD: ${BROKER_FX_PAISE_PER_USD:?set the owner exchange-rate setting}
       BROKER_DATABASE_URL_FILE: /run/secrets/broker_app_database_url
       OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
