@@ -704,3 +704,13 @@ Not in the owner's report, so still unverified on the phone:
 - F11 quick actions: the assistant screen has Repeat the last answer, beside Stop. Stop and Read aloud already existed.
 - Mobile suite: 474 of 474 pass. Typecheck and lint pass on the changed files.
 - Not verified on a phone: all three. Expo Go cannot open the encrypted note store, so F5 saving on the native app needs a development build; the browser app stores notes on the device.
+
+## ROUND 2026-10-26 (F3 streamed answers built, reviewed and deployed)
+
+- Broker: POST /v1/ai/text/stream. Same checks as the text route (sign-in, rate limit, model allowlist, output ceiling, input size, reservation before any provider call, concurrency). One provider attempt (no retry once text is shown). Server-sent events: delta, done (with the billed cost), error. The stream is sent through Fastify, so the browser origin headers are included.
+- Spend: settled at the reported cost. Without a reported usage, or after any failure, the worst case is charged. A stream that ends without the provider's end marker is refused.
+- Phone: the core client reads the events as they arrive; a stream without a done event is never treated as billed; a response with no body takes the whole-reply path. The assistant shows the answer in one placeholder that becomes the final answer.
+- Independent review (fresh context, read-only): APPROVE WITH CONDITIONS. The conditions were applied (truncated stream refused; headers via Fastify; upstream connection released on every failure; no-body response handled; no event after done). A pre-existing observation remains open and is recorded: settlement accepts an actual cost above the reserved worst case and only logs it (the same in the text route).
+- Tests: broker 55 server, 21 provider, core 16 client plus 2 added, mobile 474, PostgreSQL 57 of 57 (run before the review fixes; the suite does not cover the streaming route itself). Full suite after the fixes: root 530 and mobile 474 passing.
+- Deployed: broker healthy at 00b8ef4. The route refuses unsigned calls (401) and answers the browser origin. The browser app is republished at https://lensmate.tech/app.
+- Not verified on a device: streamed display on Safari and on Android. Android testing starts when the phone arrives.
