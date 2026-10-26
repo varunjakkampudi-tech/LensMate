@@ -545,3 +545,15 @@ Not in the owner's report, so still unverified on the phone:
   - OPEN, low: the monthly cap value 50000 is not pinned in code (config.ts:80 default 0). Live mode requires owner confirmation to equal the cap, but the cap itself is operator-set.
   - OPEN, low: OpenRouter's handling of fallbacks under zdr: true is assumed, not verified against the live API.
 - HELD, NOT PUSHED: the code commit (pricing.ts :online removal, FX 10000 in tests and the failure-path script) touches provider-broker code. Owner exception 3 (OWNER-APPROVAL-001, conditions still in force under OWNER-DECISION-002) requires an independent fresh-context review before any push. That review was run on cb60c01 and returned REJECT; see the review record above. The later fresh-context re-review of 5d87a12 returned APPROVE WITH CONDITIONS. The docs-only commit fd71bc3 and 209115f were pushed earlier and do not touch provider code.
+
+## ROUND 2026-10-26 (broker deployed to the Hostinger VPS in MOCK mode, LensMate only)
+
+- Scope: the Hostinger VPS 200.141.14.57 (srv2072205, Ubuntu, 2 CPU, 8 GB RAM, 92 GB free). The owner gave the deployment go-ahead in chat for this step.
+- Mode: BROKER_MODE=mock. No OpenRouter key is on the server. The file openrouter_api_key holds the placeholder MOCK-ONLY-PLACEHOLDER-NOT-A-KEY. No provider call was made, and nothing was billed.
+- Location: /opt/lensmate/src (clone of origin/dev at fe6ef66). Compose project lensmate-broker: containers lensmate-broker-broker-1 (127.0.0.1:8080 only) and lensmate-broker-postgres-1 (no published port). Its own internal network and volumes. OraOne is untouched: its containers, Caddy proxy on 80/443, and volumes were not changed.
+- Secrets: generated on the server under /opt/lensmate/src/services/broker/deploy/secrets, mode 600, git-ignored. Values are not recorded here. Broker-only secrets are owned by uid 1000 so the broker user can read them.
+- Environment: /opt/lensmate/src/.env.production (git-ignored): BROKER_MODE=mock, BROKER_MONTHLY_CAP_PAISE=50000, BROKER_FX_PAISE_PER_USD=10000. The FX value is a conservative placeholder, NOT owner-approved. The cap is not confirmed for live use (BLOCKER-006 items c and h).
+- Setup issues found and fixed on the server: (1) the init script could not read the root-owned secret files, so broker_app and broker_admin were created by hand with the same SQL. (2) The first start needed BROKER_LEDGER_GENESIS=yes once, as the runbook says. It was removed after the first start.
+- Verification: /healthz returns {"status":"ok"} on 127.0.0.1:8080. Postgres is healthy. Migration completed. Public access is NOT set up. lensmate.tech is not routed.
+- Not done: no public domain route (needs an owner decision and a change to OraOne's Caddy, which was not made); no live provider calls; no device enrolment; no backup schedule; no firewall change.
+- Owner actions: approve the domain and proxy route (BLOCKER-006 item g); confirm the FX rate and cap (items c and h); choose the live-test budget (item i).
