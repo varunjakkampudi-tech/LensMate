@@ -1,16 +1,7 @@
-# Gitleaks configuration for LensMate. It extends the default rules and does not turn any rule off.
-#
-# The one allowlist entry names two exact commits whose test fixtures hold synthetic placeholders (not-a-real-...).
-# Those commits are fixed in history, so the entry stays exact. Every other commit and every new value is still scanned.
+# Gitleaks configuration for LensMate. It extends the default rules and turns none of them off.
+# Known false positives are listed by exact fingerprint in .gitleaksignore, not by pattern.
 
 title = "LensMate gitleaks configuration"
 
 [extend]
 useDefault = true
-
-[[allowlists]]
-description = "Synthetic not-a-real test placeholders in two historical commits (generic-api-key false positives)"
-commits = [
-  "3089624c41c72ca47b800e606049b0be143f51a2",
-  "d4341f90a52b9a7b68ab4d91311b82250ff57ccc",
-]
