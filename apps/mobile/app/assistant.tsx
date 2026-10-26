@@ -457,6 +457,27 @@ export default function AssistantScreen() {
             backgroundColor: c.surface2,
           }}
         />
+        {!busy && !speaking && !listening && lastAnswer !== undefined ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Repeat the last answer"
+            testID="talk-repeat-button"
+            onPress={() => {
+              setSpeaking(true);
+              speak(lastAnswer.text, lang, prefs.voiceRate, () => setSpeaking(false));
+            }}
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: c.surface2,
+            }}
+          >
+            <Icon name="speaker" color={c.text} size={20} />
+          </Pressable>
+        ) : null}
         {busy || speaking || listening ? (
           <Pressable
             accessibilityRole="button"

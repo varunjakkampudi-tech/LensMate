@@ -50,6 +50,10 @@ const RULES =
   "Never say a road, path or crossing is safe, clear or that the user can go; describe what you see and advise caution instead. " +
   "Give information, not instructions for dangerous tasks. Plain text only, no markdown.";
 
+/** Reading request for visible text. The model must copy the text exactly and mark anything it cannot read. */
+export const READ_TEXT_REQUEST =
+  "Read all the visible text in this image exactly as written, top to bottom and left to right. Keep the original wording, spelling and numbers. If a word is unclear, write [unclear] in its place instead of guessing. If there is no readable text, say that there is none.";
+
 const TONE_RULE: Record<Tone, string> = {
   warm: "Be warm and encouraging, like a kind friend.",
   brief: "Be very brief: one or two short sentences.",

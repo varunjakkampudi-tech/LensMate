@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Image, Platform, View } from "react-native";
 import { aiErrorText, askText } from "../src/ai/assistant";
+import { useMicSession } from "../src/ai/use-voice";
 import { relevantNotes } from "../src/memory/search";
 import {
   deleteAll,
@@ -29,6 +30,7 @@ const FILTERS: { id: MemoryKind | "all"; label: string }[] = [
 export default function MemoryScreen() {
   const { c } = useTheme();
   const { prefs } = usePrefs();
+  const mic = useMicSession("Voice note");
   const [items, setItems] = useState<MemoryItem[]>([]);
   const [filter, setFilter] = useState<MemoryKind | "all">("all");
   const [search, setSearch] = useState("");
@@ -119,6 +121,31 @@ export default function MemoryScreen() {
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
         <Card style={{ flexGrow: 1, flexBasis: 320 }}>
           <H2>New note</H2>
+          <Btn
+            testID="memory-dictate-button"
+            label={mic.listening !== null ? "Stop dictation" : "Dictate note"}
+            tone="ghost"
+            icon="mic"
+            onPress={() => {
+              if (mic.listening !== null) {
+                mic.stop();
+                return;
+              }
+              mic.start(prefs.language, (text) =>
+                setNote((current) => (current.trim() === "" ? text : `${current.trim()} ${text}`)),
+              );
+            }}
+          />
+          {mic.partial !== "" ? (
+            <Body muted size={14}>
+              {mic.partial}
+            </Body>
+          ) : null}
+          {mic.error !== null ? (
+            <Body muted size={14}>
+              {mic.error}
+            </Body>
+          ) : null}
           <Field
             testID="memory-note-input"
             label="Note"

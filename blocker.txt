@@ -696,3 +696,11 @@ Not in the owner's report, so still unverified on the phone:
 - Warm, Brief and Formal tones are chosen on Profile (tone-warm, tone-brief, tone-formal) and stored with the other preferences. They are added to the assistant's system prompt for text answers and for the agent's final answer. The safety rules and the "never claim to be human" rule remain above them.
 - Tests: 13 tests in the preferences and tone group pass; the agent tests pass after their mock includes the new function. Full mobile suite run before the agent-mock fix: 472 of 473, with the one failure being that mock; now fixed.
 - Not yet verified on a phone. Remaining for step 2: streaming replies, saying "stop" (barge-in), and the language choice.
+
+## ROUND 2026-10-26 (features F2, F5, F11 built in code)
+
+- F2 read visible text: the Read all the text action sends READ_TEXT_REQUEST (exact wording, unclear words marked [unclear], never a guess). Test: read-text.test.ts.
+- F5 voice notes: the Memory screen has Dictate note, which uses the microphone session to fill the note text. Saving uses the existing note store.
+- F11 quick actions: the assistant screen has Repeat the last answer, beside Stop. Stop and Read aloud already existed.
+- Mobile suite: 474 of 474 pass. Typecheck and lint pass on the changed files.
+- Not verified on a phone: all three. Expo Go cannot open the encrypted note store, so F5 saving on the native app needs a development build; the browser app stores notes on the device.

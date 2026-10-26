@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { aiErrorText, askVision } from "../src/ai/assistant";
+import { READ_TEXT_REQUEST, aiErrorText, askVision } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
 import { memoryErrorText, saveItem } from "../src/memory/vault";
@@ -419,7 +419,7 @@ export default function CaptureScreen() {
             accessibilityRole="button"
             testID={`quick-${q.split(" ")[0]?.toLowerCase()}`}
             disabled={photo === null || busy}
-            onPress={() => ask(q)}
+            onPress={() => ask(q === "Read all the text" ? READ_TEXT_REQUEST : q)}
             style={{
               minHeight: 48,
               paddingHorizontal: 12,
