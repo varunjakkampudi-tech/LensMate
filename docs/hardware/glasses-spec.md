@@ -139,3 +139,71 @@ Because features live in the phone app and the broker, most new features reach t
 - Approve purchase of a camera and microphone development board, after the exact model and total are confirmed.
 - Approve the firmware toolchain install on this PC (ESP-IDF, the standard Espressif environment).
 - Choose the phone for the first glasses link test: the Android phone you are getting.
+
+## 11. Owner requirements v2 (archived 2026-10-26) and the realistic plan
+
+### 11.1 Requirements as the owner stated them
+
+1. "Capture a picture": high quality, on a single button press or voice command.
+2. "Capture video": recorded on the glasses, with the recording light on.
+3. "Ask anything": the glasses answer in a friendly, conversational voice, like a second brain.
+4. "Remember that person" and "do you remember him": the glasses recall who the person is and where you met.
+5. All of this in milliseconds.
+6. Read phone notifications aloud.
+
+### 11.2 Feasibility, honestly
+
+| Requirement                              | Achievable?      | Constraint and approach                                                                                                                    |
+| ---------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Capture picture, high quality            | Yes              | A camera module with a real sensor, not a basic 2 MP chip. The photo is stored on the glasses and sent to the phone over Wi-Fi.            |
+| Capture video                            | Yes, with limits | Recorded to the glasses' own storage with the light on. Video does not stream over Bluetooth; it is copied over Wi-Fi after recording.     |
+| Friendly conversation, second brain      | Yes              | The phone holds memory and context. The broker makes the AI call. Answers are spoken through a speaker or earphone.                        |
+| Recognise a person and say where you met | Partly           | See 11.3. Recognition of people who have not agreed to it is not built.                                                                    |
+| "All in milliseconds"                    | Partly           | Button-to-capture and the light can be under 200 ms. An AI answer takes seconds; the target is a first spoken word in about 2 s, measured. |
+| Read phone notifications aloud           | Yes, on Android  | The owner grants notification access on the phone. Read only when asked, not in the background.                                            |
+
+### 11.3 People: what I will and will not build
+
+- **Will build:** you name a person yourself, add a note (where you met, what you talked about), and ask "what do I know about
+  Ravi?" The glasses answer from your own notes. No face data is stored.
+- **Will not build:** automatic face recognition of other people, or storing their face data, without their consent. This
+  is biometric data about people who are not you. In India the Digital Personal Data Protection Act applies to it, and it
+  is the main reason smart-glasses products fail in public. If you want this later, it needs a separate legal review first.
+
+### 11.4 Recommended hardware approach (replaces the ESP32 plan for the camera)
+
+The ESP32 camera board can take a basic photo but cannot record good video, and it is limited for the rest. A small Linux
+board is the better base for this requirement set, and Linux also makes continuous updates simpler.
+
+- **Compute:** a Raspberry Pi Zero 2 W class board (Linux, Wi-Fi, Bluetooth).
+- **Camera:** a Raspberry Pi Camera Module 3 class sensor (12 MP stills, 1080p video). A better sensor can replace it later.
+- **Microphone:** a small digital microphone board, one or two microphones.
+- **Audio out:** a small speaker or a Bluetooth earphone.
+- **Power:** a small LiPo battery with a charging and protection board. Battery life is measured, not promised.
+- **Indicator:** a red light wired so it is on whenever the camera or microphone is on, controlled by the firmware (not by the app).
+- **Button:** one button for capture, hold to talk, double press for video.
+
+This is a prototype for testing features. It is not a finished, comfortable product, and it will not look like Ray-Ban.
+
+### 11.5 Link design
+
+- **Bluetooth (control):** commands, status, the light, and the button events.
+- **Wi-Fi (bulk data):** photos and video moved to the phone after capture.
+- **Phone:** the app holds memory and the notes, shows results, runs notification reading, and calls the broker.
+
+### 11.6 Milliseconds, defined
+
+| Step                                   | Target           | How it's measured                                 |
+| -------------------------------------- | ---------------- | ------------------------------------------------- |
+| Button press to light on               | under 100 ms     | Oscilloscope or a high-speed camera, on the board |
+| Button press to photo saved on glasses | under 300 ms     | Timestamps in firmware                            |
+| Question to first spoken word          | about 2 s median | Timestamps in the app                             |
+| Notification read aloud after you ask  | under 2 s        | Timestamps in the app                             |
+
+### 11.7 Decisions needed before buying or building
+
+1. Approve the prototype parts list (the Linux board, camera module, microphone, speaker, battery and button). Exact models and totals to be confirmed before purchase.
+2. Confirm the people approach in 11.3: names and notes you enter yourself, no automatic face recognition.
+3. Approve notification reading on Android (you grant access on the phone).
+4. Set the monthly AI budget for the glasses. The current INR 500 cap will run out quickly with photo and video questions.
+5. Video length limit per recording, for storage and battery.
