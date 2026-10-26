@@ -8,6 +8,11 @@
 - [iPhone broker HTTPS route](decisions/0003-iphone-broker-https-route.md)
 - [Assistant cancellation](decisions/0004-assistant-cancellation.md)
 
+## Product
+
+- [Feature register](product/feature-register.md): all 54 specification features and the owner's 30 items, with status, phase and next step.
+- [Engineering runbooks](runbooks/broker-deploy.md): deploy, spend cap and provider outage, and enrolment.
+
 ## Governance and provider use
 
 - [Git branch policy](governance/git-branch-policy.md): development on `dev`; production promotion to `main` requires owner approval.

@@ -1,0 +1,143 @@
+# LensMate feature register
+
+This is the single product view of what LensMate does, where it stands, and what comes next. It is built from the three
+owner documents (the Goal, the v9 specification, and the Engineering Standards). Feature IDs (F1 to F54) are the v9
+specification's IDs. The owner's 30-item list is mapped onto them in Part B. Anything in the owner's list that the
+specification does not cover is in Part C and needs a specification amendment before it is built.
+
+Last updated: 2026-10-26. Update this file in the same change as any feature that changes status.
+
+## Status legend
+
+| Status             | Meaning                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| Verified on device | Tested on the owner's iPhone 15 through Expo Go, with the broker in live mode.           |
+| Partly built       | Code exists and has tests or a simulator path. It is not verified end to end on a phone. |
+| Not started        | No product code for the feature.                                                         |
+| Next / Later       | Planned for a later phase in the specification. Do not build now.                        |
+| Not planned        | The specification excludes it (for example G7 or G5). Do not build.                      |
+
+## Part A: the specification's features (F1 to F54)
+
+Phase column: the phase the specification gives. Core means it is in P-1, the current phase.
+
+| ID  | Feature                                                             | Spec phase                | Status                                                                                      | Next step                             |
+| --- | ------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- |
+| F1  | Vision help: describe what is in front of you on request            | Core                      | Partly built (mock vision route; the camera capture path exists)                            | Step 3 (vision)                       |
+| F2  | Read visible text aloud                                             | Core                      | Not started                                                                                 | Step 3 (vision, OCR)                  |
+| F3  | Voice questions and spoken answers, streaming                       | Core                      | Verified on device for text question and spoken reply. Speech input and streaming not built | Step 2 (speech input, streaming)      |
+| F4  | Photo capture on button press, saved to phone                       | Core                      | Partly built (capture screen; save to phone not verified on a device)                       | Step 6 (capture)                      |
+| F5  | Voice notes: dictate, save, retrieve                                | Core                      | Not started                                                                                 | Step 5 (memory and notes)             |
+| F6  | Memory: save facts you choose, recall them                          | Core                      | Partly built (encrypted store and tests; it cannot open in Expo Go)                         | Step 5 (needs a development build)    |
+| F7  | Reminders by voice, with time and optional location                 | Next                      | Not started (the reminders screen exists; voice does not)                                   | Later phase                           |
+| F8  | Conversation summaries on request                                   | Next                      | Not started                                                                                 | Later phase                           |
+| F9  | Translation of visible text into English, Telugu, Hindi             | Next                      | Not started                                                                                 | Later phase, after step 4             |
+| F10 | Navigation prompts from the phone (audio only)                      | Next                      | Not started                                                                                 | Later phase                           |
+| F11 | Quick actions: last photo, last answer, repeat, stop                | Core                      | Not started (listed in the registry as text only)                                           | Step 6                                |
+| F12 | Wear detection: sleep when removed, wake when worn                  | Core                      | Not started (needs hardware)                                                                | Hardware phase                        |
+| F13 | Battery and health status on the phone app                          | Core                      | Partly built (diagnostics screen; no battery reading)                                       | Step 6                                |
+| F14 | Over-the-air firmware updates with rollback                         | Next                      | Not started (needs hardware)                                                                | Hardware phase                        |
+| F15 | Display for text                                                    | Not in this spec          | Out of scope                                                                                | None                                  |
+| F16 | Object or product lookup by photo, with links                       | Later                     | Not started                                                                                 | Later phase                           |
+| F17 | Continuous live assistance (always-on camera)                       | Not planned               | Excluded (G5, privacy)                                                                      | Do not build                          |
+| F18 | Face recognition or identifying people                              | Not planned               | Excluded (G7)                                                                               | Do not build                          |
+| F19 | Automatic recording of conversations                                | Not planned               | Excluded (G7)                                                                               | Do not build                          |
+| F20 | Live two-way translation of conversation                            | Next                      | Partly built (translation screen and session model; no speech in or out)                    | Step 4                                |
+| F21 | Live captions of conversation on the phone                          | Next                      | Partly built (state model only)                                                             | Step 4                                |
+| F22 | Language auto-detect: English, Telugu, Hindi, mixed                 | Core                      | Not started (speech uses a fixed language)                                                  | Step 2                                |
+| F23 | Interview practice: mock questions by voice                         | Next                      | Partly built (screen exists; prompt under review)                                           | Later phase, after the prompt review  |
+| F24 | Interview prep: load your notes and quiz yourself                   | Next                      | Not started                                                                                 | Later phase                           |
+| F25 | Interview debrief: dictate, saved as a note                         | Next                      | Not started                                                                                 | Later phase                           |
+| F26 | Barge-in: say or press stop to interrupt a spoken answer            | Core                      | Partly built (simulator path; the stop path is not verified on a phone)                     | Step 2                                |
+| F27 | Custom vocabulary                                                   | Next                      | Not started                                                                                 | Later phase                           |
+| F28 | Offline phrase translation and basic speech                         | Later                     | Not started                                                                                 | Later phase                           |
+| F29 | Language practice: pronunciation feedback                           | Later                     | Not started                                                                                 | Later phase                           |
+| F30 | Live answer suggestions during a real interview                     | Not planned               | Excluded (G16)                                                                              | Do not build                          |
+| F31 | Companion mode (opt-in, watches for chosen categories)              | Next                      | Not started                                                                                 | Later phase                           |
+| F32 | Proactive speech inside companion mode                              | Next                      | Not started                                                                                 | Later phase                           |
+| F33 | Environment analysis on request                                     | Core                      | Partly built (same vision route as F1)                                                      | Step 3                                |
+| F34 | Rating on request for chosen items (never people)                   | Next                      | Not started                                                                                 | Later phase                           |
+| F35 | Friendly voice persona with tone settings                           | Core                      | Not started (a basic persona only in the spoken reply)                                      | Step 2                                |
+| F36 | Informational checks you define                                     | Next (P3)                 | Not started                                                                                 | Later phase                           |
+| F37 | Conversation understanding during a session you start               | Core (session)            | Partly built (session rules in the simulator)                                               | Step 6                                |
+| F38 | Explain a recent moment, last 60 seconds of captures                | Next                      | Not started                                                                                 | Later phase                           |
+| F39 | Appearance modes: frame and tint options                            | Later                     | Not started                                                                                 | Later phase                           |
+| F40 | Status indicator visible to bystanders during capture and listening | Core                      | Partly built (simulator and capture indicator logic; no hardware)                           | Step 6                                |
+| F41 | Contextual assistant                                                | P3                        | Not started                                                                                 | After P3                              |
+| F42 | Scene change intelligence (companion only)                          | P3                        | Not started                                                                                 | After P3                              |
+| F43 | Proactive recommendations                                           | P3                        | Not started                                                                                 | After P3                              |
+| F44 | Intelligent silence and priority                                    | P3                        | Not started                                                                                 | After P3                              |
+| F45 | Guided task mode                                                    | P3                        | Not started                                                                                 | After P3                              |
+| F46 | Contextual mistake assistance                                       | P3                        | Not started                                                                                 | After P3                              |
+| F47 | Conversational personality                                          | Basic P2, adaptive P3     | Not started                                                                                 | P2                                    |
+| F48 | User-approved personalisation                                       | P3                        | Not started                                                                                 | After P3                              |
+| F49 | Object and product assistance                                       | After P3                  | Not started                                                                                 | After P3                              |
+| F50 | Accessibility assistance                                            | P2                        | Partly built (accessibility review rejected; see blocker 011)                               | P2, after the review passes           |
+| F51 | Emergency shortcut                                                  | Supervised pilot after P2 | Not started                                                                                 | After P2                              |
+| F52 | Notification intelligence                                           | After P3                  | Not started                                                                                 | After P3                              |
+| F53 | Device and AI health awareness                                      | P1 basic, P3 full         | Partly built (broker status messages; no phone-side messages yet)                           | Step 6 (basic)                        |
+| F54 | Confidence and evidence policy                                      | P3                        | Not started                                                                                 | Before any rating or check is enabled |
+
+## Part B: the owner's 30 items, mapped to the specification
+
+| #   | Owner's item                            | Spec IDs                                      | Current status                                                                     | Next step                 |
+| --- | --------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------- |
+| 1   | JARVIS-level AI assistant               | F3, F35, F37                                  | Verified on device (text question, spoken reply)                                   | Steps 2 and 5             |
+| 2   | Advanced AI reasoning                   | Quality of the model; F54 for confidence      | Ongoing. Depends on the chosen models                                              | Measure answer quality    |
+| 3   | Super smart vision                      | F1, F33, F54                                  | Partly built                                                                       | Step 3                    |
+| 4   | HEAR: advanced audio intelligence       | F3, F22, F27                                  | Not started (speech input off)                                                     | Step 2                    |
+| 5   | TALK: human-like voice                  | F3, F26, F35                                  | Spoken reply verified on device. Streaming, barge-in and voice choice not built    | Step 2                    |
+| 6   | Advanced memory and smart notes         | F5, F6, F48                                   | Partly built (F6). F5 and F48 not started                                          | Step 5                    |
+| 7   | Autonomous task execution               | Not in the spec (nearest: F45, P3)            | Not started. Needs an amendment                                                    | Part C                    |
+| 8   | Real mobile actions                     | Not in the spec (nearest: F51, F52)           | Not started. Needs an amendment                                                    | Part C                    |
+| 9   | Live internet research                  | Not in the spec                               | Removed until a model passes the zero-retention check                              | Part C                    |
+| 10  | Proactive AI and automation             | F31, F32, F43                                 | Next or P3                                                                         | Later phase               |
+| 11  | Multi-agent AI system                   | Not in the spec                               | Not started. Needs an amendment                                                    | Part C                    |
+| 12  | Tools and PC control                    | Not in the spec (F15 is excluded)             | Not started. Needs an amendment                                                    | Part C                    |
+| 13  | Smart actions and workflows             | F45 (P3), F36                                 | Not started                                                                        | Later phase               |
+| 14  | Real-time translation                   | F9, F20, F21                                  | Partly built (F20)                                                                 | Step 4                    |
+| 15  | Smart capture and recording             | F4, F38, F40. F19 is not planned              | Partly built                                                                       | Step 6                    |
+| 16  | Premium UI and UX                       | F50 and Goal 10A                              | Partly built (accessibility review rejected)                                       | Step 8                    |
+| 17  | Context-aware intelligence              | F41, F48 (P3)                                 | Not started                                                                        | After P3                  |
+| 18  | Personal AI companion                   | F31, F47                                      | Next (companion), P2 (personality)                                                 | Later phase               |
+| 19  | Real-time environmental awareness       | F33 (on request). F17 is not planned          | Partly built                                                                       | Step 3                    |
+| 20  | Cross-device integration                | Not in the spec                               | Not started. Needs an amendment                                                    | Part C                    |
+| 21  | Intelligent notifications and reminders | F7, F52                                       | Partly built (reminders screen). F7 and F52 not started                            | Step 6                    |
+| 22  | AI planning and decision-making         | Not in the spec (nearest: F45, F46)           | Not started. Needs an amendment                                                    | Part C                    |
+| 23  | Voice-controlled automation             | F11, F26, F37                                 | Not started                                                                        | Steps 2 and 6             |
+| 24  | Smart glasses integration               | F12, F14, hardware phases                     | Not started (no hardware in this phase)                                            | Hardware phase            |
+| 25  | Offline AI capabilities                 | F28 (Later), F53                              | Not started                                                                        | Later phase               |
+| 26  | Personalised AI learning                | F48 (P3). No learning model in the spec       | Not started                                                                        | After P3                  |
+| 27  | AI knowledge graph                      | Not in the spec                               | Not started. Needs an amendment                                                    | Part C                    |
+| 28  | Spatial intelligence and navigation     | F10 (Next). Spatial reasoning not in the spec | Not started                                                                        | Later phase               |
+| 29  | Intelligent search and summarisation    | F8 (Next), F38 (Next)                         | Not started                                                                        | Later phase               |
+| 30  | Privacy, security and user control      | F40, F53, and the Goal's privacy rules        | Partly built and strong: encryption, zero data retention, spending cap, audit logs | Keep; review each release |
+
+## Part C: owner items not in the specification
+
+These are not in the three owner documents. Building any of them needs a specification amendment first, with the
+decision recorded in `blocker.txt`. Until then they stay out of P-1.
+
+- Autonomous task execution (7), real mobile actions (8), multi-agent system (11), tools and PC control (12),
+  cross-device integration (20), AI planning (22), knowledge graph (27), live internet research (9).
+- Live research (9) was removed from the app. It returns only once a research model passes the zero-retention check.
+
+## Phase order (one feature at a time)
+
+1. Done: the assistant answers and speaks (F3, part of 1).
+2. Speech input and output: F3 streaming, F22, F26, F35, and items 4 and 5.
+3. Vision: F1, F2, F33, and item 3.
+4. Translation: F20, F21, and item 14.
+5. Memory and notes: F5, F6, and item 6. Needs the iPhone development build.
+6. Capture, reminders and quick actions: F4, F11, F13, F7 (basic), F37, F40, F53 (basic), and items 15, 21, 23.
+7. Accessibility and the premium UI: F50 and item 16, after the independent review passes.
+8. Measurements and release checks: Goal section 14, then the owner's device runs.
+
+Later phases (companion, personalisation, interview features, offline, hardware) start only after P-1 passes its
+acceptance tests.
+
+## How this file stays current
+
+- Change the status in the same commit as the feature.
+- A status of Verified on device needs a device test note in `blocker.txt`. Simulator or unit tests alone do not count.
+- Do not add a feature from Part C without an amendment.
