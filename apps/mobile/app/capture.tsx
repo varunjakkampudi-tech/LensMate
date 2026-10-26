@@ -197,6 +197,22 @@ export default function CaptureScreen() {
       {!prefs.features.vision ? (
         <Notice tone="warn">Vision help is switched off in Profile → Features.</Notice>
       ) : null}
+      <Text
+        accessibilityLiveRegion="polite"
+        testID="camera-status"
+        style={{
+          color: live ? c.danger : c.muted,
+          fontFamily: FONTS.body,
+          fontSize: 14,
+          fontWeight: "600",
+        }}
+      >
+        {live
+          ? "Camera on · the preview is live. Tap Take photo, or Turn camera off."
+          : photo !== null
+            ? "Camera off · your photo is ready below."
+            : "Camera off · tap Camera to turn it on."}
+      </Text>
       <View
         style={{
           borderRadius: 18,
@@ -255,7 +271,12 @@ export default function CaptureScreen() {
               icon="camera"
               onPress={() => void session.takePhoto()}
             />
-            <Btn label="Cancel" tone="ghost" onPress={() => session.cancelCamera()} />
+            <Btn
+              label="Turn camera off"
+              tone="ghost"
+              icon="x"
+              onPress={() => session.cancelCamera()}
+            />
           </>
         ) : (
           <Btn

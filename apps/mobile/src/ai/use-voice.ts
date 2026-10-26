@@ -66,7 +66,7 @@ export function useMicSession(label: string) {
     [capture, label, halt],
   );
 
-  return { listening, partial, error, start, stop };
+  return { listening, partial, error, start, stop, available: canListen() };
 }
 
 /** Short rolling conversation (last 6 turns are sent, to keep cost low). Hidden turns steer the model but are not shown. */

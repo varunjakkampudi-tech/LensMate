@@ -213,7 +213,15 @@ export default function AssistantScreen() {
   );
 
   const listening = mic.listening !== null;
-  const status = listening ? "Listening…" : busy ? "Thinking…" : speaking ? "Speaking…" : "Ready";
+  const status = listening
+    ? "Microphone on · speak now, tap the red button to stop"
+    : busy
+      ? "Thinking…"
+      : speaking
+        ? "Speaking…"
+        : mic.available
+          ? "Ready · microphone off"
+          : "Microphone not available in this browser · type your question";
   const statusColor = listening ? c.danger : busy ? c.accent2 : speaking ? c.accent : c.muted;
   const providerLabel =
     lastAnswer?.source === "openrouter"
@@ -463,9 +471,16 @@ export default function AssistantScreen() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={listening ? "Stop listening" : "Speak your question"}
+          accessibilityLabel={
+            !mic.available
+              ? "Microphone not available in this browser"
+              : listening
+                ? "Stop listening, microphone on"
+                : "Start listening, microphone off"
+          }
+          accessibilityState={{ disabled: busy || !voiceOn || !mic.available, selected: listening }}
           testID="talk-mic-button"
-          disabled={busy || !voiceOn}
+          disabled={busy || !voiceOn || !mic.available}
           onPress={() => (listening ? mic.stop() : mic.start(lang, (t) => void run(t)))}
           style={{
             width: 48,
@@ -474,7 +489,7 @@ export default function AssistantScreen() {
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: listening ? c.danger : c.surface2,
-            opacity: busy || !voiceOn ? 0.5 : 1,
+            opacity: busy || !voiceOn || !mic.available ? 0.5 : 1,
           }}
         >
           <Icon name="mic" color={listening ? "#fff" : c.accent} size={22} />
