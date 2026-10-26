@@ -31,6 +31,7 @@ export class PostgresBudgetStore implements BudgetStore {
       assertPaise(input.devTestCapPaise, "development-test cap");
     }
     const client = await this.pool.connect();
+    let brokenConnection = false;
     try {
       await client.query("BEGIN");
       const monthly = await lockBucket(client, input.month);
@@ -88,10 +89,10 @@ export class PostgresBudgetStore implements BudgetStore {
       await client.query("COMMIT");
       return { ok: true };
     } catch (error) {
-      await rollbackQuietly(client);
+      brokenConnection = !(await rollbackQuietly(client));
       throw error;
     } finally {
-      client.release();
+      client.release(brokenConnection ? true : undefined);
     }
   }
 
@@ -126,8 +127,12 @@ export class PostgresBudgetStore implements BudgetStore {
    * never reached the ledger (a crash or a database failure mid-call). Charging them keeps the caps conservative.
    * SKIP LOCKED lets several broker processes reap without waiting on each other. Returns the number charged.
    */
-  async reapStale(maxAgeSeconds: number): Promise<number> {
+  async reapStale(
+    maxAgeSeconds: number,
+    onSkip?: (reservationId: string, reason: string) => void,
+  ): Promise<number> {
     const client = await this.pool.connect();
+    let brokenConnection = false;
     try {
       await client.query("BEGIN");
       const stale = await client.query<{
@@ -156,8 +161,9 @@ export class PostgresBudgetStore implements BudgetStore {
           await client.query("SET CONSTRAINTS ALL DEFERRED");
           await client.query("RELEASE SAVEPOINT reap_row");
           reaped += 1;
-        } catch {
+        } catch (error) {
           // The row stays open and is retried on the next pass. The rest of the batch is not affected.
+          onSkip?.(row.reservation_id, error instanceof Error ? error.message : "unknown error");
           await client.query("ROLLBACK TO SAVEPOINT reap_row");
           await client.query("RELEASE SAVEPOINT reap_row");
           await client.query("SET CONSTRAINTS ALL DEFERRED");
@@ -166,10 +172,10 @@ export class PostgresBudgetStore implements BudgetStore {
       await client.query("COMMIT");
       return reaped;
     } catch (error) {
-      await rollbackQuietly(client);
+      brokenConnection = !(await rollbackQuietly(client));
       throw error;
     } finally {
-      client.release();
+      client.release(brokenConnection ? true : undefined);
     }
   }
 
@@ -179,6 +185,7 @@ export class PostgresBudgetStore implements BudgetStore {
     actualPaise: number,
   ): Promise<void> {
     const client = await this.pool.connect();
+    let brokenConnection = false;
     try {
       await client.query("BEGIN");
       const found = await client.query<{ state: string }>(
@@ -196,10 +203,10 @@ export class PostgresBudgetStore implements BudgetStore {
       );
       await client.query("COMMIT");
     } catch (error) {
-      await rollbackQuietly(client);
+      brokenConnection = !(await rollbackQuietly(client));
       throw error;
     } finally {
-      client.release();
+      client.release(brokenConnection ? true : undefined);
     }
   }
 }
@@ -225,11 +232,14 @@ function exceeds(bucket: BucketLock, amount: bigint, cap: bigint): boolean {
   return bucket.spent + bucket.reserved + amount > cap;
 }
 
-async function rollbackQuietly(client: PoolClient): Promise<void> {
+/** Returns false when the rollback itself failed, so the caller destroys the connection instead of pooling it. */
+async function rollbackQuietly(client: PoolClient): Promise<boolean> {
   try {
     await client.query("ROLLBACK");
+    return true;
   } catch {
-    // The original error is the one that matters. A failed rollback closes the connection on release.
+    // The original error is the one that matters.
+    return false;
   }
 }
 

@@ -172,6 +172,35 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
     });
   });
 
+  it("skips a reservation whose month has drifted, and still settles the other stale rows", async () => {
+    await store.reserve(reserveInput("drift-a", { month: "2026-10", amountPaise: 10 }));
+    await store.reserve(reserveInput("drift-b", { month: "2026-09", amountPaise: 20 }));
+    await appPool().query(
+      "UPDATE broker_reservation SET created_at = now() - interval '1 hour' WHERE reservation_id IN ('drift-a', 'drift-b')",
+    );
+    // Put the October reserved total out of step with its open reservations. Only the owner can do this, and the
+    // consistency trigger is disabled just for the change, then enabled again.
+    await appPool().query(
+      "ALTER TABLE broker_budget_month DISABLE TRIGGER broker_budget_reserved_consistent",
+    );
+    await appPool().query(
+      "UPDATE broker_budget_month SET reserved_paise = reserved_paise + 7 WHERE month = '2026-10'",
+    );
+    await appPool().query(
+      "ALTER TABLE broker_budget_month ENABLE TRIGGER broker_budget_reserved_consistent",
+    );
+    const skipped: string[] = [];
+    expect(await store.reapStale(300, (id) => skipped.push(id))).toBe(1);
+    expect(skipped).toEqual(["drift-a"]);
+    const state = await appPool().query(
+      "SELECT reservation_id, state FROM broker_reservation ORDER BY reservation_id",
+    );
+    expect(state.rows).toEqual([
+      { reservation_id: "drift-a", state: "reserved" },
+      { reservation_id: "drift-b", state: "settled" },
+    ]);
+  });
+
   it("refuses an open reservation that carries a cost, and a daily request count that goes down", async () => {
     await store.reserve(reserveInput("open-guard", { amountPaise: 10 }));
     await expect(

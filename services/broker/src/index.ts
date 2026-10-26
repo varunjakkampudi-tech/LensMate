@@ -92,7 +92,12 @@ async function main(): Promise<void> {
     reaper = async () => {
       // Retention is enforced here too, so an expired backup is deleted even if no device asks for it.
       await backupStore.purgeExpired(Date.now());
-      const settled = await store.reapStale(REAP_AFTER_SECONDS);
+      const settled = await store.reapStale(REAP_AFTER_SECONDS, (reservationId, reason) => {
+        // Only our own identifiers and the database's constraint message are logged. No request content.
+        process.stderr.write(
+          `${JSON.stringify({ event: "reap_skipped", reservationId, reason })}\n`,
+        );
+      });
       // The reaper can settle reservations from the previous month, so refresh both months it may touch.
       for (const month of [...recentMonths(monthOf(Date.now()), 2), DEV_TEST_BUCKET]) {
         await anchored.refresh(month);
