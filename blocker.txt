@@ -802,3 +802,10 @@ Still open, and why:
 - LM-A15 pricing and endpoint privacy: the broker's price table is not re-verified against the live provider in this pass.
 - LM-A16 restore testing: the backup and restore path is not rerun in this pass.
 - LM-A17 accessibility on devices: needs assistive-technology testing on phones.
+
+## ROUND 2026-10-26 (open-source reference review; docs/research/open-source-references.md)
+
+- Verified with the GitHub API: OpenSQZ/OpenGlass has no licence, so its code must not be copied. Brilliant Labs frame-codebase has an unclear licence (NOASSERTION), so it is excluded until clarified.
+- Decision needed (owner): adopt Mem0 as a memory service behind the broker? It adds a Python service, hosting and cost, and personal-data handling. Not started.
+- Decision needed (owner): adopt Browser Use for web actions? It needs a threat model and a security review first. Not started.
+- No code was copied from any reference in this round. LiveKit and Pipecat are design references only (Python, and one voice framework is enough).
