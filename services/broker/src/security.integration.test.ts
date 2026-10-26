@@ -11,6 +11,7 @@ import { migrate, SchemaError, verifySchema } from "./schema.js";
 import { checkContinuity, FileAnchor, AnchorError } from "./ledger-anchor.js";
 import { PostgresBudgetStore } from "./postgres-budget.js";
 import { PostgresBackupStore } from "./backup.js";
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -84,13 +85,20 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     const updatedAt = Date.now();
     const expiresAt = updatedAt + 30 * 86_400_000;
     const reader = new Pool({ connectionString: withDatabase(BASE_URL ?? "", DB), max: 1 });
+    const secretHash = createHash("sha256").update(deviceId).digest("hex");
     try {
+      // A backup row must reference a registered device (foreign key), so register the test device first.
+      await owner.query(
+        "INSERT INTO broker_device (device_id, label, secret_sha256) VALUES ($1, 'backup-test', $2)",
+        [deviceId, secretHash],
+      );
       await writer.put(deviceId, ciphertext, updatedAt, expiresAt);
       const restored = await new PostgresBackupStore(reader).get(deviceId, updatedAt);
       expect(restored).toMatchObject({ ciphertext, updatedAt, expiresAt });
     } finally {
       try {
         await writer.remove(deviceId);
+        await owner.query("DELETE FROM broker_device WHERE device_id = $1", [deviceId]);
       } finally {
         await reader.end();
       }
