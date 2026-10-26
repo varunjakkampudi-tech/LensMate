@@ -220,3 +220,13 @@ Rows deliberately left unchanged:
 - F3 and F4 stay Unverified. Speech input, streaming, and saving to phone are not evidenced.
 
 Summary counts above were recomputed from the table cells after the CL17 change. Percentages were updated only where a count changed.
+
+## Reconciliation 2026-10-26
+
+Source of truth for statuses is still docs/product/feature-register.md. This section records the changes made today and the evidence behind them.
+
+- Code added today (partly built, not verified on a phone): F8 conversation summaries, F9 translate visible text, F11 last-photo shortcut, F26 spoken stop in the browser app, F22 automatic direction (native route, off in this build), and the home-screen "Last deployed" line.
+- Evidence: mobile Jest 501 of 501; broker Jest 256 of 256 with PostgreSQL 17; CI green on 6c74348 (run 40291616548). Evidence level for all of the above: simulator and unit tests only.
+- F22 native detection and native HEAR stay disabled. They need a development build tested on Android and iPhone before the owner approves enabling them.
+- F12 is skipped by owner instruction until hardware is available.
+- Not in P-1 and not built: live research (refused on purpose), multi-agent orchestration, autonomous tasks, mobile actions, proactive automation, PC control. No status in this matrix is raised for them.

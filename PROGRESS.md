@@ -582,3 +582,12 @@ The commit messages carry no requirement IDs. The mapping below is read from the
 Validation for the UI pass: monorepo typecheck/build, repository lint, and Prettier check passed. Mobile Jest: 50 suites and 470 tests passed. Jest printed existing `findBy*` timeout-option deprecation warnings. Independent review remains pending (BLOCKER-011); device and assistive-technology checks were not run.
 
 GitHub Actions push run 40232952151 passed `quality`, `secret-scan`, and `broker-integration` on `dev`.
+
+## CI repair and reconciliation (2026-10-26)
+
+- The latest CI runs on `dev` were failing (lint in the broker tests; battery-check formatting; unused exports). Fixed in `6c74348`. The CI run for that commit (40291616548) completed green, so the earlier "latest green CI is not confirmed" finding is closed for that commit.
+- Local gates on `6c74348`: build, typecheck, lint, format check, knip, schema check, Expo public config and `audit:high` all exit 0. Root test run: 530 passed, 57 database tests skipped. Mobile Jest: 501 of 501 passed. Broker suites with `BROKER_TEST_DATABASE_URL` against local PostgreSQL 17: 15 of 15 suites, 256 of 256 tests passed.
+- Dependency audit: `audit:high` passes with the dated exception RE-001 (GHSA-86w9-cpqp-85rv, node-forge, no patch). Re-check due 2026-11-30, expiry 2026-12-31 (docs/governance/RISK_EXCEPTIONS.md).
+- Features completed in code today, all partly built and none verified on a phone: F8 conversation summaries, F9 translate visible text, F11 last-photo shortcut, F26 saying stop in the browser app, F22 automatic direction on the translate screen (off until native listening is enabled), and the home-screen "Last deployed" line.
+- Still open, and why: native listening is off (`NATIVE_LISTENING_ENABLED = false`, owner gate, needs a development build verified on Android and iPhone); Android end-to-end flows are manual and were not run (owner instruction to skip Android emulator testing for now); F12 wear detection needs hardware (owner skipped it for now).
+- Out of P-1 scope and not built: live research (refused on purpose: no verified zero-retention research model), multi-agent orchestration, autonomous tasks, mobile actions, proactive automation and PC control. These sit in the later phases of the v9 document.

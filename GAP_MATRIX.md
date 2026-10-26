@@ -89,3 +89,10 @@ Counts (54 items, recomputed on 2026-10-24): Implemented (simulator) 4 (items 1,
 | Firmware abstractions (firmware)                             | NOT STARTED                         | Stage J, host tests only; firmware/ holds a README only                                                              |
 | Maestro flows (e2e)                                          | NOT STARTED                         | e2e/ holds a README only; needs CI emulator plan (BLOCKER-009)                                                       |
 | Measurement harness and procedures (docs/measurements)       | PARTIAL                             | Simulator workflow complete; the iPhone run is not runnable yet (BLOCKER-005); see docs/measurements/traceability.md |
+
+## Reconciliation 2026-10-26
+
+- Changed since 2026-10-24: CI on dev is green on 6c74348 (it was failing on earlier commits). Broker and mobile test counts are in PROGRESS.md.
+- Still open, all of them gated by a device or an owner decision: native HEAR on Android and iPhone (off), F22 detection through the native recogniser (off, iOS has no detection option), Android end-to-end flows (manual, not run), F12 wear detection (hardware), and the Apple Developer account.
+- Residual broker risk, recorded not hidden: a streamed or text reply whose billed cost exceeds its reserved worst case is recorded at the actual cost and logged. Later reservations are refused once the monthly cap is reached, so the overrun is bounded by one call's excess over the price table. Closing it fully needs a larger safety margin in services/broker/src/pricing.ts, which is an owner pricing decision.
+- Live research stays refused until a zero-retention research model is verified.
