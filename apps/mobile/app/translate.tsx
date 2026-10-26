@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { aiErrorText, askVision, translate, LANG_NAME } from "../src/ai/assistant";
 import { hasVoiceFor, speak } from "../src/ai/speech";
 import { startsNewSession } from "../src/ai/session";
-import { appendTurn, handOver, type ConversationTurn } from "../src/ai/conversation";
+import { appendTurn, directionFor, handOver, type ConversationTurn } from "../src/ai/conversation";
 import { useMicSession } from "../src/ai/use-voice";
 import { pickImageFile } from "../src/capture/camera";
 import { memoryErrorText, saveItem } from "../src/memory/vault";
@@ -77,6 +77,8 @@ export default function TranslateScreen() {
   const [savedNote, setSavedNote] = useState(false);
   // The two-way conversation: each completed turn is kept, and the speaking turn passes to the other person.
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
+  // The language the recogniser heard for the current turn (F22). Null when the browser cannot tell.
+  const detectedRef = useRef<Lang | null>(null);
   const size = prefs.largeCaptions ? 26 : 20;
 
   // A translation session starts with the first request, and ends after two minutes without one (v9 section 21).
@@ -94,30 +96,31 @@ export default function TranslateScreen() {
     }
   };
 
-  const run = async (text: string) => {
+  // The direction comes from the language heard. Without detection it is the chosen pair, as before.
+  const run = async (text: string, source: Lang = from, target: Lang = to) => {
     setOriginal(text);
     setBusy(true);
     setError(null);
     try {
-      const r = await translate(text, from, to);
+      const r = await translate(text, source, target);
       setResult({ text: r.translation, uncertain: r.uncertain });
       setSavedNote(false);
       setTurns((prev) =>
         appendTurn(prev, {
           id: Date.now(),
           heard: text,
-          from,
+          from: source,
           translated: r.translation,
-          to,
+          to: target,
           uncertain: r.uncertain,
         }),
       );
       // The other person speaks next: the languages swap, so the next speech is in the other language.
-      const speakerNext = handOver(from, from, to);
+      const speakerNext = handOver(source, source, target);
       setFrom(speakerNext);
-      setTo(speakerNext === from ? to : from);
-      if (prefs.autoSpeak || hasVoiceFor(to)) {
-        speak(r.translation, to, prefs.voiceRate);
+      setTo(speakerNext === source ? target : source);
+      if (prefs.autoSpeak || hasVoiceFor(target)) {
+        speak(r.translation, target, prefs.voiceRate);
       }
     } catch (e) {
       setError(aiErrorText(e));
@@ -396,7 +399,16 @@ export default function TranslateScreen() {
               mic.stop();
             } else {
               announce();
-              mic.start(from, (t) => void run(t));
+              detectedRef.current = null;
+              mic.start(
+                from,
+                (t) => {
+                  const heard = directionFor(detectedRef.current ?? from, from, to);
+                  detectedRef.current = null;
+                  void run(t, heard.source, heard.target);
+                },
+                { detect: true, onDetected: (heard) => (detectedRef.current = heard) },
+              );
             }
           }}
           style={{ alignItems: "center", gap: 6 }}

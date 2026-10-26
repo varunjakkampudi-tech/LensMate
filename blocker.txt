@@ -764,3 +764,12 @@ Not in the owner's report, so still unverified on the phone:
 - Limits: iOS has no language-detection option, so iPhone uses the chosen language and gets no detection. The translate screen does not use the detected language yet.
 - Tests: native-listen.test.ts (new auto-detect tests; subscription count now 4). AI suite 66 of 66 pass; typecheck and lint pass.
 - Not verified. Enabling native listening needs a development build tested on Android (and iPhone for the fallback). F12 is skipped by owner decision.
+
+## ROUND 2026-10-26 (F22 automatic direction on the translate screen)
+
+- Owner instruction: the app should detect the spoken language automatically.
+- Built: the translate screen starts listening with detection on. A heard language sets the direction (directionFor in src/ai/conversation.ts): the second language of the pair swaps the direction; any other language is translated to the first language of the pair. The detection reaches the screen through listen and useMicSession (options detect and onDetected).
+- Browser: no detection (the Web Speech API cannot report language), so the chosen pair is used as before.
+- Native: detection works only when native listening is on. It stays OFF in this build by design (NATIVE_LISTENING_ENABLED, docs/decisions/0001: turn on only after on-device verification). Turning it on needs the owner's approval after a development build is tested on an Android phone and an iPhone (iPhone falls back to the chosen language).
+- Tests: conversation.test.ts (directionFor, 2 tests). Mobile suite 499 of 499 pass; typecheck and lint pass.
+- Not verified on a device.

@@ -82,6 +82,9 @@ export function listen(
     onFinal: (text: string) => void;
     onError: (code: string) => void;
     onEnd: () => void;
+    /** Native only: the language the recogniser heard, when auto-detect is on (F22). */
+    onDetected?: (lang: Lang) => void;
+    detect?: boolean;
   },
 ): Listening {
   if (isNative()) {
@@ -91,7 +94,7 @@ export function listen(
     let stopSession: () => void = () => undefined;
     void loadNativeRecognizer().then((recognizer) => {
       if (!stopped) {
-        stopSession = startNativeListening(lang, handlers, recognizer);
+        stopSession = startNativeListening(lang, handlers, recognizer, undefined, handlers.detect);
       }
     });
     return {

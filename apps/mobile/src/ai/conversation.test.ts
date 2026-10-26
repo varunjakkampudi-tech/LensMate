@@ -1,4 +1,10 @@
-import { appendTurn, handOver, MAX_TURNS, type ConversationTurn } from "./conversation";
+import {
+  appendTurn,
+  directionFor,
+  handOver,
+  MAX_TURNS,
+  type ConversationTurn,
+} from "./conversation";
 
 function turn(id: number): ConversationTurn {
   return { id, heard: `heard ${String(id)}`, from: "en", translated: "t", to: "te", uncertain: [] };
@@ -22,5 +28,16 @@ describe("two-way conversation", () => {
     expect(turns).toHaveLength(MAX_TURNS);
     expect(turns[0]?.id).toBe(6);
     expect(turns[turns.length - 1]?.id).toBe(MAX_TURNS + 5);
+  });
+});
+
+describe("directionFor (F22)", () => {
+  it("translates from the language heard into the other language of the pair", () => {
+    expect(directionFor("en", "en", "te")).toEqual({ source: "en", target: "te" });
+    expect(directionFor("te", "en", "te")).toEqual({ source: "te", target: "en" });
+  });
+
+  it("treats a language outside the pair as the first language of the pair", () => {
+    expect(directionFor("hi", "en", "te")).toEqual({ source: "hi", target: "en" });
   });
 });

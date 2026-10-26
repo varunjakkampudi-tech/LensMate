@@ -33,7 +33,11 @@ export function useMicSession(label: string) {
   useFocusEffect(useCallback(() => () => stopRef.current(), []));
 
   const start = useCallback(
-    (lang: Lang, onFinal: (text: string) => void) => {
+    (
+      lang: Lang,
+      onFinal: (text: string) => void,
+      options: { detect?: boolean; onDetected?: (lang: Lang) => void } = {},
+    ) => {
       setError(null);
       setPartial("");
       stopSpeaking();
@@ -45,6 +49,8 @@ export function useMicSession(label: string) {
       const mine = capture.begin("microphone", label, halt);
       token.current = mine;
       current.current = listen(lang, {
+        detect: options.detect,
+        onDetected: options.onDetected,
         onPartial: setPartial,
         onFinal,
         onError: (code) => setError(listenErrorText(code)),

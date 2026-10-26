@@ -33,3 +33,18 @@ export function appendTurn(
   const next = [...turns, turn];
   return next.length > MAX_TURNS ? next.slice(next.length - MAX_TURNS) : next;
 }
+
+/**
+ * The direction for a spoken turn. The language heard decides it (F22): when the pair's second language is heard, the
+ * languages swap; any other language is treated as the first language of the pair, and translated to the second.
+ */
+export function directionFor(
+  spoken: Lang,
+  first: Lang,
+  second: Lang,
+): { readonly source: Lang; readonly target: Lang } {
+  if (spoken === second) {
+    return { source: second, target: first };
+  }
+  return { source: spoken, target: spoken === first ? second : first };
+}
