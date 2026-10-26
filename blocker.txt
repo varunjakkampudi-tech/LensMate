@@ -773,3 +773,11 @@ Not in the owner's report, so still unverified on the phone:
 - Native: detection works only when native listening is on. It stays OFF in this build by design (NATIVE_LISTENING_ENABLED, docs/decisions/0001: turn on only after on-device verification). Turning it on needs the owner's approval after a development build is tested on an Android phone and an iPhone (iPhone falls back to the chosen language).
 - Tests: conversation.test.ts (directionFor, 2 tests). Mobile suite 499 of 499 pass; typecheck and lint pass.
 - Not verified on a device.
+
+## ROUND 2026-10-26 (home screen shows when the app was last deployed)
+
+- The home screen shows "Last deployed: <date, time>" in the phone's own time zone (src/build-info.ts, app/index.tsx, testID build-time). It lets the owner check whether the copy on the phone is the latest.
+- Browser build: the export must set EXPO_PUBLIC_BUILT_AT to the build time, for example with date -u +%Y-%m-%dT%H:%M:%SZ, next to the usual EXPO_BASE_URL and EXPO_PUBLIC_BROKER_BASE_URL. Without it the browser shows "Build time not recorded". Checked locally: the page shows the stamp after a re-export.
+- Native builds: app.config.ts records the build time in extra.builtAt when the config is evaluated.
+- Tests: build-info.test.ts (2 tests). Mobile suite 501 of 501 pass; typecheck and lint pass.
+- Not republished to lensmate.tech/app yet. The change needs a republish to show there.
