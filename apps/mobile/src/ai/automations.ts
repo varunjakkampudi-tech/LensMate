@@ -47,30 +47,55 @@ export function loadAutomations(): Automation[] {
   }
 }
 
-/** Reads the saved automations into memory. Call before reading them on a phone. */
+/** Reads the saved automations into memory. Entries without the automation shape are dropped, never used. */
 export async function hydrateAutomations(): Promise<void> {
   if (Platform.OS === "web") {
     return;
   }
-  const stored = await loadState<Automation[]>(KEY);
-  phoneList = Array.isArray(stored) ? stored : [];
+  const stored = await loadState<unknown[]>(KEY);
+  phoneList = Array.isArray(stored) ? stored.filter(isAutomation) : [];
+  storedList = phoneList;
 }
 
+function isAutomation(value: unknown): value is Automation {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const a = value as Record<string, unknown>;
+  return (
+    typeof a["id"] === "string" &&
+    typeof a["name"] === "string" &&
+    typeof a["time"] === "string" &&
+    typeof a["goal"] === "string" &&
+    typeof a["enabled"] === "boolean"
+  );
+}
+
+/** The list last confirmed in storage, and a queue that keeps phone writes in the order they were made. */
+let storedList: Automation[] = [];
+let writeQueue: Promise<void> = Promise.resolve();
+
 /**
- * Saves the list. Resolves only once it is stored. On a phone a failed save restores the previous list and rejects, so
- * the screen never shows automations that were not stored.
+ * Saves the list. Resolves only once it is stored. Writes run one after another. On a phone a failed save rolls back to
+ * the last list that was stored, unless a newer save has already replaced it, so the screen never shows a list that is
+ * not stored.
  */
 export async function saveAutomations(list: readonly Automation[]): Promise<void> {
   if (Platform.OS === "web") {
     globalThis.localStorage.setItem(KEY, JSON.stringify(list));
     return;
   }
-  const previous = phoneList;
-  phoneList = [...list];
+  const snapshot = [...list];
+  phoneList = snapshot;
+  const write = writeQueue.then(() => saveState(KEY, snapshot));
+  writeQueue = write.catch(() => undefined);
   try {
-    await saveState(KEY, phoneList);
+    await write;
+    storedList = snapshot;
   } catch (error) {
-    phoneList = previous;
+    if (phoneList === snapshot) {
+      phoneList = storedList;
+    }
     throw error;
   }
 }
@@ -153,7 +178,8 @@ export async function runAutomation(a: Automation): Promise<string> {
 
 /**
  * Runs the automations that are due when the app opens. A failure is retried on a later open, up to the daily limit.
- * The user is told only when an automation has used up its attempts for the day.
+ * The user is told only when an automation has used up its attempts for the day. The running flag is set before the
+ * first await, so an overlapping call returns at once and cannot run the same automation twice.
  */
 export async function runDueAutomations(
   notify: (title: string, body: string) => void,
@@ -161,18 +187,15 @@ export async function runDueAutomations(
   if (running) {
     return;
   }
-  await hydrateAutomations();
-  const now = new Date();
-  const day = dayOf(now);
-  const clock = clockOf(now);
-  const due = loadAutomations()
-    .filter((a) => isDue(a, day, clock))
-    .slice(0, MAX_RUNS_PER_OPEN);
-  if (due.length === 0) {
-    return;
-  }
   running = true;
   try {
+    await hydrateAutomations();
+    const now = new Date();
+    const day = dayOf(now);
+    const clock = clockOf(now);
+    const due = loadAutomations()
+      .filter((a) => isDue(a, day, clock))
+      .slice(0, MAX_RUNS_PER_OPEN);
     for (const a of due) {
       try {
         notify(`LensMate: ${a.name}`, (await runAutomation(a)).slice(0, 180));

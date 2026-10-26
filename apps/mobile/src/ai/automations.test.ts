@@ -119,3 +119,35 @@ describe("phone storage of automations", () => {
     expect(loadAutomations()).toEqual([base]);
   });
 });
+
+describe("review fixes: bad entries and overlapping saves", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it("drops stored entries that are not automations", async () => {
+    (loadState as jest.Mock).mockResolvedValueOnce([null, base, { id: 1 }]);
+    await hydrateAutomations();
+    expect(loadAutomations()).toEqual([base]);
+  });
+
+  it("keeps the newest stored list when an earlier overlapping save fails", async () => {
+    (saveState as jest.Mock).mockResolvedValueOnce(undefined);
+    await saveAutomations([base]);
+
+    let rejectFirst: ((error: Error) => void) | undefined;
+    (saveState as jest.Mock)
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => (rejectFirst = reject)))
+      .mockResolvedValueOnce(undefined);
+
+    const replaced = { ...base, id: "b2" };
+    const first = saveAutomations([]);
+    const second = saveAutomations([replaced]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    rejectFirst?.(new Error("disk full"));
+
+    await expect(first).rejects.toThrow("disk full");
+    await second;
+    expect(loadAutomations()).toEqual([replaced]);
+  });
+});
