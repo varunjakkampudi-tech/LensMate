@@ -101,3 +101,41 @@ A target is only real when it is measured on the device. Each row is a number th
 2. Whether a hardware engineer is hired now or after the Phase 1 prototype works.
 3. Whether the owner wants a speaker in Phase 1, or the phone to play all answers.
 4. The spend cap for the broker. The current INR 500 a month limits how much AI the glasses can use.
+
+## 10. Direction: glasses first, then the phone, with continuous updates
+
+Owner direction: the AI glasses are the main product. The phone app supports them and is updated alongside them.
+
+### 10.1 Where the intelligence lives
+
+- **Glasses firmware stays small and fixed in purpose:** capture a photo, record audio, drive the light and the button,
+  report battery, and talk over Bluetooth. It does not decide what to do with a photo or a question.
+- **The phone app does the thinking:** it decides what to ask, shows results, and runs routines.
+- **The broker does the AI calls** with the spend cap and zero-retention rule.
+
+Because features live in the phone app and the broker, most new features reach the glasses without a firmware change.
+
+### 10.2 Continuous updates
+
+| What changes | How it reaches the owner | Risk control |
+|---|---|---|
+| Phone app features | Web build now, Android development build, later an over-the-air update (Expo Updates) | Every release passes CI on `dev`; `main` only after owner approval |
+| Broker and AI behaviour | Server deploy after CI and approval | Spend cap, audit log, rollback to the previous image |
+| Glasses firmware | Signed firmware image sent over Bluetooth, with a version check | A failed update keeps the old firmware; a new version is first tested on one pair of glasses |
+| Glasses protocol | New message numbers only; old readers skip unknown fields | The protocol version is checked on every connection |
+
+### 10.3 Build order
+
+1. **Glasses link on a development board:** capture, microphone, light and button, reported to the phone over Bluetooth.
+   Test: a photo arrives on the phone, the light is on during every capture, and a question can be asked by voice.
+2. **Glasses link in the app:** a real Bluetooth link behind the existing `GlassesLink` interface, tested on the Android phone.
+3. **Protocol additions** from section 3: photo and audio transfer, battery, and signed firmware updates.
+4. **Glasses comfort and battery:** a 3D-printed frame, worn for four hours, with battery life measured.
+5. **Custom board** once the development-board version works end to end.
+6. **Phone features added continuously** against the same protocol, with the glasses as the main input.
+
+### 10.4 Decisions needed to start step 1
+
+- Approve purchase of a camera and microphone development board, after the exact model and total are confirmed.
+- Approve the firmware toolchain install on this PC (ESP-IDF, the standard Espressif environment).
+- Choose the phone for the first glasses link test: the Android phone you are getting.
