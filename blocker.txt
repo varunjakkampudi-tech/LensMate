@@ -655,3 +655,11 @@ Not in the owner's report, so still unverified on the phone:
   10. Maestro flows in CI, then owner device runs (005) once Apple membership is in place (001).
   11. Documentation: remove commit identifiers from Markdown (Standards 1.2).
 - Honest status: this round closed the parts that did not need new product code. Steps 1 to 11 are product work and are not complete.
+
+## ROUND 2026-10-26 (feature step 1: live-safe broker)
+
+- Blocker 008 condition (a), done: a database trigger (broker_reservation_settles_buckets, schema.ts) now releases the reserved amount and records the actual cost in every bucket a reservation holds, in the same statement that closes it. The application no longer writes bucket totals on settle or release, so a close cannot skip its charge. A settled close needs a non-negative actual cost, and a released close carries none. Applied to the VPS ledger at 63db50c (migration run before the broker restart). Tests: 53 of 53 PostgreSQL tests pass against PostgreSQL 17, including three new trigger tests.
+- Blocker 008 condition (c), done: enrolment is limited per source only. The shared ceiling is removed, because one caller could otherwise refuse enrolment for everyone. Codes carry about 78 random bits, so guessing is not practical.
+- Blocker 008 condition (b), accepted residual: a provider bill above the reserved worst case is recorded truthfully (so the bucket and the next reservation see it), but the single overrun is not capped. The live budget is USD 0.50, so the residual is bounded and small.
+- Live calls are still OFF. Remaining before live: the owner's written approval of the cloud-processing disclosure text (blocker 006, item e), and a fresh-context review of this change (requested this round).
+- VPS: broker healthy at 63db50c; api.lensmate.tech returns 200.
