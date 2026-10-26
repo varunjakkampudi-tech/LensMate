@@ -13,6 +13,8 @@ import {
 } from "../src/ai/automations";
 import { canListen } from "../src/ai/speech";
 import { hudRows, type HudRow } from "../src/ui/hud-model";
+import { buildBriefing } from "../src/ai/briefing";
+import { speak } from "../src/ai/speech";
 import { STRINGS } from "../src/strings";
 import { useGlasses } from "../src/ui/glasses";
 import { Icon, type IconName } from "../src/ui/icon";
@@ -239,11 +241,14 @@ export default function HomeScreen() {
   const setup = useAiSetup();
   const [due, setDue] = useState<MemoryItem[]>([]);
   const [memoryCount, setMemoryCount] = useState(0);
+  const [openReminders, setOpenReminders] = useState<readonly MemoryItem[]>([]);
   const [routines, setRoutines] = useState<readonly Automation[]>([]);
   useEffect(() => {
     void listItems()
       .then((items) => {
-        setDue(items.filter((i) => i.kind === "reminder" && i.done !== true).slice(0, 3));
+        const reminders = items.filter((i) => i.kind === "reminder");
+        setDue(reminders.filter((i) => i.done !== true).slice(0, 3));
+        setOpenReminders(reminders);
         setMemoryCount(items.length);
       })
       .catch(() => setDue([]));
@@ -252,6 +257,12 @@ export default function HomeScreen() {
       .catch(() => setRoutines([]));
   }, []);
   const now = new Date();
+  const briefing = buildBriefing({
+    routines,
+    reminders: openReminders,
+    day: dayOf(now),
+    clock: clockOf(now),
+  });
   const board = hudRows({
     cameraLive: false,
     micAvailable: canListen(),
@@ -291,6 +302,7 @@ export default function HomeScreen() {
         ))}
       </View>
       <JarvisBoard rows={board} />
+      <BriefingCard spoken={briefing.spoken} lines={briefing.lines} />
       <SimulatorCard />
       <ReadinessSection />
       <Text
@@ -404,6 +416,34 @@ function JarvisBoard({ rows }: { rows: readonly HudRow[] }) {
           </Text>
         </View>
       ))}
+    </Card>
+  );
+}
+
+/** Today's briefing. Nothing is read aloud until the owner presses the button. */
+function BriefingCard({ spoken, lines }: { spoken: string; lines: readonly string[] }) {
+  const { c } = useTheme();
+  const { prefs } = usePrefs();
+  return (
+    <Card testID="briefing-card" style={{ gap: 10 }}>
+      <Text style={{ color: c.text, fontFamily: FONTS.display, fontSize: 16, fontWeight: "700" }}>
+        Today
+      </Text>
+      {lines.map((line) => (
+        <Text
+          key={line}
+          style={{ color: c.text, fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 }}
+        >
+          {line}
+        </Text>
+      ))}
+      <Btn
+        testID="briefing-read-aloud"
+        label="Read aloud"
+        tone="ghost"
+        icon="speaker"
+        onPress={() => speak(spoken, prefs.language, prefs.voiceRate)}
+      />
     </Card>
   );
 }
