@@ -6,6 +6,15 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_BROKER_BASE_URL": "https://api.lensmate.tech"
+      }
     }
   }
 }
