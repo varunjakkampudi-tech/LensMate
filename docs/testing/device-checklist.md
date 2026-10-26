@@ -7,11 +7,13 @@ This checklist is for testing the LensMate web application on a real physical iP
 ## 1. Setup Instructions
 
 ### Opening the App
+
 - **Target URL:** `https://lensmate.tech/app`
 - **iPhone:** Open **Safari**, enter `https://lensmate.tech/app` into the address bar, and press **Go**.
 - **Android:** Open **Google Chrome**, enter `https://lensmate.tech/app` into the address bar, and press **Go**.
 
 ### Adding to Home Screen (PWA Installation)
+
 - **iPhone (Safari):**
   1. In Safari, tap the **Share** button (the square icon with an upward-pointing arrow) in the bottom toolbar.
   2. Scroll down the share sheet and tap **Add to Home Screen**.
@@ -24,7 +26,9 @@ This checklist is for testing the LensMate web application on a real physical iP
   4. Launch the application by tapping the **LensMate** icon on your home screen or app drawer.
 
 ### Browser Permissions: What to Allow and When
+
 LensMate only accesses device hardware during active user sessions. Nothing is recorded or captured in the background.
+
 - **Camera Permission:**
   - **When asked:** The browser prompt will appear the first time you tap the **Camera** button (`start-camera-button`) on the **See** screen (`/capture`) or start the Virtual Glasses Simulator (`/simulator`).
   - **Action:** Tap **Allow** (or "Allow While Using App").
@@ -38,6 +42,7 @@ LensMate only accesses device hardware during active user sessions. Nothing is r
   - **When asked:** When creating a reminder or testing notifications on **Diagnostics** / **Profile**. Tap **Allow** if prompted.
 
 ### Privacy Rule: What the Owner Must NOT Do
+
 > [!CAUTION]
 > **No Real Personal Data:** In all test runs, do **NOT** enter real personal credentials, account passwords, government identity numbers (e.g., Aadhaar, SSN), credit card details, or private personal photographs beyond what you explicitly intend to test and keep locally.
 > Use sample phrases (e.g., "Where did I park?"), test notes, and neutral objects (e.g., a coffee mug, notebook, book cover, or household appliance) during vision and memory testing.
@@ -47,6 +52,7 @@ LensMate only accesses device hardware during active user sessions. Nothing is r
 ## 2. P-1 Feature Test Cases
 
 Navigation across screens uses the bottom navigation bar (`bottom-nav`):
+
 - **Home:** Tab label `Home` (`nav-home`, `/`)
 - **Simulator:** Tab label `Simulator` (`nav-simulator`, `/simulator`)
 - **Capture / See:** Tab label `Capture` (`nav-capture`, `/capture`) or Home tile `See` (`tile-see`)
@@ -284,7 +290,7 @@ Navigation across screens uses the bottom navigation bar (`bottom-nav`):
   2. Confirm source language box shows **(You speak)** (`lang-from`, e.g., English) and target shows **(Translate to)** (`lang-to`, e.g., Telugu).
   3. Test swapping: tap the **Swap languages** button (`swap-languages`) in between the boxes. Tap again to return.
   4. Tap the round microphone button labelled **Hold to speak** (`translate-speak`).
-     - *First-time notice:* LensMate speaks the announcement: "This conversation is being translated by LensMate. Please speak one at a time."
+     - _First-time notice:_ LensMate speaks the announcement: "This conversation is being translated by LensMate. Please speak one at a time."
   5. Speak a sentence in the source language (e.g., "Hello, how can I help you today?").
   6. Tap to stop or wait for utterance end.
 - **Expected result:**
@@ -325,6 +331,7 @@ Navigation across screens uses the bottom navigation bar (`bottom-nav`):
 - **Browser and Phone Compatibility Notice:**
   > [!IMPORTANT]
   > **Where voice test works:**
+  >
   > - **Chrome on Android:** Speech recognition works via Google Web Speech service. However, standard browser Web Speech API does **not** perform automatic multi-lingual language detection; it recognizes speech according to the configured language locale pair.
   > - **Safari on iPhone:** Speech recognition runs via iOS Safari speech service. **iPhone Safari does NOT detect language automatically.** It requires selecting the explicit language. Native listening with on-device auto-detection is switched off in this web build (`NATIVE_LISTENING_ENABLED = false`).
 - **Steps to test:**
@@ -348,6 +355,7 @@ Navigation across screens uses the bottom navigation bar (`bottom-nav`):
 - **Browser and Phone Compatibility Notice:**
   > [!IMPORTANT]
   > **Where voice stop works:**
+  >
   > - **Chrome on Android:** Chrome allows microphone listening (`listenForStop`) while audio / speech synthesis is actively playing. Saying "Stop" during spoken answers can interrupt playback on Android Chrome.
   > - **Safari on iPhone:** In iOS Safari, activating the microphone automatically pauses / mutes browser speech playback (`speechSynthesis`). Therefore, **stopping by voice during a spoken answer is NOT reliable on iPhone Safari.** Use the on-screen red **Stop** button (`talk-interrupt-button`) or top indicator **Stop** button (`capture-stop-button`) on iPhone.
 - **Steps to test:**
@@ -512,26 +520,26 @@ Navigation across screens uses the bottom navigation bar (`bottom-nav`):
 
 Record the test results on each physical phone below:
 
-| Feature | Phone (iPhone / Android) | Browser (Safari / Chrome) | Result (Pass / Fail / Not possible) | Date | Notes |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **F1** Vision help: describe what is in front of you | | | | | |
-| **F2** Read visible text aloud | | | | | |
-| **F3** Voice questions and spoken answers, streaming | | | | | |
-| **F4** Photo capture on button press, saved to phone | | | | | |
-| **F5** Voice notes: dictate, save, retrieve | | | | | |
-| **F6** Memory: save facts you choose, recall them | | | | | |
-| **F8** Conversation summaries on request | | | | | |
-| **F9** Translation of visible text into English, Telugu, Hindi | | | | | |
-| **F11** Quick actions: last photo, last answer, repeat, stop | | | | | |
-| **F12** Wear detection (Skipped by owner: needs hardware) | Real Phone | Any Browser | **Not possible on this phone** | | Needs glasses hardware |
-| **F13** Battery and health status on the phone app | | | | | |
-| **F20** Live two-way translation of conversation | | | | | |
-| **F21** Live captions of conversation on the phone | | | | | |
-| **F22** Language auto-detect for English, Telugu, Hindi | | | | | |
-| **F26** Voice stop, cancel and repeat | | | | | |
-| **F33** Environment analysis on request | | | | | |
-| **F35** Friendly voice persona with tone settings | | | | | |
-| **F37** Conversation understanding during started session | | | | | |
-| **F40** Status indicator visible to bystanders | | | | | |
-| **F50** Accessibility assistance | | | | | |
-| **F53** Device and AI health awareness | | | | | |
+| Feature                                                        | Phone (iPhone / Android) | Browser (Safari / Chrome) | Result (Pass / Fail / Not possible) | Date | Notes                  |
+| :------------------------------------------------------------- | :----------------------- | :------------------------ | :---------------------------------- | :--- | :--------------------- |
+| **F1** Vision help: describe what is in front of you           |                          |                           |                                     |      |                        |
+| **F2** Read visible text aloud                                 |                          |                           |                                     |      |                        |
+| **F3** Voice questions and spoken answers, streaming           |                          |                           |                                     |      |                        |
+| **F4** Photo capture on button press, saved to phone           |                          |                           |                                     |      |                        |
+| **F5** Voice notes: dictate, save, retrieve                    |                          |                           |                                     |      |                        |
+| **F6** Memory: save facts you choose, recall them              |                          |                           |                                     |      |                        |
+| **F8** Conversation summaries on request                       |                          |                           |                                     |      |                        |
+| **F9** Translation of visible text into English, Telugu, Hindi |                          |                           |                                     |      |                        |
+| **F11** Quick actions: last photo, last answer, repeat, stop   |                          |                           |                                     |      |                        |
+| **F12** Wear detection (Skipped by owner: needs hardware)      | Real Phone               | Any Browser               | **Not possible on this phone**      |      | Needs glasses hardware |
+| **F13** Battery and health status on the phone app             |                          |                           |                                     |      |                        |
+| **F20** Live two-way translation of conversation               |                          |                           |                                     |      |                        |
+| **F21** Live captions of conversation on the phone             |                          |                           |                                     |      |                        |
+| **F22** Language auto-detect for English, Telugu, Hindi        |                          |                           |                                     |      |                        |
+| **F26** Voice stop, cancel and repeat                          |                          |                           |                                     |      |                        |
+| **F33** Environment analysis on request                        |                          |                           |                                     |      |                        |
+| **F35** Friendly voice persona with tone settings              |                          |                           |                                     |      |                        |
+| **F37** Conversation understanding during started session      |                          |                           |                                     |      |                        |
+| **F40** Status indicator visible to bystanders                 |                          |                           |                                     |      |                        |
+| **F50** Accessibility assistance                               |                          |                           |                                     |      |                        |
+| **F53** Device and AI health awareness                         |                          |                           |                                     |      |                        |

@@ -3,12 +3,15 @@ import { Switch, Text, View } from "react-native";
 import { confirmAction, runAgentTask, type AgentResult, type AgentStep } from "../src/ai/agent";
 import { aiErrorText, costNote, research } from "../src/ai/assistant";
 import {
+  clockOf,
+  dayOf,
   hydrateAutomations,
   loadAutomations,
   runAutomation,
   saveAutomations,
   type Automation,
 } from "../src/ai/automations";
+import { automationStatus, automationStatusLabel } from "../src/ai/automation-status";
 import { memoryErrorText, saveItem } from "../src/memory/vault";
 import { FeatureOff } from "../src/ui/feature-off";
 import { Body, Btn, Card, Field, H2, Notice, Page, Row } from "../src/ui/kit";
@@ -49,6 +52,9 @@ export default function TasksScreen() {
   const [name, setName] = useState("");
   const [time, setTime] = useState("08:00");
   const [autoGoal, setAutoGoal] = useState("");
+  const now = new Date();
+  const today = dayOf(now);
+  const currentClock = clockOf(now);
 
   const store = (next: Automation[]) => {
     setList(next);
@@ -221,6 +227,15 @@ export default function TasksScreen() {
               <Body muted size={12}>
                 {a.goal}
               </Body>
+              <Body muted size={12}>
+                {automationStatusLabel(automationStatus(a, today, currentClock), a)}
+              </Body>
+              {a.lastError === undefined ||
+              automationStatus(a, today, currentClock) === "gave-up-today" ? null : (
+                <Body muted size={12}>
+                  {a.lastError}
+                </Body>
+              )}
             </View>
             <Row>
               <Switch
