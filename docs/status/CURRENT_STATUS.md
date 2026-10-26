@@ -1,7 +1,9 @@
 # Current Status
 
 ## Feature Status
+
 Features from `docs/product/feature-register.md` (F1 to F54):
+
 - Fully complete / built features: none (0)
 - Partly built features:
   - F1: Vision help: describe what is in front of you on request
@@ -30,7 +32,9 @@ Features from `docs/product/feature-register.md` (F1 to F54):
 - Physical device verification: none of the features is verified on a physical device.
 
 ## Test and CI Evidence
+
 Evidence from `PROGRESS.md` (section "CI repair and reconciliation (2026-10-26)"):
+
 - Worktree commit SHA: `fe1e606` (from `git rev-parse --short HEAD`)
 - Recorded green CI commit: `6c74348` (CI run 40291616548)
 - Test counts reported in `PROGRESS.md` for commit `6c74348`:
@@ -40,6 +44,7 @@ Evidence from `PROGRESS.md` (section "CI repair and reconciliation (2026-10-26)"
   - Local gates: build, typecheck, lint, format check, knip, schema check, Expo public config, and `audit:high` all exit 0
 
 ## Blocked Items and Unblockers
+
 - Owner:
   - Native speech enable (`NATIVE_LISTENING_ENABLED` flag requires owner approval and verified development build)
   - Apple Developer Program membership (`BLOCKER-001` required for iOS development and TestFlight builds)
@@ -50,7 +55,9 @@ Evidence from `PROGRESS.md` (section "CI repair and reconciliation (2026-10-26)"
   - F12 wear detection (requires physical smart glasses hardware; skipped by owner for now)
 
 ## Source Audit Items (LM-A01 to LM-A17)
+
 Status and open reasons from `blocker.txt` ("ROUND 2026-10-26 (source audit LM-A01 to LM-A17: what was fixed and what is still open)"):
+
 - LM-A01 (native speech): Open — NATIVE_LISTENING_ENABLED stays false. Turning it on needs a development build verified on Android and iPhone, and owner approval.
 - LM-A02 (cost bound): Fixed — reservation formula tested for every allowlisted model at largest allowed input and output (services/broker/src/pricing.test.ts); template allowance in pricing.ts shared with server.
 - LM-A03 (Android end-to-end): Open — not run. The owner asked to skip Android emulator testing for now, and the workflow still needs its prerequisites.
