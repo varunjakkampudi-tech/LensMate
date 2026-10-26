@@ -4,6 +4,7 @@ import { Platform, Text, View } from "react-native";
 import { canListen, canSpeak, speak, stopSpeaking } from "../src/ai/speech";
 import { readBrokerConfig } from "../src/broker-config";
 import { collectDiagnostics, type CheckResult, type CheckStatus } from "../src/diagnostics/checks";
+import { readBattery } from "../src/diagnostics/battery";
 import { MemoryStoreError } from "../src/memory/memory-error";
 import { nativeMemory } from "../src/memory/native-store";
 import { NATIVE_LISTENING_ENABLED } from "../src/ai/native-listen";
@@ -19,6 +20,7 @@ import { FONTS, useTheme } from "../src/ui/theme";
 const TONE: Record<CheckStatus, { label: string; color: "ok" | "warn" | "muted" | "error" }> = {
   configured: { label: "Configured (not tested here)", color: "ok" },
   ok: { label: "Working", color: "ok" },
+  low: { label: "Low: charge soon", color: "warn" },
   needs_device: { label: "Needs a phone check", color: "warn" },
   off: { label: "Off in this build", color: "muted" },
   unavailable: { label: "Unavailable", color: "error" },
@@ -41,6 +43,7 @@ async function readInputs(): Promise<Parameters<typeof collectDiagnostics>[0]> {
     notifications = await notificationPermission();
   }
   return {
+    battery: await readBattery(),
     broker: readBrokerConfig(),
     cameraAvailable: web
       ? typeof navigator !== "undefined" &&

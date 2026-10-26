@@ -7,10 +7,10 @@ import type { NotifyPermission } from "../notify/local";
  * The screen supplies the real values; tests supply stand-ins.
  */
 /** configured: the setting is present, but nothing was tested (no call, no camera, no sound). */
-export type CheckStatus = "configured" | "ok" | "off" | "unavailable" | "needs_device";
+export type CheckStatus = "configured" | "ok" | "low" | "off" | "unavailable" | "needs_device";
 
 export interface CheckResult {
-  readonly id: "broker" | "camera" | "speech-output" | "speech-input" | "notifications" | "memory";
+  readonly id: "broker" | "camera" | "speech-output" | "speech-input" | "notifications" | "memory" | "battery";
   readonly label: string;
   readonly status: CheckStatus;
   readonly detail: string;
@@ -25,6 +25,43 @@ export interface DiagnosticsInputs {
   /** "encrypted" when the store opened, or the reason it refused (the fixed code from the memory module). */
   readonly memory: "encrypted" | "web" | "NOT_ENCRYPTED" | "KEY_LOST" | "UNAVAILABLE" | "FAILED";
   readonly platform: "ios" | "android" | "web";
+  /** The battery level, when this phone or browser reports it. Null when it does not. */
+  readonly battery: BatteryReading | null;
+}
+
+/** level is a fraction from 0 to 1. */
+export interface BatteryReading {
+  readonly level: number;
+  readonly charging: boolean;
+}
+
+/** Below this level, and not charging, the check asks for a charge. */
+export const LOW_BATTERY_LEVEL = 0.2;
+
+export function batteryResult(battery: BatteryReading | null): CheckResult {
+  if (battery === null) {
+    return {
+      id: "battery",
+      label: "Battery",
+      status: "unavailable",
+      detail: "This phone or browser does not report the battery level.",
+    };
+  }
+  const percent = Math.round(battery.level * 100);
+  if (!battery.charging && battery.level < LOW_BATTERY_LEVEL) {
+    return {
+      id: "battery",
+      label: "Battery",
+      status: "low",
+      detail: `${String(percent)}% and not charging. Charge the phone soon.`,
+    };
+  }
+  return {
+    id: "battery",
+    label: "Battery",
+    status: "ok",
+    detail: battery.charging ? `${String(percent)}%, charging.` : `${String(percent)}%.`,
+  };
 }
 
 function brokerResult(broker: BrokerConfig): CheckResult {
@@ -109,6 +146,7 @@ export function collectDiagnostics(inputs: DiagnosticsInputs): CheckResult[] {
   const notify = inputs.notifications;
   return [
     brokerResult(inputs.broker),
+    batteryResult(inputs.battery),
     {
       id: "camera",
       label: "Camera",
