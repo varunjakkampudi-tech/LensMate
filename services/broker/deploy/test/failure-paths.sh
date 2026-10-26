@@ -398,7 +398,7 @@ const [auth, body] = process.argv.slice(1);
 fetch("http://127.0.0.1:8080/v1/ai/text", { method: "POST", headers: { "content-type": "application/json", authorization: auth }, body })
   .then(async (r) => { const t = await r.text(); let c = ""; try { c = JSON.parse(t).code || ""; } catch (e) { c = "non-json"; } process.stdout.write(r.status + " " + c + "\n"); })
   .catch((e) => process.stdout.write("request-error " + e.name + "\n"));
-' "Bearer $DEVICE_ID.$DEVICE_SECRET" '{"model":"google/gemini-2.5-flash-lite","messages":[{"role":"user","content":"failure-path probe"}],"maxOutputTokens":16}' 2>/dev/null
+' "Bearer $DEVICE_ID.$DEVICE_SECRET" '{"model":"google/gemini-3.1-flash-lite","messages":[{"role":"user","content":"failure-path probe"}],"maxOutputTokens":16}' 2>/dev/null
 }
 control=$(chat)
 case "$control" in "200 "*) control_ok=yes ;; *) control_ok=no ;; esac
