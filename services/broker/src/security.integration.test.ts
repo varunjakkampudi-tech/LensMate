@@ -10,6 +10,7 @@ import {
 import { migrate, SchemaError, verifySchema } from "./schema.js";
 import { checkContinuity, FileAnchor, AnchorError } from "./ledger-anchor.js";
 import { PostgresBudgetStore } from "./postgres-budget.js";
+import { PostgresBackupStore } from "./backup.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -74,6 +75,26 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
   it("migration is repeatable and the schema verifies", async () => {
     await migrate(owner, APP_ROLE, ADMIN_ROLE);
     await expect(verifySchema(owner)).resolves.toBeUndefined();
+  });
+
+  it("a PostgreSQL memory backup survives a fresh store connection", async () => {
+    const writer = new PostgresBackupStore(owner);
+    const deviceId = "backup-recovery-test-device";
+    const ciphertext = "v1.c2FsdA.aXY.Y2lwaGVy";
+    const updatedAt = Date.now();
+    const expiresAt = updatedAt + 30 * 86_400_000;
+    const reader = new Pool({ connectionString: withDatabase(BASE_URL ?? "", DB), max: 1 });
+    try {
+      await writer.put(deviceId, ciphertext, updatedAt, expiresAt);
+      const restored = await new PostgresBackupStore(reader).get(deviceId, updatedAt);
+      expect(restored).toMatchObject({ ciphertext, updatedAt, expiresAt });
+    } finally {
+      try {
+        await writer.remove(deviceId);
+      } finally {
+        await reader.end();
+      }
+    }
   });
 
   it("refuses the same role for the application and the admin", async () => {
@@ -242,6 +263,30 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
         month,
       ]);
       await expect(checkContinuity(store, anchor, Date.now())).resolves.toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses the persistent ledger when its external anchor file is lost", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "broker-lost-anchor-"));
+    const anchorPath = join(dir, "anchor.json");
+    try {
+      const anchor = new FileAnchor(anchorPath);
+      const store = new PostgresBudgetStore(owner);
+      const month = new Date().toISOString().slice(0, 7);
+      await owner.query("DELETE FROM broker_reservation");
+      await owner.query("DELETE FROM broker_budget_month");
+      await owner.query("INSERT INTO broker_budget_month (month, spent_paise) VALUES ($1, 500)", [
+        month,
+      ]);
+      await anchor.write({ [month]: 500 });
+      await expect(checkContinuity(store, anchor, Date.now())).resolves.toBe(false);
+
+      rmSync(anchorPath);
+      await expect(checkContinuity(store, anchor, Date.now())).rejects.toMatchObject({
+        code: "NO_ANCHOR_WITH_SPEND",
+      });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
