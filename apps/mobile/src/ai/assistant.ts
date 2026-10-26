@@ -54,6 +54,13 @@ const RULES =
 export const READ_TEXT_REQUEST =
   "Read all the visible text in this image exactly as written, top to bottom and left to right. Keep the original wording, spelling and numbers. If a word is unclear, write [unclear] in its place instead of guessing. If there is no readable text, say that there is none.";
 
+/**
+ * Translate visible text (F9). The reply is already written in the user's chosen language, so the model reads the
+ * text in whatever language it is, then gives it in that language. The same no-guessing marks apply.
+ */
+export const TRANSLATE_TEXT_REQUEST =
+  "Read all the visible text in this image, in whatever language it is written. Then give it in the reply language, sentence by sentence, keeping names and numbers as written. If a word is unclear, write [unclear] in its place instead of guessing. If there is no readable text, say that there is none.";
+
 const TONE_RULE: Record<Tone, string> = {
   warm: "Be warm and encouraging, like a kind friend.",
   brief: "Be very brief: one or two short sentences.",

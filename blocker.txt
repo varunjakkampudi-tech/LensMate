@@ -725,3 +725,10 @@ Not in the owner's report, so still unverified on the phone:
 
 - Diagnostics now includes a Battery check. It reads the level where the browser reports it (Chrome on Android does), warns below 20% when not charging, and says the level is not reported elsewhere (iPhone Safari). Tests: three battery tests and the updated order; mobile suite 480 of 480.
 - F4 (save captures to the phone), F37 (captures only in a session, with Stop), F40 (on-screen indicator with Stop while capturing) and F53 (phone-side health checks) are recorded as partly built with their existing code. None is verified on a phone yet; those checks run on the Android emulator and the Android phone.
+
+## ROUND 2026-10-26 (F9 translate visible text, F11 last-photo shortcut)
+
+- F9: Photo & Ask has a Translate the text chip. The prompt reads the photo in whatever language it is written and gives the text in the chosen reply language, with [unclear] marks for anything not readable (TRANSLATE_TEXT_REQUEST in src/ai/assistant.ts). F9 stays outside the 16 P-1 core features; the register phase is Next.
+- F11: Photo & Ask has a Last photo button. It reopens the newest saved capture from memory (latestSavedPhoto in src/memory/last-photo.ts). Nothing is read until the button is pressed. It shows a message when no saved photo exists.
+- Tests: read-text.test.ts (2 tests), last-photo.test.ts (3 tests). Mobile suite 484 of 484 pass; typecheck, lint and format pass on the changed files.
+- Not verified on a phone. The Last photo button needs the encrypted memory store, which Expo Go cannot open; it needs the development build or the browser app.

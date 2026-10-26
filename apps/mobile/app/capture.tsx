@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { READ_TEXT_REQUEST, aiErrorText, askVision } from "../src/ai/assistant";
+import {
+  READ_TEXT_REQUEST,
+  TRANSLATE_TEXT_REQUEST,
+  aiErrorText,
+  askVision,
+} from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
-import { memoryErrorText, saveItem } from "../src/memory/vault";
+import { latestSavedPhoto } from "../src/memory/last-photo";
+import { listItems, memoryErrorText, saveItem } from "../src/memory/vault";
 import { createLiveSession } from "../src/vision/create-live-session";
 import type { LiveState, LiveVisionSession } from "../src/vision/live-session";
 import { SeeSession, type SeeAnswer, type SeeState } from "../src/see/session";
@@ -19,6 +25,13 @@ interface Answer {
   readonly followups: readonly string[];
   readonly meta: string;
 }
+
+/** Quick questions under the photo. Each one sends a fixed request, so the wording stays reviewed. */
+const QUICK_CHIPS = [
+  { label: "Describe what you see", request: "Describe what you see", testID: "quick-describe" },
+  { label: "Read all the text", request: READ_TEXT_REQUEST, testID: "quick-read" },
+  { label: "Translate the text", request: TRANSLATE_TEXT_REQUEST, testID: "quick-translate" },
+] as const;
 
 const FORMAT =
   'Reply with JSON only: {"title": short name of the main subject, "answer": 2-4 sentences, "followups": [3 short follow-up questions the user may ask next]}.';
@@ -154,6 +167,21 @@ export default function CaptureScreen() {
 
   const onCamError = (m: string) => session.reportCameraError(m);
 
+  // F11: reopen the newest saved photo without the camera. Nothing is read unless the user presses the button.
+  const openLastPhoto = () => {
+    listItems()
+      .then((items) => {
+        const last = latestSavedPhoto(items);
+        if (last === null) {
+          setSaveError("No saved photo yet. Save a photo answer first.");
+          return;
+        }
+        setSaveError(null);
+        session.setPhoto(last);
+      })
+      .catch((e: unknown) => setSaveError(memoryErrorText(e)));
+  };
+
   const ask = (q: string, checkMode = false) => {
     if (q.trim() === "") {
       return;
@@ -257,7 +285,7 @@ export default function CaptureScreen() {
           </Pressable>
         ) : null}
       </View>
-      <View style={{ flexDirection: "row", gap: 10 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
         {live ? (
           <>
             <Btn
@@ -285,6 +313,16 @@ export default function CaptureScreen() {
             icon="upload"
             disabled={!prefs.features.vision}
             onPress={() => pickImageFile((d) => session.setPhoto(d))}
+          />
+        ) : null}
+        {!live ? (
+          <Btn
+            testID="last-photo-button"
+            label="Last photo"
+            tone="ghost"
+            icon="camera"
+            disabled={!prefs.features.vision}
+            onPress={openLastPhoto}
           />
         ) : null}
       </View>
@@ -413,13 +451,13 @@ export default function CaptureScreen() {
         </Pressable>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {["Describe what you see", "Read all the text"].map((q) => (
+        {QUICK_CHIPS.map(({ label, request, testID }) => (
           <Pressable
-            key={q}
+            key={label}
             accessibilityRole="button"
-            testID={`quick-${q.split(" ")[0]?.toLowerCase()}`}
+            testID={testID}
             disabled={photo === null || busy}
-            onPress={() => ask(q === "Read all the text" ? READ_TEXT_REQUEST : q)}
+            onPress={() => ask(request)}
             style={{
               minHeight: 48,
               paddingHorizontal: 12,
@@ -431,7 +469,7 @@ export default function CaptureScreen() {
               opacity: photo === null ? 0.5 : 1,
             }}
           >
-            <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 13 }}>{q}</Text>
+            <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 13 }}>{label}</Text>
           </Pressable>
         ))}
       </View>
