@@ -557,3 +557,13 @@ Not in the owner's report, so still unverified on the phone:
 - Verification: /healthz returns {"status":"ok"} on 127.0.0.1:8080. Postgres is healthy. Migration completed. Public access is NOT set up. lensmate.tech is not routed.
 - Not done: no public domain route (needs an owner decision and a change to OraOne's Caddy, which was not made); no live provider calls; no device enrolment; no backup schedule; no firewall change.
 - Owner actions: approve the domain and proxy route (BLOCKER-006 item g); confirm the FX rate and cap (items c and h); choose the live-test budget (item i).
+
+## ROUND 2026-10-26 (VPS set to OraOne and LensMate only; LensMate route added)
+
+- Scope: this VPS (200.141.14.57) runs OraOne and LensMate only. CareerScope is not deployed here. Its old host (201.18.193.230) is removed, and it was not restored.
+- OraOne: unchanged. Its containers are the same, and oraone.in returns HTTP 200 after the proxy reload.
+- Shared proxy: the OraOne Caddy container now serves a second site, lensmate.tech, proxying to lensmate-broker-broker-1:8080. Before the change, /opt/oraone/Caddyfile was copied to /opt/oraone/Caddyfile.pre-lensmate.bak. The change was validated with caddy validate and applied with caddy reload (no restart).
+- Network: oraone-prod-proxy was connected at runtime to the lensmate-broker_egress network. This link is NOT persistent across a recreate of the OraOne proxy container. Making it persistent means editing /opt/oraone/docker-compose.prod.yml, which is an owner decision.
+- NOT live yet: lensmate.tech resolves to 2.57.91.91, not to this VPS. Let's Encrypt cannot issue a certificate until the owner points the lensmate.tech A record to 200.141.14.57. The route is configured and tested by Host header only.
+- Mode: the broker is still BROKER_MODE=mock. No provider call, no billing. The FX rate (10000) and monthly cap (50000) remain placeholders.
+- Owner actions: (1) set the lensmate.tech A record to 200.141.14.57 (hPanel); (2) decide whether to make the proxy network link persistent; (3) decide when mock mode is replaced by a real provider (BLOCKER-006 items a to i).
