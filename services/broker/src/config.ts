@@ -75,9 +75,20 @@ export class ConfigError extends Error {
   }
 }
 
+/**
+ * Hard ceiling on the monthly provider spend, in paise (INR 500). It is fixed in code, so a configuration value can never
+ * raise the cap above what the owner approved. Raising it means a reviewed code change, not an environment edit.
+ */
+const MAX_MONTHLY_CAP_PAISE = 50_000;
+
 export function loadConfig(env: Readonly<Record<string, string | undefined>>): BrokerConfig {
   const mode = parseMode(env.BROKER_MODE);
   const monthlyCapPaise = requiredInt(env, "BROKER_MONTHLY_CAP_PAISE", 0);
+  if (monthlyCapPaise > MAX_MONTHLY_CAP_PAISE) {
+    throw new ConfigError(
+      "BROKER_MONTHLY_CAP_PAISE is above the hard ceiling of INR 500 (50000 paise)",
+    );
+  }
   const paisePerUsd = requiredInt(env, "BROKER_FX_PAISE_PER_USD", 1);
   const ownerCapConfirmation = optionalInt(env, "BROKER_OWNER_CAP_CONFIRMATION_PAISE");
   const paidCalls = parsePaidCalls(env.BROKER_PAID_CALLS);

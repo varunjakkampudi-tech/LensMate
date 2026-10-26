@@ -171,15 +171,18 @@ export default function AssistantScreen() {
     }
   };
 
-  // Leaving the screen cancels any request and stops speech and the microphone.
+  // Leaving the screen cancels any request and stops speech and the microphone. The ref holds the latest microphone
+  // session, which is rebuilt on each render, so the cleanup stops the current one.
+  const micRef = useRef(mic);
+  micRef.current = mic;
   useEffect(
     () => () => {
       guard.cancel();
-      mic.stop();
+      micRef.current.stop();
       stopSpeaking();
     },
-    // The guard and microphone session live for the screen's lifetime.
-    [],
+    // The guard lives for the screen's lifetime, so this runs once, on unmount.
+    [guard],
   );
 
   const listening = mic.listening !== null;

@@ -124,11 +124,18 @@ export default function CaptureScreen() {
     return { title: p.title, text: p.text, followups: p.followups, meta: metaOf(see.answer) };
   }, [see.answer]);
 
-  // A new answer is unsaved, and reads aloud when the user has chosen auto-speak.
+  // A new answer is unsaved, and reads aloud when the user has chosen auto-speak. The refs give the effect the
+  // current phase, preference and session, so it runs only when a new answer arrives.
+  const seeRef = useRef(see);
+  seeRef.current = see;
   useEffect(() => {
     setSaved(false);
-    if (see.phase === "answered" && see.answer !== null && prefs.autoSpeak) {
-      session.speak();
+    if (
+      seeRef.current.phase === "answered" &&
+      seeRef.current.answer !== null &&
+      prefsRef.current.autoSpeak
+    ) {
+      sessionRef.current?.speak();
     }
     // Only a new answer triggers this; re-renders must not read it again.
   }, [see.answer]);

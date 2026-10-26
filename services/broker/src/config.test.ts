@@ -50,6 +50,13 @@ describe("loadConfig", () => {
     expect(config.providerMaxAttempts).toBe(2);
   });
 
+  it("refuses a monthly cap above the hard INR 500 ceiling in any mode", () => {
+    expect(() => loadConfig({ ...BASE_MOCK, BROKER_MONTHLY_CAP_PAISE: "50001" })).toThrow(
+      /hard ceiling/,
+    );
+    expect(() => loadConfig({ ...BASE_MOCK, BROKER_MONTHLY_CAP_PAISE: "50000" })).not.toThrow();
+  });
+
   it("requires the monthly cap and the exchange rate, with no hidden default", () => {
     expect(() => loadConfig({ BROKER_FX_PAISE_PER_USD: "10000" })).toThrow(
       /BROKER_MONTHLY_CAP_PAISE is required/,
