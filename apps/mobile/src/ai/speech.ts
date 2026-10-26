@@ -1,6 +1,7 @@
 import * as Speech from "expo-speech";
 import { Platform } from "react-native";
 import { LANGS, type Lang } from "../ui/prefs";
+import { markStop, markStopped } from "./stop-latency";
 import {
   nativeListenErrorText,
   loadNativeRecognizer,
@@ -224,14 +225,21 @@ export function speak(text: string, lang: Lang, rate: number, onDone?: () => voi
     onDone?.();
     return;
   }
+  // Speech that is playing is the only thing a stop can interrupt, so only that is timed.
+  speaking = true;
+  const finish = () => {
+    speaking = false;
+    markStopped(Date.now());
+    onDone?.();
+  };
   if (isNative()) {
     void Speech.stop();
     Speech.speak(text.slice(0, Speech.maxSpeechInputLength), {
       language: locale(lang),
       rate,
-      onDone: () => onDone?.(),
-      onStopped: () => onDone?.(),
-      onError: () => onDone?.(),
+      onDone: finish,
+      onStopped: finish,
+      onError: finish,
     });
     return;
   }
@@ -243,13 +251,19 @@ export function speak(text: string, lang: Lang, rate: number, onDone?: () => voi
   if (voice !== undefined) {
     utterance.voice = voice;
   }
-  utterance.onend = () => onDone?.();
-  utterance.onerror = () => onDone?.();
+  utterance.onend = finish;
+  utterance.onerror = finish;
   speechSynthesis.speak(utterance);
 }
 
+/** True while an answer is being read aloud. Set by speak, cleared when the speech ends or is stopped. */
+let speaking = false;
+
 /** Interruption: stops speech output at once. */
 export function stopSpeaking(): void {
+  if (speaking) {
+    markStop(Date.now());
+  }
   if (isNative()) {
     void Speech.stop();
     return;

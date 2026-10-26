@@ -13,7 +13,8 @@ import {
   requestNotificationPermission,
   type NotifyPermission,
 } from "../src/notify/local";
-import { Body, Btn, Card, H2, Notice, Page } from "../src/ui/kit";
+import { Body, Btn, Card, H2, Notice, Page, Row } from "../src/ui/kit";
+import { lastLatencyMs } from "../src/ai/stop-latency";
 import { usePrefs } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
@@ -92,6 +93,15 @@ export default function DiagnosticsScreen() {
       {note === null ? null : <Notice tone="error">{note}</Notice>}
       <Card>
         <H2>Checks</H2>
+        <View testID="stop-latency">
+          <Row>
+            <Body muted>
+              {lastLatencyMs() === null
+                ? "No stop measured yet"
+                : `Last stop: ${lastLatencyMs()} ms`}
+            </Body>
+          </Row>
+        </View>
         {results === null ? (
           <Body muted>Checking…</Body>
         ) : (
