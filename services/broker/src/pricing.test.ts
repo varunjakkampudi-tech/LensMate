@@ -10,6 +10,7 @@ describe("model allowlist", () => {
   it("contains only the approved text and vision models", () => {
     expect(MODEL_ALLOWLIST.map((model) => model.id)).toEqual([
       "google/gemini-3.1-flash-lite",
+      "google/gemini-3.1-flash-lite:online",
       "google/gemini-3.5-flash-lite",
     ]);
   });
@@ -19,9 +20,17 @@ describe("model allowlist", () => {
     expect(findModel("google/gemini-3.1-flash-lite")?.feature).toBe("text");
     expect(findModel("google/gemini-3.5-flash-lite")?.acceptsImages).toBe(true);
   });
+});
 
-  it("refuses the :online web-research variant until its zero-retention compatibility is verified", () => {
-    expect(findModel("google/gemini-3.1-flash-lite:online")).toBeUndefined();
+describe("web research pricing", () => {
+  it("adds the flat web-search charge to both the worst case and the actual cost", () => {
+    const research = findModel("google/gemini-3.1-flash-lite:online");
+    expect(research?.feature).toBe("research");
+    if (research === undefined) {
+      throw new Error("model missing");
+    }
+    expect(worstCaseMicroUsd(research, 0, 0)).toBe(25_000);
+    expect(actualMicroUsd(research, 0, 0)).toBe(25_000);
   });
 });
 
@@ -48,10 +57,10 @@ describe("cost arithmetic in integers", () => {
   });
 
   it("converts micro-USD to paise rounding up, using the owner's exchange rate", () => {
-    // 1 USD at 100 rupees (10,000 paise) per USD is 10,000 paise.
-    expect(microUsdToPaise(1_000_000, 10_000)).toBe(10_000);
-    // 1 micro-USD at 10,000 paise per USD is 0.01 paise, which rounds up to 1 paisa.
-    expect(microUsdToPaise(1, 10_000)).toBe(1);
-    expect(microUsdToPaise(0, 10_000)).toBe(0);
+    // 1 USD at 90 paise per USD is 90 paise.
+    expect(microUsdToPaise(1_000_000, 9_000)).toBe(9_000);
+    // 1 micro-USD at 90 paise per USD is 0.00009 paise, which rounds up to 1 paisa.
+    expect(microUsdToPaise(1, 9_000)).toBe(1);
+    expect(microUsdToPaise(0, 9_000)).toBe(0);
   });
 });

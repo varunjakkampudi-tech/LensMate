@@ -142,7 +142,7 @@ BASE_W="$BASE"
 
 export BROKER_MODE=mock
 export BROKER_MONTHLY_CAP_PAISE=50000
-export BROKER_FX_PAISE_PER_USD=10000
+export BROKER_FX_PAISE_PER_USD=8500
 
 # Compose helpers: base stack; migration and admin overlays only for their one-off commands.
 dc() { docker compose -p "$PROJECT" -f "$BASE_W" -f "$OVERRIDE_W" "$@"; }

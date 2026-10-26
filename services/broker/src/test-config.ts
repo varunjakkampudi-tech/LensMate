@@ -19,7 +19,7 @@ export function testConfig(overrides: Partial<BrokerConfig> = {}): BrokerConfig 
     openRouterApiKey: undefined,
     openRouterBaseUrl: "https://openrouter.ai/api/v1",
     monthlyCapPaise: 50_000,
-    paisePerUsd: 10_000,
+    paisePerUsd: 9_000,
     dailyRequestQuotaPerClient: 1_000,
     rateLimitBurst: 1_000,
     rateLimitRefillPerSecond: 1_000,
