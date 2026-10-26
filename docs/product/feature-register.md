@@ -141,3 +141,23 @@ acceptance tests.
 - Change the status in the same commit as the feature.
 - A status of Verified on device needs a device test note in `blocker.txt`. Simulator or unit tests alone do not count.
 - Do not add a feature from Part C without an amendment.
+
+## Progress (P-1 core, measured from the statuses above)
+
+Method: 16 core features. A partly built feature counts as half. A feature verified on a phone counts as full. Not started counts as zero.
+
+| Measure                                                  | Score              | Percent |
+| -------------------------------------------------------- | ------------------ | ------- |
+| Built in code (partly built counts half)                 | 7.5 of 16          | 47%     |
+| Verified on a phone (only F3 spoken reply, counted half) | 0.5 of 16          | 3%      |
+| Not started (needs hardware)                             | F12 wear detection | 0       |
+
+Progress on the complete product is lower than P-1 alone, because the later phases (companion, personalisation, interview features, offline, hardware) are not started.
+
+Counts: 0 fully complete, 15 partly built, 1 not started (F12).
+
+What moves the verified number most, in order:
+
+1. Verify on iPhone Safari: F1, F2, F3, F5, F6, F11, F22, F26, F33, F35 (about 10 features).
+2. Build the remaining code: streaming replies (F3), saying "stop" (F26), translation with speech (F20, F21), notes saved on the phone (F4), session rules (F37), phone health messages (F53), and the battery reading (F13, where the browser allows it).
+3. Hardware: wear detection (F12) and the glasses link. These cannot be completed by code on a phone.
