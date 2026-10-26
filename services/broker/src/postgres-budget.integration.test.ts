@@ -3,6 +3,10 @@ import { DEV_TEST_BUCKET, type ReserveInput } from "./budget.js";
 import { PostgresBudgetStore } from "./postgres-budget.js";
 import { migrate } from "./schema.js";
 
+// Real PostgreSQL under load: 80 to 100 concurrent statements on Docker for Windows can exceed the 5 s default.
+// The limit is per file, so ordinary unit tests keep the default. Security checks stay strict; only time is extended.
+jest.setTimeout(120_000);
+
 const APP_ROLE = "broker_app_test";
 const ADMIN_ROLE = "broker_admin_test";
 

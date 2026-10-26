@@ -16,6 +16,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// Real PostgreSQL under load: 80 to 100 concurrent statements on Docker for Windows can exceed the 5 s default.
+// The limit is per file, so ordinary unit tests keep the default. Security checks stay strict; only time is extended.
+jest.setTimeout(120_000);
+
 /**
  * PostgreSQL security tests (BLOCKER-006 items 1, 3 and 4). They run as the application role and the admin role, not
  * as the owner, so they test what the broker can actually do. Runs only when BROKER_TEST_DATABASE_URL is set. It
