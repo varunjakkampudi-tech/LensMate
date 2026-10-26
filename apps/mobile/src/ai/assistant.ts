@@ -1,5 +1,5 @@
 import { BrokerError } from "@lensmate/core";
-import { BrokerCallBlocked, callBroker, callBrokerVision } from "../broker-call";
+import { BrokerCallBlocked, callBroker, callBrokerStream, callBrokerVision } from "../broker-call";
 import { LANGS, type Lang, type Tone } from "../ui/prefs";
 
 // Owner-approved allowlist (services/broker/src/pricing.ts). Zero-data-retention routing is set by the broker.
@@ -144,6 +144,34 @@ export function askText(
           messages: [{ role: "system", content: system }, ...history.slice(-6)],
           maxOutputTokens: 400,
         },
+        signal,
+      ),
+    external,
+  );
+}
+
+/**
+ * The text answer, streamed. onDelta receives each piece of text as it arrives. The same rules and model apply as
+ * askText; only the delivery differs.
+ */
+export function askTextStreamed(
+  history: readonly Turn[],
+  lang: Lang,
+  onDelta: (text: string) => void,
+  extraSystem = "",
+  external?: AbortSignal,
+): Promise<AiAnswer> {
+  const system = `${RULES} Reply in ${LANG_NAME[lang]}. ${extraSystem}`.trim();
+  return timed(
+    "text",
+    (signal) =>
+      callBrokerStream(
+        {
+          model: TEXT_MODEL,
+          messages: [{ role: "system", content: system }, ...history.slice(-6)],
+          maxOutputTokens: 400,
+        },
+        onDelta,
         signal,
       ),
     external,

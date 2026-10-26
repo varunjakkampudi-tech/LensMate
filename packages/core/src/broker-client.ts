@@ -250,3 +250,171 @@ export async function enrolDevice(
   }
   return { deviceId: parsed.deviceId, deviceSecret: parsed.deviceSecret };
 }
+
+/** One server-sent event: its name, and its data lines joined. */
+interface SseEvent {
+  readonly event: string;
+  readonly data: string;
+}
+
+/**
+ * Reads server-sent events as they arrive. A runtime whose fetch cannot stream a body gets the whole text once the
+ * response ends, and the same events are then processed in order.
+ */
+async function forEachSseEvent(
+  response: Response,
+  onEvent: (event: SseEvent) => void,
+): Promise<void> {
+  let buffer = "";
+  const emit = (block: string): void => {
+    let name = "message";
+    const data: string[] = [];
+    for (const line of block.split("\n")) {
+      if (line.startsWith("event:")) {
+        name = line.slice("event:".length).trim();
+      } else if (line.startsWith("data:")) {
+        data.push(line.slice("data:".length).trim());
+      }
+    }
+    if (data.length > 0) {
+      onEvent({ event: name, data: data.join("\n") });
+    }
+  };
+  const feed = (text: string): void => {
+    buffer += text;
+    let end = buffer.indexOf("\n\n");
+    while (end !== -1) {
+      const block = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+      emit(block);
+      end = buffer.indexOf("\n\n");
+    }
+  };
+
+  if (response.body === null) {
+    const whole = await response.text();
+    if (whole.length > MAX_REPLY_CHARS) {
+      throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+    }
+    feed(whole);
+    if (buffer.trim() !== "") {
+      emit(buffer);
+    }
+    return;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    total += value.byteLength;
+    if (total > MAX_REPLY_CHARS) {
+      await reader.cancel();
+      throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+    }
+    feed(decoder.decode(value, { stream: true }));
+  }
+  feed(decoder.decode());
+  if (buffer.trim() !== "") {
+    emit(buffer);
+  }
+}
+
+function parseEventData(data: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(data) as unknown;
+    if (typeof parsed === "object" && parsed !== null) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Handled below with the same error as any other malformed event.
+  }
+  throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+}
+
+/** A broker error event ends the stream. Text already shown is not retried, so the error is not retryable. */
+function streamFailure(code: unknown): BrokerError {
+  if (code === "TIMEOUT") {
+    return new BrokerError("TIMEOUT", "TIMEOUT", false);
+  }
+  return new BrokerError(
+    typeof code === "string" ? code : "PROVIDER_UNAVAILABLE",
+    "PROVIDER_ERROR",
+    false,
+  );
+}
+
+/**
+ * Streams a text answer from the broker. onDelta receives each piece of text as it arrives. The reply resolves when the
+ * broker sends its done event, which carries the cost. A failure before the first word is an ordinary refusal; a
+ * failure after it arrives as an error event.
+ */
+export async function streamBrokerChat(
+  options: BrokerClientOptions,
+  body: BrokerChatRequest,
+  onDelta: (text: string) => void,
+  signal: AbortSignal,
+): Promise<BrokerReply> {
+  const doFetch = options.fetch ?? fetch;
+  let response: Response;
+  try {
+    response = await doFetch(`${trimSlash(options.baseUrl)}/v1/ai/text/stream`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${options.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch {
+    throw new BrokerError("NETWORK", "PROVIDER_ERROR", true);
+  }
+  if (!response.ok) {
+    throw refusalFor(response.status, await response.text());
+  }
+
+  let text = "";
+  const result: { done?: { costPaise: number; source: "openrouter" | "mock" } } = {};
+  await forEachSseEvent(response, (event) => {
+    const data = parseEventData(event.data);
+    if (event.event === "delta") {
+      if (typeof data.text !== "string") {
+        throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+      }
+      text += data.text;
+      onDelta(data.text);
+      return;
+    }
+    if (event.event === "done") {
+      const costPaise = data.costPaise;
+      const source = data.source;
+      if (
+        !Number.isSafeInteger(costPaise) ||
+        (costPaise as number) < 0 ||
+        (source !== "openrouter" && source !== "mock")
+      ) {
+        throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+      }
+      result.done = { costPaise: costPaise as number, source };
+      return;
+    }
+    if (event.event === "error") {
+      throw streamFailure(data.code);
+    }
+    throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+  });
+
+  if (result.done === undefined) {
+    throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+  }
+  return {
+    requestId: "streamed",
+    text,
+    costPaise: result.done.costPaise,
+    source: result.done.source,
+  };
+}

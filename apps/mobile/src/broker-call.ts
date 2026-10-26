@@ -2,6 +2,7 @@ import {
   requestBrokerChat,
   requestBrokerUsage,
   requestBrokerVision,
+  streamBrokerChat,
   type BrokerChatRequest,
   type BrokerClientOptions,
   type BrokerReply,
@@ -90,6 +91,18 @@ function appPolicy(): BrokerCallPolicy {
     storage: secureStorage,
     approvedDisclosureVersion: APPROVED_CLOUD_DISCLOSURE_VERSION,
   };
+}
+
+/**
+ * A text answer streamed from the broker. onDelta receives each piece of text as it arrives. It uses the same access
+ * gate as every other call: the address, the device credential and the cloud notice must all be in place.
+ */
+export async function callBrokerStream(
+  request: BrokerChatRequest,
+  onDelta: (text: string) => void,
+  signal: AbortSignal,
+): Promise<BrokerReply> {
+  return streamBrokerChat(await brokerOptions(appPolicy()), request, onDelta, signal);
 }
 
 /** One user-captured image to the vision route, under the same access policy as text. */

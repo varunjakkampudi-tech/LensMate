@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import Fastify, {
   type FastifyError,
   type FastifyInstance,
+  type FastifyReply,
   type FastifyServerOptions,
   type RawServerDefault,
 } from "fastify";
@@ -29,6 +30,7 @@ import {
   type ChatMessage,
   type ChatProvider,
   type ProviderReply,
+  type StreamReply,
 } from "./provider.js";
 
 /** Tokens allowed for the provider's own chat template around the messages (upper bound, Amendment C.5). */
@@ -354,6 +356,191 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
       });
     },
   );
+
+  /**
+   * A streamed text answer. The same checks as /v1/ai/text run first. The answer then arrives as server-sent events:
+   * `delta` events carry text as it is produced, and one `done` event carries the cost. A failure before the first
+   * word is an ordinary JSON error. A failure after it ends the stream with an `error` event.
+   */
+  app.post<{ Body: ChatBody }>(
+    "/v1/ai/text/stream",
+    { schema: { body: CHAT_BODY } },
+    async (request, reply) => {
+      const client = await authenticateDevice(request.headers.authorization, devices);
+      if (client === null) {
+        return reply.code(401).send({ error: "unauthorized", code: "UNAUTHORIZED" });
+      }
+      if (!rate.take(client)) {
+        return reply.code(429).send({ error: "try_later", code: "RATE_LIMITED" });
+      }
+      const model = findModel(request.body.model);
+      if (model === undefined || (model.feature !== "text" && model.feature !== "research")) {
+        return reply.code(400).send({ error: "invalid_request", code: "MODEL_NOT_ALLOWED" });
+      }
+      if (request.body.maxOutputTokens > config.maxOutputTokensCeiling) {
+        return reply.code(400).send({ error: "invalid_request", code: "OUTPUT_LIMIT" });
+      }
+      const inputBytes = request.body.messages.reduce(
+        (sum, message) => sum + Buffer.byteLength(message.content, "utf8"),
+        0,
+      );
+      if (inputBytes > config.maxInputBytes) {
+        return reply.code(400).send({ error: "invalid_request", code: "INPUT_TOO_LARGE" });
+      }
+      const inputBoundTokens =
+        inputBytes +
+        request.body.messages.length * PER_MESSAGE_OVERHEAD_TOKENS +
+        TEMPLATE_ALLOWANCE_TOKENS;
+      return runStreamCall(request.log, reply, {
+        client,
+        model,
+        messages: request.body.messages,
+        maxOutputTokens: request.body.maxOutputTokens,
+        inputBoundTokens,
+      });
+    },
+  );
+
+  /**
+   * One streamed answer, with a single attempt. Once text has reached the phone it cannot be retried, so there is no
+   * retry loop here. Spend follows runProviderCall's rule: a failed or unbilled attempt is charged at its worst case,
+   * and a billed one at its reported cost.
+   */
+  async function runStreamCall(log: Logger, reply: FastifyReply, plan: CallPlan): Promise<unknown> {
+    const requestId = randomUUID();
+    const release = concurrency.acquire(plan.client);
+    if (release === null) {
+      return reply.code(429).send({ error: "try_later", code: "BUSY" });
+    }
+    try {
+      const worstPaise = microUsdToPaise(
+        worstCaseMicroUsd(plan.model, plan.inputBoundTokens, plan.maxOutputTokens),
+        config.paisePerUsd,
+      );
+      const reservationId = `${requestId}-1`;
+      let reserved: ReserveResult;
+      try {
+        reserved = await budget.reserve({
+          reservationId,
+          clientId: plan.client,
+          month: utcMonth(now()),
+          day: utcDay(now()),
+          amountPaise: worstPaise,
+          capPaise: config.monthlyCapPaise,
+          devTestCapPaise: config.devTestCapPaise,
+          dailyRequestQuota: config.dailyRequestQuotaPerClient,
+        });
+      } catch {
+        log.error({ requestId, client: plan.client }, "ledger unavailable at reserve");
+        return reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
+      }
+      if (!reserved.ok) {
+        return refusal(reply, reserved.reason);
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        controller.abort();
+      }, config.providerTimeoutMs);
+      // A phone that disconnects stops the provider call too.
+      reply.raw.on("close", () => {
+        controller.abort();
+      });
+
+      let streaming = false;
+      const startStream = (): void => {
+        if (streaming) {
+          return;
+        }
+        streaming = true;
+        reply.hijack();
+        reply.raw.writeHead(200, {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          connection: "keep-alive",
+        });
+      };
+      const send = (event: string, data: object): void => {
+        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+
+      let answer: StreamReply;
+      try {
+        answer = await provider.stream(
+          {
+            model: plan.model.id,
+            messages: plan.messages,
+            maxOutputTokens: plan.maxOutputTokens,
+            signal: controller.signal,
+          },
+          (delta) => {
+            startStream();
+            send("delta", { text: delta });
+          },
+        );
+        clearTimeout(timer);
+      } catch (error) {
+        clearTimeout(timer);
+        const timedOut = error instanceof ProviderTimeoutError || controller.signal.aborted;
+        const outcome = timedOut ? "TIMEOUT" : "PROVIDER_UNAVAILABLE";
+        // The provider may have billed this attempt, so the worst case stays charged.
+        const charged = await settleAtWorstCase(reservationId, worstPaise);
+        log.info(
+          { requestId, client: plan.client, model: plan.model.id, outcome },
+          "stream failed",
+        );
+        if (!charged) {
+          log.error({ requestId, client: plan.client }, "ledger unavailable after failed stream");
+          if (streaming) {
+            send("error", { code: "LEDGER_UNAVAILABLE" });
+            reply.raw.end();
+            return undefined;
+          }
+          return reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
+        }
+        if (streaming) {
+          send("error", { code: outcome });
+          reply.raw.end();
+          return undefined;
+        }
+        return reply.code(503).send({ error: "try_later", code: outcome });
+      }
+
+      // Billed at the reported cost. Without a report, the worst case is charged: an unreported bill is never zero.
+      const actualPaise =
+        answer.usage === null
+          ? worstPaise
+          : microUsdToPaise(
+              actualMicroUsd(plan.model, answer.usage.promptTokens, answer.usage.completionTokens),
+              config.paisePerUsd,
+            );
+      if (actualPaise > worstPaise) {
+        log.warn(
+          { requestId, client: plan.client, actualPaise, worstPaise },
+          "actual cost exceeded its reservation",
+        );
+      }
+      try {
+        await budget.settle(reservationId, actualPaise);
+      } catch {
+        // The answer may already be on the phone. The reservation stays open and the reaper settles it at worst case.
+        log.error({ requestId, client: plan.client }, "ledger unavailable after streamed answer");
+        if (streaming) {
+          send("error", { code: "LEDGER_UNAVAILABLE" });
+          reply.raw.end();
+          return undefined;
+        }
+        return reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
+      }
+      startStream();
+      send("done", { costPaise: actualPaise, source: answer.source });
+      reply.raw.end();
+      return undefined;
+    } finally {
+      release();
+    }
+  }
 
   app.post<{ Body: VisionBody }>(
     "/v1/ai/vision",

@@ -227,3 +227,94 @@ describe("provider response bounds", () => {
     expect(redirect).toBe("error");
   });
 });
+
+/** A streamed OpenRouter response whose bytes are split at awkward points, as a network does. */
+function sseResponse(parts: string[], status = 200): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const part of parts) {
+        controller.enqueue(encoder.encode(part));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, { status, headers: { "content-type": "text/event-stream" } });
+}
+
+const delta = (content: string) =>
+  `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
+const usageChunk = (prompt: number, completion: number) =>
+  `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: prompt, completion_tokens: completion } })}\n\n`;
+
+describe("OpenRouter streaming reader", () => {
+  it("passes each delta to the caller as it arrives and reports the usage from the last chunk", async () => {
+    const whole = delta("Hel") + delta("lo") + usageChunk(9, 2) + "data: [DONE]\n\n";
+    // Split inside a JSON line and inside an event boundary.
+    const parts = [whole.slice(0, 20), whole.slice(20, 75), whole.slice(75)];
+    const provider = new OpenRouterProvider(KEY, "https://example.test/api/v1", () =>
+      Promise.resolve(sseResponse(parts)),
+    );
+    const pieces: string[] = [];
+    const reply = await provider.stream(request(), (text) => pieces.push(text));
+    expect(pieces).toEqual(["Hel", "lo"]);
+    expect(reply).toEqual({
+      text: "Hello",
+      usage: { promptTokens: 9, completionTokens: 2 },
+      source: "openrouter",
+    });
+  });
+
+  it("reports no usage when the provider does not send it, so the caller charges the worst case", async () => {
+    const provider = new OpenRouterProvider(KEY, "https://example.test/api/v1", () =>
+      Promise.resolve(sseResponse([delta("Hi"), "data: [DONE]\n\n"])),
+    );
+    const reply = await provider.stream(request(), () => undefined);
+    expect(reply.usage).toBeNull();
+    expect(reply.text).toBe("Hi");
+  });
+
+  it("fails the reply on an error chunk, and on a malformed chunk", async () => {
+    const errorChunk = `data: ${JSON.stringify({ error: { message: "upstream" } })}\n\n`;
+    const bad = new OpenRouterProvider(KEY, "https://example.test/api/v1", () =>
+      Promise.resolve(sseResponse([delta("A"), errorChunk])),
+    );
+    await expect(bad.stream(request(), () => undefined)).rejects.toThrow(ProviderFailure);
+    const malformed = new OpenRouterProvider(KEY, "https://example.test/api/v1", () =>
+      Promise.resolve(sseResponse(["data: {not json\n\n"])),
+    );
+    await expect(malformed.stream(request(), () => undefined)).rejects.toThrow(ProviderFailure);
+  });
+
+  it("refuses a streamed reply that grows past the size limit", async () => {
+    const huge = delta("x".repeat(300_000));
+    const provider = new OpenRouterProvider(KEY, "https://example.test/api/v1", () =>
+      Promise.resolve(sseResponse([huge])),
+    );
+    await expect(provider.stream(request(), () => undefined)).rejects.toThrow(ProviderFailure);
+  });
+
+  it("sends stream and the usage option, and never the key in an error", async () => {
+    let sent = "";
+    const provider = new OpenRouterProvider(KEY, "https://example.test/api/v1", (_url, init) => {
+      sent = String(init.body);
+      return Promise.resolve(sseResponse(["data: [DONE]\n\n"]));
+    });
+    await provider.stream(request(), () => undefined);
+    const body = JSON.parse(sent) as {
+      stream: boolean;
+      stream_options: { include_usage: boolean };
+    };
+    expect(body.stream).toBe(true);
+    expect(body.stream_options.include_usage).toBe(true);
+  });
+});
+
+describe("mock streaming", () => {
+  it("streams the mock reply word by word with the same text as the full reply", async () => {
+    const pieces: string[] = [];
+    const reply = await new MockProvider().stream(request(), (text) => pieces.push(text));
+    expect(pieces.join("")).toBe(reply.text);
+    expect(pieces.length).toBeGreaterThan(1);
+  });
+});

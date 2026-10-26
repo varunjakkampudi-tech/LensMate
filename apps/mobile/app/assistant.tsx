@@ -123,6 +123,14 @@ export default function AssistantScreen() {
     setBusy(true);
     const current = guard.begin();
     const steps: AgentStep[] = [];
+    // The answer appears as it streams, in one placeholder message. The final answer replaces its text, so it is
+    // never shown twice. A cancelled request removes the placeholder.
+    const placeholderId = nextId.current++;
+    setMessages((prev) => [
+      ...prev,
+      { id: placeholderId, role: "assistant", text: "", steps: [], actions: [] },
+    ]);
+    const dropPlaceholder = () => setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
     try {
       const r = await runAgentTask(
         question,
@@ -134,25 +142,40 @@ export default function AssistantScreen() {
         },
         current.signal,
         prefs.tone,
+        (partial) => {
+          if (guard.isCurrent(current.id)) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === placeholderId ? { ...m, text: partial } : m)),
+            );
+          }
+        },
       );
       // A late answer from a cancelled or replaced request is dropped: never shown, never spoken.
       if (!guard.isCurrent(current.id)) {
+        dropPlaceholder();
         return;
       }
       guard.finish(current.id);
-      push({ role: "assistant", text: r.answer, steps, actions: r.actions, source: r.source });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? { ...m, text: r.answer, steps, actions: r.actions, source: r.source }
+            : m,
+        ),
+      );
       setSpeaking(true);
       speak(r.answer, lang, prefs.voiceRate, () => setSpeaking(false));
     } catch (e) {
       if (e instanceof RequestCancelled || !guard.isCurrent(current.id)) {
+        dropPlaceholder();
         return;
       }
       guard.finish(current.id);
-      push({
-        role: "assistant",
-        text: aiErrorText(e),
-        failedQuestion: question,
-      });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId ? { ...m, text: aiErrorText(e), failedQuestion: question } : m,
+        ),
+      );
     } finally {
       if (guard.isCurrent(current.id)) {
         setBusy(false);

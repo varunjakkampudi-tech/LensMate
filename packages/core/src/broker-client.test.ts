@@ -2,6 +2,7 @@ import {
   BrokerError,
   enrolDevice,
   requestBrokerChat,
+  streamBrokerChat,
   type BrokerChatRequest,
 } from "./broker-client.js";
 
@@ -160,5 +161,122 @@ describe("device enrolment", () => {
         reply(403, { code: "ENROLMENT_REFUSED" }),
       ),
     ).rejects.toMatchObject({ gatewayCode: "PROVIDER_ERROR", retryable: false });
+  });
+});
+
+function sseBody(parts: string[]): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const part of parts) {
+        controller.enqueue(encoder.encode(part));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } });
+}
+
+const STREAM_REQUEST: BrokerChatRequest = {
+  model: "openai/gpt-4.1-nano",
+  messages: [{ role: "user", content: "hello" }],
+  maxOutputTokens: 64,
+};
+
+describe("streamBrokerChat", () => {
+  it("passes each delta to the caller in order and resolves with the billed cost", async () => {
+    const parts = [
+      'event: delta\ndata: {"text":"Hel"}\n\nevent: de',
+      'lta\ndata: {"text":"lo"}\n\n',
+      'event: done\ndata: {"costPaise":4,"source":"openrouter"}\n\n',
+    ];
+    const options = {
+      baseUrl: "https://broker.test",
+      token: TOKEN,
+      fetch: () => Promise.resolve(sseBody(parts)),
+    };
+    const pieces: string[] = [];
+    const reply = await streamBrokerChat(
+      options,
+      STREAM_REQUEST,
+      (text) => pieces.push(text),
+      new AbortController().signal,
+    );
+    expect(pieces).toEqual(["Hel", "lo"]);
+    expect(reply).toMatchObject({ text: "Hello", costPaise: 4, source: "openrouter" });
+  });
+
+  it("reads the whole reply when the runtime cannot stream the body", async () => {
+    const text =
+      'event: delta\ndata: {"text":"Hi"}\n\nevent: done\ndata: {"costPaise":1,"source":"mock"}\n\n';
+    const noStream = new Response(text, { status: 200 });
+    Object.defineProperty(noStream, "body", { value: null });
+    const options = {
+      baseUrl: "https://broker.test",
+      token: TOKEN,
+      fetch: () => Promise.resolve(noStream),
+    };
+    const pieces: string[] = [];
+    const reply = await streamBrokerChat(
+      options,
+      STREAM_REQUEST,
+      (piece) => pieces.push(piece),
+      new AbortController().signal,
+    );
+    expect(pieces).toEqual(["Hi"]);
+    expect(reply.text).toBe("Hi");
+  });
+
+  it("turns an error event into a non-retryable failure, after any text already shown", async () => {
+    const parts = [
+      'event: delta\ndata: {"text":"Part"}\n\n',
+      'event: error\ndata: {"code":"PROVIDER_UNAVAILABLE"}\n\n',
+    ];
+    const options = {
+      baseUrl: "https://broker.test",
+      token: TOKEN,
+      fetch: () => Promise.resolve(sseBody(parts)),
+    };
+    const pieces: string[] = [];
+    const failure = await streamBrokerChat(
+      options,
+      STREAM_REQUEST,
+      (text) => pieces.push(text),
+      new AbortController().signal,
+    ).catch((e: unknown) => e);
+    expect(pieces).toEqual(["Part"]);
+    expect(failure).toBeInstanceOf(BrokerError);
+    expect((failure as BrokerError).retryable).toBe(false);
+  });
+
+  it("refuses a stream that ends without a done event, so no answer is treated as billed", async () => {
+    const options = {
+      baseUrl: "https://broker.test",
+      token: TOKEN,
+      fetch: () => Promise.resolve(sseBody(['event: delta\ndata: {"text":"x"}\n\n'])),
+    };
+    await expect(
+      streamBrokerChat(options, STREAM_REQUEST, () => undefined, new AbortController().signal),
+    ).rejects.toThrow(BrokerError);
+  });
+
+  it("reports an ordinary refusal before the stream starts", async () => {
+    const options = {
+      baseUrl: "https://broker.test",
+      token: TOKEN,
+      fetch: () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ error: "try_later", code: "BUDGET_EXHAUSTED" }), {
+            status: 503,
+          }),
+        ),
+    };
+    const failure = await streamBrokerChat(
+      options,
+      STREAM_REQUEST,
+      () => undefined,
+      new AbortController().signal,
+    ).catch((e: unknown) => e);
+    expect((failure as BrokerError).code).toBe("BUDGET_EXHAUSTED");
   });
 });

@@ -27,8 +27,20 @@ export interface ProviderReply {
   readonly source: "openrouter" | "mock";
 }
 
+/**
+ * A streamed reply. `usage` is null when the provider did not report it; the broker then charges the worst case, so an
+ * unreported bill is never recorded as zero.
+ */
+export interface StreamReply {
+  readonly text: string;
+  readonly usage: { readonly promptTokens: number; readonly completionTokens: number } | null;
+  readonly source: "openrouter" | "mock";
+}
+
 export interface ChatProvider {
   complete(request: ProviderRequest): Promise<ProviderReply>;
+  /** Streams a reply. onDelta receives each piece of text as the provider produces it. */
+  stream(request: ProviderRequest, onDelta: (text: string) => void): Promise<StreamReply>;
 }
 
 export class ProviderFailure extends Error {
@@ -60,6 +72,17 @@ export class OpenRouterProvider implements ChatProvider {
   ) {}
 
   async complete(request: ProviderRequest): Promise<ProviderReply> {
+    const response = await this.send(request, false);
+    return parseCompletion(await readBounded(response));
+  }
+
+  async stream(request: ProviderRequest, onDelta: (text: string) => void): Promise<StreamReply> {
+    const response = await this.send(request, true);
+    return readStream(response, onDelta);
+  }
+
+  /** One place for the request shape, the headers and the status mapping, shared by both calls. */
+  private async send(request: ProviderRequest, stream: boolean): Promise<Response> {
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
@@ -72,7 +95,9 @@ export class OpenRouterProvider implements ChatProvider {
           model: request.model,
           messages: request.messages,
           max_tokens: request.maxOutputTokens,
-          stream: false,
+          stream,
+          // Ask for the usage in the last streamed chunk, so the real cost is recorded.
+          ...(stream ? { stream_options: { include_usage: true } } : {}),
           // Route only to endpoints with zero data retention, and never to endpoints that may train on data.
           provider: { zdr: true, data_collection: "deny" },
         }),
@@ -100,7 +125,7 @@ export class OpenRouterProvider implements ChatProvider {
     if (!response.ok) {
       throw new ProviderFailure("REJECTED", false, response.status);
     }
-    return parseCompletion(await readBounded(response));
+    return response;
   }
 }
 
@@ -143,6 +168,20 @@ export class MockProvider implements ChatProvider {
       source: "mock",
     });
   }
+
+  /** Streams the mock reply word by word, so the streaming path is exercised end to end without a network call. */
+  async stream(request: ProviderRequest, onDelta: (text: string) => void): Promise<StreamReply> {
+    const reply = await this.complete(request);
+    const words = reply.text.split(/(?<= )/);
+    for (const word of words) {
+      onDelta(word);
+    }
+    return {
+      text: reply.text,
+      usage: { promptTokens: reply.promptTokens, completionTokens: reply.completionTokens },
+      source: "mock",
+    };
+  }
 }
 
 function parseCompletion(body: unknown): ProviderReply {
@@ -172,6 +211,8 @@ function parseCompletion(body: unknown): ProviderReply {
 
 /** A success body larger than this is refused, so a misbehaving upstream cannot exhaust broker memory. */
 const MAX_PROVIDER_BODY_BYTES = 262_144;
+/** A streamed reply larger than this is cut off, for the same reason. */
+const MAX_STREAM_BYTES = 262_144;
 
 async function readBounded(response: Response): Promise<unknown> {
   const declared = Number(response.headers.get("content-length") ?? "0");
@@ -202,4 +243,96 @@ async function readBounded(response: Response): Promise<unknown> {
   } catch {
     throw new ProviderFailure("REJECTED", false, response.status);
   }
+}
+
+interface StreamChunk {
+  choices?: { delta?: { content?: unknown } }[];
+  usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } | null;
+  error?: unknown;
+}
+
+/**
+ * Reads OpenRouter's server-sent events. Each `data:` line is one JSON chunk, and `data: [DONE]` ends the stream.
+ * Text is passed to onDelta as it arrives. A chunk that carries an error, or that is malformed, fails the reply.
+ */
+async function readStream(
+  response: Response,
+  onDelta: (text: string) => void,
+): Promise<StreamReply> {
+  if (response.body === null) {
+    throw new ProviderFailure("REJECTED", false, response.status);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let total = 0;
+  let text = "";
+  let usage: StreamReply["usage"] = null;
+  let finished = false;
+
+  const handleLine = (line: string): void => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) {
+      return;
+    }
+    const payload = trimmed.slice("data:".length).trim();
+    if (payload === "[DONE]") {
+      finished = true;
+      return;
+    }
+    let chunk: StreamChunk;
+    try {
+      chunk = JSON.parse(payload) as StreamChunk;
+    } catch {
+      throw new ProviderFailure("REJECTED", false, response.status);
+    }
+    if (chunk.error !== undefined) {
+      throw new ProviderFailure("UNAVAILABLE", false, response.status);
+    }
+    const delta = chunk.choices?.[0]?.delta?.content;
+    if (typeof delta === "string" && delta !== "") {
+      text += delta;
+      onDelta(delta);
+    }
+    const promptTokens = chunk.usage?.prompt_tokens;
+    const completionTokens = chunk.usage?.completion_tokens;
+    if (
+      Number.isSafeInteger(promptTokens) &&
+      Number.isSafeInteger(completionTokens) &&
+      (promptTokens as number) >= 0 &&
+      (completionTokens as number) >= 0
+    ) {
+      usage = {
+        promptTokens: promptTokens as number,
+        completionTokens: completionTokens as number,
+      };
+    }
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    total += value.byteLength;
+    if (total > MAX_STREAM_BYTES) {
+      await reader.cancel();
+      throw new ProviderFailure("REJECTED", false, response.status);
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      handleLine(line);
+      if (finished) {
+        await reader.cancel();
+        return { text, usage, source: "openrouter" };
+      }
+    }
+  }
+  buffer += decoder.decode();
+  if (buffer !== "") {
+    handleLine(buffer);
+  }
+  return { text, usage, source: "openrouter" };
 }

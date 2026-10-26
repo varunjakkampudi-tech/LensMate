@@ -99,6 +99,7 @@ export {
   BrokerError,
   enrolDevice,
   requestBrokerChat,
+  streamBrokerChat,
   requestBrokerUsage,
   requestBrokerVision,
 } from "./broker-client.js";

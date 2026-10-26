@@ -1,5 +1,12 @@
 import { Linking } from "react-native";
-import { askText, research, RequestCancelled, translate, type AiAnswer } from "./assistant";
+import {
+  askText,
+  askTextStreamed,
+  research,
+  RequestCancelled,
+  translate,
+  type AiAnswer,
+} from "./assistant";
 import { relevantNotes } from "../memory/search";
 import { listItems, saveItem } from "../memory/vault";
 import { LANGS, type Lang, type Tone } from "../ui/prefs";
@@ -114,6 +121,8 @@ export async function runAgentTask(
   onStep: (s: AgentStep) => void,
   signal?: AbortSignal,
   tone: Tone = "warm",
+  /** Called with the answer so far, as the writer streams it. Omitted, the answer arrives whole. */
+  onPartial?: (text: string) => void,
 ): Promise<AgentResult> {
   // Checked before every step, so a cancelled task runs no further tools and records no further steps.
   const stopIfCancelled = () => {
@@ -234,7 +243,23 @@ export async function runAgentTask(
   }
 
   stopIfCancelled();
-  const final = await askText(
+  // The writer streams when the caller asks for partial text. Either way the answer is the same and is charged once.
+  let streamed = "";
+  const writer: typeof askText =
+    onPartial === undefined
+      ? askText
+      : (history, writerLang, system, external) =>
+          askTextStreamed(
+            history,
+            writerLang,
+            (delta) => {
+              streamed += delta;
+              onPartial(streamed);
+            },
+            system,
+            external,
+          );
+  const final = await writer(
     [
       {
         role: "user",

@@ -76,6 +76,7 @@ afterEach(async () => {
 interface HttpResponse {
   readonly statusCode: number;
   readonly body: string;
+  readonly headers: Headers;
   json(): unknown;
 }
 
@@ -93,7 +94,12 @@ async function request(
   }
   const response = await fetch(`${base}${options.url}`, init);
   const body = await response.text();
-  return { statusCode: response.status, body, json: () => JSON.parse(body) as unknown };
+  return {
+    statusCode: response.status,
+    body,
+    headers: response.headers,
+    json: () => JSON.parse(body) as unknown,
+  };
 }
 
 async function chat(
@@ -410,6 +416,7 @@ describe("provider outages and timeouts", () => {
   it("does not retry a rejected request", async () => {
     const provider: ChatProvider = {
       complete: () => Promise.reject(new ProviderFailure("REJECTED", false, 400)),
+      stream: () => Promise.reject(new ProviderFailure("REJECTED", false, 400)),
     };
     const { app, store } = await harness({}, provider);
     expect((await chat(app, GOOD_BODY)).statusCode).toBe(503);
@@ -451,6 +458,10 @@ describe("concurrency", () => {
       complete: async (request) => {
         await gate;
         return mock.complete(request);
+      },
+      stream: async (request, onDelta) => {
+        await gate;
+        return mock.stream(request, onDelta);
       },
     };
     const { app } = await harness(
@@ -794,5 +805,109 @@ describe("browser access for the web preview", () => {
       headers: { origin: PREVIEW },
     });
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
+  });
+});
+
+/** Splits a server-sent-events body into its events, so a test can check each one. */
+function sseEvents(body: string): { event: string; data: Record<string, unknown> }[] {
+  return body
+    .split("\n\n")
+    .filter((block) => block.trim() !== "")
+    .map((block) => {
+      const event = /^event: (.+)$/m.exec(block)?.[1] ?? "";
+      const data = /^data: (.+)$/m.exec(block)?.[1] ?? "{}";
+      return { event, data: JSON.parse(data) as Record<string, unknown> };
+    });
+}
+
+async function streamChat(
+  app: FastifyInstance,
+  body: unknown,
+  authorization: string | null = TEST_AUTH_HEADER,
+) {
+  return await request(app, {
+    method: "POST",
+    url: "/v1/ai/text/stream",
+    headers: authorization === null ? {} : { authorization },
+    payload: body,
+  });
+}
+
+describe("streamed text route", () => {
+  it("streams the reply as delta events and ends with a done event carrying the billed cost", async () => {
+    const { app, store } = await harness();
+    const response = await streamChat(app, GOOD_BODY);
+    expect(response.statusCode).toBe(200);
+    expect(response.headers.get("content-type") ?? "").toContain("text/event-stream");
+    const events = sseEvents(response.body);
+    const deltas = events.filter((e) => e.event === "delta");
+    expect(deltas.length).toBeGreaterThan(1);
+    const text = deltas.map((e) => String(e.data.text)).join("");
+    expect(text).toBe("mock reply: the broker is running without provider calls");
+    const done = events[events.length - 1];
+    expect(done?.event).toBe("done");
+    const summary = await store.summary(utcMonth(NOW));
+    expect(summary.spentPaise).toBe(done?.data.costPaise);
+    expect(summary.reservedPaise).toBe(0);
+  });
+
+  it("refuses an unknown model and an unauthenticated caller before any provider call", async () => {
+    const provider = new MockProvider();
+    const { app } = await harness({}, provider);
+    expect((await streamChat(app, { ...GOOD_BODY, model: "openai/gpt-4o" })).statusCode).toBe(400);
+    expect((await streamChat(app, GOOD_BODY, null)).statusCode).toBe(401);
+    expect(provider.attemptCount).toBe(0);
+  });
+
+  it("answers an ordinary JSON error when the provider fails before the first word, and charges the worst case", async () => {
+    const provider: ChatProvider = {
+      complete: () => Promise.reject(new ProviderFailure("REJECTED", false, 400)),
+      stream: () => Promise.reject(new ProviderFailure("REJECTED", false, 400)),
+    };
+    const { app, store } = await harness({}, provider);
+    const response = await streamChat(app, GOOD_BODY);
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ error: "try_later", code: "PROVIDER_UNAVAILABLE" });
+    const summary = await store.summary(utcMonth(NOW));
+    expect(summary.reservedPaise).toBe(0);
+    expect(summary.spentPaise).toBe(worstPaiseFor(GOOD_BODY, testConfig()));
+  });
+
+  it("ends the stream with an error event after a partial reply, and still charges the worst case", async () => {
+    const provider: ChatProvider = {
+      complete: () => Promise.reject(new ProviderFailure("UNAVAILABLE", false, 500)),
+      stream: async (_request, onDelta) => {
+        onDelta("Partial ");
+        throw new ProviderFailure("UNAVAILABLE", false, 500);
+      },
+    };
+    const { app, store } = await harness({}, provider);
+    const response = await streamChat(app, GOOD_BODY);
+    expect(response.statusCode).toBe(200);
+    const events = sseEvents(response.body);
+    expect(events[0]).toEqual({ event: "delta", data: { text: "Partial " } });
+    expect(events[events.length - 1]).toEqual({
+      event: "error",
+      data: { code: "PROVIDER_UNAVAILABLE" },
+    });
+    const summary = await store.summary(utcMonth(NOW));
+    expect(summary.spentPaise).toBe(worstPaiseFor(GOOD_BODY, testConfig()));
+    expect(summary.reservedPaise).toBe(0);
+  });
+
+  it("charges the worst case when the provider reports no usage, never zero", async () => {
+    const provider: ChatProvider = {
+      complete: () => Promise.reject(new ProviderFailure("REJECTED", false, 400)),
+      stream: async (_request, onDelta) => {
+        onDelta("Hello.");
+        return { text: "Hello.", usage: null, source: "openrouter" };
+      },
+    };
+    const { app, store } = await harness({}, provider);
+    const response = await streamChat(app, GOOD_BODY);
+    const done = sseEvents(response.body).find((e) => e.event === "done");
+    expect(done?.data.costPaise).toBe(worstPaiseFor(GOOD_BODY, testConfig()));
+    const summary = await store.summary(utcMonth(NOW));
+    expect(summary.spentPaise).toBe(worstPaiseFor(GOOD_BODY, testConfig()));
   });
 });
