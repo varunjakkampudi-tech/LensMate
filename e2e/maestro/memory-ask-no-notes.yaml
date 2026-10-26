@@ -1,0 +1,24 @@
+# Flow: Memory — ask "Where did I park?" with no saved notes and check the answer does not show unrelated note text.
+# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Run: maestro test e2e/maestro/memory-ask-no-notes.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "Notes"
+- assertVisible: "Notes"
+- assertVisible: "Ask my notes"
+- scrollUntilVisible:
+    element:
+      id: "memory-ask-input"
+    direction: DOWN
+- tapOn:
+    id: "memory-ask-input"
+- inputText: "Where did I park?"
+- tapOn:
+    id: "memory-ask-button"
+- assertVisible:
+    id: "memory-ask-answer"
+- assertVisible: "No saved note matched"
+- assertNotVisible:
+    id: "memory-item"
