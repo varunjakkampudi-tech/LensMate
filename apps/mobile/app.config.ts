@@ -58,6 +58,26 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-dev-client",
     "expo-secure-store",
+    // Native permissions. Without these the Android build cannot ask for the camera or microphone, and an iPhone build
+    // would close when it first uses them. The text is what the phone shows the owner.
+    [
+      "expo-camera",
+      {
+        cameraPermission:
+          "LensMate uses the camera only while the See screen is open, to answer questions about what you point it at.",
+        microphonePermission:
+          "LensMate uses the microphone only when you press to speak or start a voice session.",
+      },
+    ],
+    [
+      "expo-speech-recognition",
+      {
+        microphonePermission: "LensMate uses the microphone only when you press to speak.",
+        speechRecognitionPermission:
+          "LensMate turns your speech into text on this phone when you press to speak.",
+      },
+    ],
+    "expo-notifications",
     // Encrypts the memory database (native-store.ts). Applies only to a native build made after this change.
     ["expo-sqlite", { useSQLCipher: true }],
   ],
