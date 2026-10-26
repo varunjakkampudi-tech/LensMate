@@ -747,3 +747,12 @@ Not in the owner's report, so still unverified on the phone:
 - Known limits: the speaker's sound can be picked up by the microphone, so a quiet room or headphones work best. A native phone build does not listen yet.
 - Tests: speech-stop.test.ts (3 tests). Mobile suite 493 of 493 pass; typecheck and lint pass.
 - Not verified on a device. The browser app is not republished with this change.
+
+## ROUND 2026-10-26 (remaining items after F9, F8, F11, F26; F12 skipped by owner)
+
+- Owner instruction: skip the F12 hardware item for now; finish the rest, then move to real hardware.
+- F22 (automatic language detection for English, Telugu, Hindi and mixed speech) is NOT built, and cannot be built in the browser. The Web Speech recogniser transcribes only in the language it is given, so the app cannot tell which language was spoken. Two routes need an owner decision:
+  1. A speech-to-text service on the broker that detects the language. It needs a provider choice, its terms and privacy check (zero data retention), a cost cap and an audio size limit. Audio would leave the phone, so the cloud notice must be updated. This needs owner approval before any work.
+  2. The native phone speech recogniser (expo-speech-recognition), which can report the spoken language on device. It needs a development build verified on a phone (Apple account for iOS, or Android build). Blocked until the device is available.
+- F26 native listening (saying stop on phones) is the same native recogniser route as above. Not built.
+- Not verified on a device: every feature in the register. Under the register rule, Verified needs a device test note, so no feature can reach 100% verified before device testing.
