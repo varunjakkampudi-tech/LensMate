@@ -1,0 +1,66 @@
+name: Deploy broker
+
+# Manual only. Choose a branch, and the LensMate broker on the VPS is rebuilt from it. Nothing deploys on push.
+# The job runs in the `vps-production` environment. The owner should add required reviewers to that environment in
+# GitHub settings, so a deploy waits for an explicit approval.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy (for example dev or main)"
+        required: true
+        default: dev
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-broker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: vps-production
+    env:
+      BRANCH: ${{ inputs.branch }}
+    steps:
+      - name: Check the branch exists on origin
+        env:
+          REF_NAME: ${{ inputs.branch }}
+        run: |
+          if [[ ! "$REF_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$ ]] || [[ "$REF_NAME" == *..* ]]; then
+            echo "refusing branch name" >&2
+            exit 1
+          fi
+          git ls-remote --exit-code --heads https://github.com/${{ github.repository }}.git "$REF_NAME" >/dev/null
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.branch }}
+      - name: Trust the VPS host key
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_HOST_KEY: ${{ secrets.VPS_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          # The pinned key must match the host we connect to.
+          ssh-keygen -F "$VPS_HOST" -f ~/.ssh/known_hosts >/dev/null
+      - name: Deploy the broker
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          # BRANCH was validated by the first step, so it contains no spaces or quote characters.
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes \
+            "$VPS_USER@$VPS_HOST" "bash -s -- $BRANCH" < services/broker/deploy/deploy-remote.sh
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
