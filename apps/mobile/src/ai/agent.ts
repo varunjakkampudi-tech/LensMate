@@ -1,16 +1,10 @@
 import { Linking } from "react-native";
-import {
-  askText,
-  askTextStreamed,
-  research,
-  RequestCancelled,
-  translate,
-  type AiAnswer,
-} from "./assistant";
+import { askText, askTextStreamed, RequestCancelled, translate, type AiAnswer } from "./assistant";
 import { relevantNotes } from "../memory/search";
 import { listItems, saveItem } from "../memory/vault";
 import { LANGS, type Lang, type Tone } from "../ui/prefs";
 import { toneInstruction } from "./assistant";
+import { MAX_CALLS, validateCall, type ToolCall } from "./tool-calls";
 
 /**
  * Multi-agent task runner. A planner agent splits the user's goal into at most four tool steps; specialist agents
@@ -48,11 +42,8 @@ export interface AgentResult {
   readonly source: "openrouter" | "mock";
 }
 
-type ToolCall = { tool: string; input: Record<string, unknown> };
-
 const PLANNER = [
   "You are the planner of a smart-glasses assistant. Break the user's goal into at most 4 tool calls. Tools:",
-  'web_research{"query"} (live internet, costs money: use ONLY for current events, prices, weather, schedules or facts that change; never for stable general knowledge);',
   'recall_memory{"query"} (search the user\'s saved notes); save_note{"title","text"}; set_reminder{"title","minutes"};',
   `translate{"text","from","to"} (language codes: ${Object.keys(LANGS).join(", ")});`,
   'phone_action{"kind":"call"|"sms"|"email"|"maps"|"web","target","body"} (only propose, the user confirms).',
@@ -102,14 +93,17 @@ export function confirmAction(action: PhoneAction): Promise<void> {
   return Linking.openURL(action.url);
 }
 
+/** Reads the planner's JSON. Each call is checked; unknown or out-of-bounds calls are dropped, never run. */
 export function parseCalls(text: string): ToolCall[] {
   try {
     const parsed = JSON.parse(/\{[\s\S]*\}/.exec(text)?.[0] ?? "") as { calls?: unknown };
-    return Array.isArray(parsed.calls)
-      ? (parsed.calls as (ToolCall | null)[])
-          .filter((c): c is ToolCall => c !== null && typeof c.tool === "string")
-          .slice(0, 4)
-      : [];
+    if (!Array.isArray(parsed.calls)) {
+      return [];
+    }
+    return parsed.calls
+      .map((raw: unknown) => validateCall(raw))
+      .filter((c): c is ToolCall => c !== null)
+      .slice(0, MAX_CALLS);
   } catch {
     return [];
   }
@@ -166,11 +160,7 @@ export async function runAgentTask(
     const input = call.input ?? {};
     stopIfCancelled();
     try {
-      if (call.tool === "web_research") {
-        const text = charge(await research(str(input.query) || goal, lang, signal));
-        findings.push(`Web research: ${text}`);
-        step({ agent: "Researcher", summary: text.slice(0, 160), status: "done" });
-      } else if (call.tool === "recall_memory") {
+      if (call.tool === "recall_memory") {
         // Broad requests (briefings, "today", "recent") fall back to the newest items.
         const hits = relevantNotes(await listItems(), str(input.query), 6);
         findings.push(
@@ -235,7 +225,7 @@ export async function runAgentTask(
         throw error;
       }
       step({
-        agent: call.tool === "web_research" ? "Researcher" : "Action agent",
+        agent: "Action agent",
         summary: `${call.tool} failed`,
         status: "failed",
       });

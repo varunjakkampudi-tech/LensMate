@@ -781,3 +781,24 @@ Not in the owner's report, so still unverified on the phone:
 - Native builds: app.config.ts records the build time in extra.builtAt when the config is evaluated.
 - Tests: build-info.test.ts (2 tests). Mobile suite 501 of 501 pass; typecheck and lint pass.
 - Not republished to lensmate.tech/app yet. The change needs a republish to show there.
+
+## ROUND 2026-10-26 (source audit LM-A01 to LM-A17: what was fixed and what is still open)
+
+Fixed in code, with tests:
+- LM-A06 tool calls: the planner's output is checked by validateCall (src/ai/tool-calls.ts). Unknown tools, wrong types, empty required text, over-long text, out-of-range reminder minutes and unknown language or action codes are dropped before anything runs.
+- LM-A07 research: research is no longer offered to the planner. A research call is dropped, so no dependent flow is reachable. The research function still refuses on purpose until a zero-retention research model is verified.
+- LM-A05 automations: a failure is no longer marked as done for the day. It is retried on later opens, up to 3 times a day, and the user is told only when the attempts are used up. The manual "run now" button records failures the same way.
+- LM-A08 export on a phone: exportAll opens the system share sheet with the JSON. It reports 0 when the user cancels, so the screen never says an export happened when it did not.
+- LM-A02 and LM-A11 cost bound: the reservation formula is tested for every allowlisted model at the largest allowed input and output (services/broker/src/pricing.test.ts). The template allowance now lives in pricing.ts and is shared with the server.
+- LM-A12 and LM-A13 screen size: the message bubble and wave bars moved to src/assistant/message-parts.tsx. The answer formatting moved from capture.tsx to src/see/answer-format.ts with tests. assistant.tsx is about 570 lines and capture.tsx about 545. Both are still over the 400-line guideline; the remaining code is the screen's own state and layout, and splitting it further would only move it.
+- LM-A14 matrices: reconciled on 2026-10-26 (PROGRESS.md, FEATURE_MATRIX.md, GAP_MATRIX.md).
+
+Still open, and why:
+- LM-A01 native speech: NATIVE_LISTENING_ENABLED stays false. Turning it on needs a development build verified on Android and iPhone, and owner approval.
+- LM-A03 Android end-to-end: not run. The owner asked to skip Android emulator testing for now, and the workflow still needs its prerequisites.
+- LM-A04 closed-app automations and native automation storage: not built. Automations run only while the app is open, on the web. Native execution needs a background scheduler and a native store decision.
+- LM-A09 live camera sessions: needs a real phone camera to test.
+- LM-A10 retention sweep: the core sweep exists, but the app persists no temporary item today (photos and frames live only in screen state), so there is nothing to sweep yet. Any future persisted temporary store must call it.
+- LM-A15 pricing and endpoint privacy: the broker's price table is not re-verified against the live provider in this pass.
+- LM-A16 restore testing: the backup and restore path is not rerun in this pass.
+- LM-A17 accessibility on devices: needs assistive-technology testing on phones.

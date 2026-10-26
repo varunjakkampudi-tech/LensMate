@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Platform, Share } from "react-native";
 import { MemoryStoreError } from "./memory-error";
 import { nativeMemory } from "./native-store";
 
@@ -199,19 +199,23 @@ export async function deleteAll(): Promise<void> {
   keyPromise = undefined;
 }
 
-/** Export of everything the user saved, as a JSON download (web). */
+/**
+ * Export of everything the user saved, as JSON. On the web it downloads a file. On a phone it opens the system share
+ * sheet with the JSON, so the user can save it to Files or send it elsewhere. Returns how many items were delivered:
+ * 0 when the user cancels the share sheet, so no caller can report an export that did not happen.
+ */
 export async function exportAll(): Promise<number> {
   const items = await listItems();
+  const body = JSON.stringify({ exportedAt: new Date().toISOString(), items }, null, 2);
   if (Platform.OS === "web") {
-    const blob = new Blob(
-      [JSON.stringify({ exportedAt: new Date().toISOString(), items }, null, 2)],
-      { type: "application/json" },
-    );
+    const blob = new Blob([body], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "lensmate-memory.json";
     a.click();
     URL.revokeObjectURL(a.href);
+    return items.length;
   }
-  return items.length;
+  const result = await Share.share({ title: "LensMate memory export", message: body });
+  return result.action === Share.sharedAction ? items.length : 0;
 }

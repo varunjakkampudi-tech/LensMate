@@ -71,6 +71,9 @@ export function findModel(id: string): ModelPrice | undefined {
  * - a fixed allowance covers the provider's own chat template;
  * - output tokens are the caller's cap, which the broker has already clamped to its ceiling.
  */
+/** Tokens allowed for the provider's own chat template around the messages (upper bound, Amendment C.5). */
+export const TEMPLATE_ALLOWANCE_TOKENS = 256;
+
 export function worstCaseMicroUsd(
   model: ModelPrice,
   inputBoundTokens: number,

@@ -22,6 +22,7 @@ import {
   actualMicroUsd,
   findModel,
   microUsdToPaise,
+  TEMPLATE_ALLOWANCE_TOKENS,
   worstCaseMicroUsd,
   type ModelPrice,
 } from "./pricing.js";
@@ -34,8 +35,6 @@ import {
   type StreamReply,
 } from "./provider.js";
 
-/** Tokens allowed for the provider's own chat template around the messages (upper bound, Amendment C.5). */
-const TEMPLATE_ALLOWANCE_TOKENS = 256;
 /** Tokens allowed per message for role and separators (upper bound). */
 const PER_MESSAGE_OVERHEAD_TOKENS = 8;
 const MAX_MESSAGES = 20;

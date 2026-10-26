@@ -289,7 +289,15 @@ export default function MemoryScreen() {
             label="Export all"
             tone="ghost"
             icon="upload"
-            onPress={() => void exportAll().then((n) => setMessage(`Exported ${n} items.`))}
+            onPress={() =>
+              void exportAll()
+                .then((n) =>
+                  setMessage(
+                    n === 0 ? "Export cancelled. Nothing was saved." : `Exported ${n} items.`,
+                  ),
+                )
+                .catch((e: unknown) => setMessage(memoryErrorText(e)))
+            }
           />
           <Btn
             testID="memory-delete-all-button"

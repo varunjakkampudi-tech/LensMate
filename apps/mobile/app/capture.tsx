@@ -13,18 +13,12 @@ import { listItems, memoryErrorText, saveItem } from "../src/memory/vault";
 import { createLiveSession } from "../src/vision/create-live-session";
 import type { LiveState, LiveVisionSession } from "../src/vision/live-session";
 import { SeeSession, type SeeAnswer, type SeeState } from "../src/see/session";
+import { FORMAT, liveStatusText, metaOf, parse, type Answer } from "../src/see/answer-format";
 import { useCapture } from "../src/ui/capture-session";
 import { Icon } from "../src/ui/icon";
 import { Btn, Card, Field, Notice } from "../src/ui/kit";
 import { usePrefs, type Prefs } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
-
-interface Answer {
-  readonly title: string;
-  readonly text: string;
-  readonly followups: readonly string[];
-  readonly meta: string;
-}
 
 /** Quick questions under the photo. Each one sends a fixed request, so the wording stays reviewed. */
 const QUICK_CHIPS = [
@@ -32,39 +26,6 @@ const QUICK_CHIPS = [
   { label: "Read all the text", request: READ_TEXT_REQUEST, testID: "quick-read" },
   { label: "Translate the text", request: TRANSLATE_TEXT_REQUEST, testID: "quick-translate" },
 ] as const;
-
-const FORMAT =
-  'Reply with JSON only: {"title": short name of the main subject, "answer": 2-4 sentences, "followups": [3 short follow-up questions the user may ask next]}.';
-
-interface Parsed {
-  readonly title: string;
-  readonly text: string;
-  readonly followups: readonly string[];
-}
-
-function parse(raw: string): Parsed {
-  try {
-    const j = JSON.parse(/\{[\s\S]*\}/.exec(raw)?.[0] ?? "") as {
-      title?: unknown;
-      answer?: unknown;
-      followups?: unknown;
-    };
-    return {
-      title: typeof j.title === "string" ? j.title : "Answer",
-      text: typeof j.answer === "string" ? j.answer : raw,
-      followups: Array.isArray(j.followups)
-        ? j.followups.filter((f): f is string => typeof f === "string").slice(0, 3)
-        : [],
-    };
-  } catch {
-    return { title: "Answer", text: raw, followups: [] };
-  }
-}
-
-/** "MOCK" is shown whenever no AI provider was paid for this answer. */
-function metaOf(a: SeeAnswer): string {
-  return `${a.source === "mock" ? "MOCK · " : ""}${(a.latencyMs / 1000).toFixed(1)} s · ₹${(a.costPaise / 100).toFixed(2)}`;
-}
 
 /** See – Photo & Ask: capture or upload, ask, follow up, read aloud, save. Mistake checks live under More. */
 export default function CaptureScreen() {
@@ -588,20 +549,4 @@ export default function CaptureScreen() {
 /** Stops read-aloud on the phone and the web (the speech module decides which). */
 function stopSaying(): void {
   stopSpeaking();
-}
-
-/** One plain line for the Live Vision panel. It says what is happening and why it stopped. */
-function liveStatusText(state: LiveState): string {
-  switch (state.phase) {
-    case "idle":
-      return "Not running. The camera sends nothing until you press Start.";
-    case "running":
-      return `Running. ${state.framesAnalysed} analysed, ${state.invalidFrames} unusable frames skipped.`;
-    case "stopped":
-      return state.message ?? "Stopped. No more frames are sent.";
-    case "budget_reached":
-    case "timed_out":
-    case "error":
-      return state.message ?? "Stopped.";
-  }
 }

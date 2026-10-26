@@ -1,5 +1,5 @@
 import { actionUrl, parseCalls, runAgentTask } from "./agent";
-import { askText, research } from "./assistant";
+import { askText, translate } from "./assistant";
 import { listItems, saveItem } from "../memory/vault";
 
 jest.mock("./assistant", () => ({
@@ -26,6 +26,19 @@ describe("agent tools", () => {
     expect(actionUrl("pay", "x", "")).toBeNull();
   });
 
+  it("drops research and any call over its bounds before it can run", () => {
+    const planned = parseCalls(
+      JSON.stringify({
+        calls: [
+          { tool: "web_research", input: { query: "weather" } },
+          { tool: "save_note", input: { text: "a".repeat(2001) } },
+          { tool: "save_note", input: { title: "ok", text: "kept" } },
+        ],
+      }),
+    );
+    expect(planned.map((c) => c.tool)).toEqual(["save_note"]);
+  });
+
   it("caps the plan at four calls and survives non-JSON replies", () => {
     const calls = Array.from({ length: 6 }, () => ({ tool: "recall_memory", input: {} }));
     expect(parseCalls(`Sure: ${JSON.stringify({ calls })}`)).toHaveLength(4);
@@ -44,25 +57,30 @@ describe("runAgentTask", () => {
             calls: [
               { tool: "web_research", input: { query: "weather" } },
               { tool: "set_reminder", input: { title: "Umbrella", minutes: 5 } },
+              { tool: "translate", input: { text: "hello", from: "en", to: "te" } },
               { tool: "phone_action", input: { kind: "sms", target: "+911", body: "late" } },
             ],
           }),
         ),
       )
       .mockResolvedValueOnce(answer("Done.", 2));
-    (research as jest.Mock).mockResolvedValue(answer("Rain likely", 230));
+    (translate as jest.Mock).mockResolvedValue({
+      translation: "హలో",
+      uncertain: [],
+      answer: answer("హలో", 40),
+    });
     (listItems as jest.Mock).mockResolvedValue([]);
     (saveItem as jest.Mock).mockResolvedValue(undefined);
 
     const steps: string[] = [];
     const result = await runAgentTask("plan", "en", (s) => steps.push(s.agent));
 
-    expect(steps).toEqual(["Planner", "Researcher", "Scheduler", "Action agent", "Writer"]);
+    expect(steps).toEqual(["Planner", "Scheduler", "Translator", "Action agent", "Writer"]);
     expect(saveItem).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "reminder", title: "Umbrella" }),
     );
     expect(result.actions).toEqual([expect.objectContaining({ kind: "sms" })]);
-    expect(result.costPaise).toBe(1 + 230 + 2);
+    expect(result.costPaise).toBe(1 + 40 + 2);
     const writerPrompt = (askText as jest.Mock).mock.calls[1][0][0].content as string;
     expect(writerPrompt).toContain("not done yet");
   });

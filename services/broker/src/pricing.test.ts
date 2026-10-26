@@ -1,5 +1,6 @@
 import {
   MODEL_ALLOWLIST,
+  TEMPLATE_ALLOWANCE_TOKENS,
   actualMicroUsd,
   findModel,
   microUsdToPaise,
@@ -67,5 +68,21 @@ describe("cost arithmetic in integers", () => {
     // 1 micro-USD at 10,000 paise per USD is 0.01 paise, which rounds up to 1 paisa.
     expect(microUsdToPaise(1, 10_000)).toBe(1);
     expect(microUsdToPaise(0, 10_000)).toBe(0);
+  });
+});
+
+describe("the reservation covers the real cost (Amendment C.5)", () => {
+  it("never reserves less than the cost of the largest allowed request, for every allowlisted model", () => {
+    // A token is at least one UTF-8 byte, so the bytes of the largest allowed input plus the template allowance bound
+    // the prompt tokens. Output is capped by the broker's ceiling. The bound holds only while that rule holds.
+    // The defaults in config.ts. An operator who raises either limit must keep this holding for the new values.
+    const maxInputBytes = 16_384;
+    const maxOutputTokens = 512;
+    const promptBound = maxInputBytes + TEMPLATE_ALLOWANCE_TOKENS;
+    for (const model of MODEL_ALLOWLIST) {
+      const worst = worstCaseMicroUsd(model, promptBound, maxOutputTokens);
+      const actual = actualMicroUsd(model, promptBound, maxOutputTokens);
+      expect(actual).toBeLessThanOrEqual(worst);
+    }
   });
 });

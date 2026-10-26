@@ -92,21 +92,21 @@ describe("cancelling a request", () => {
     expect(steps).toEqual([]);
   });
 
-  it("passes the cancel signal to the research request, so it can be stopped", async () => {
+  it("passes the cancel signal to the translate request, so it can be stopped", async () => {
     transport
       .mockResolvedValueOnce(
-        reply('{"calls":[{"tool":"web_research","input":{"query":"weather"}}]}'),
+        reply('{"calls":[{"tool":"translate","input":{"text":"hi","from":"en","to":"te"}}]}'),
       )
       .mockImplementationOnce(hangUntilAborted())
       .mockResolvedValue(reply("ok"));
     const controller = new AbortController();
 
-    const pending = runAgentTask("weather?", "en", () => undefined, controller.signal);
+    const pending = runAgentTask("say hi", "en", () => undefined, controller.signal);
     setTimeout(() => controller.abort(), 5);
 
     await expect(pending).rejects.toBeInstanceOf(RequestCancelled);
-    const researchSignal = transport.mock.calls[1]?.[1] as AbortSignal;
-    expect(researchSignal.aborted).toBe(true);
+    const translateSignal = transport.mock.calls[1]?.[1] as AbortSignal;
+    expect(translateSignal.aborted).toBe(true);
   });
 
   it("still returns a normal answer when nothing is cancelled", async () => {
