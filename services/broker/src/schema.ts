@@ -137,6 +137,7 @@ const TRIGGERS = [
   "broker_reservation_closed_final",
   "broker_reservation_settles_buckets",
   "broker_reservation_opens_only",
+  "broker_quota_monotonic",
 ];
 
 /**
@@ -151,6 +152,10 @@ DECLARE
   charged bigint;
   touched integer;
 BEGIN
+  IF OLD.state = 'reserved' AND NEW.state = 'reserved'
+    AND (NEW.actual_paise IS NOT NULL OR NEW.closed_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'an open reservation carries no actual cost or close time';
+  END IF;
   IF OLD.state = 'reserved' AND NEW.state IN ('settled', 'released') THEN
     IF NEW.state = 'settled' THEN
       IF NEW.actual_paise IS NULL OR NEW.actual_paise < 0 THEN
@@ -201,6 +206,18 @@ $fn$;
 DROP TRIGGER IF EXISTS broker_reservation_opens_only ON broker_reservation;
 CREATE TRIGGER broker_reservation_opens_only BEFORE INSERT ON broker_reservation
   FOR EACH ROW EXECUTE FUNCTION broker_require_open_insert();
+-- The daily request count only rises. Without this, a caller with UPDATE on the count could reset its own daily quota.
+CREATE OR REPLACE FUNCTION broker_quota_monotonic() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
+BEGIN
+  IF NEW.requests < OLD.requests THEN
+    RAISE EXCEPTION 'the daily request count cannot decrease';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+DROP TRIGGER IF EXISTS broker_quota_monotonic ON broker_daily_quota;
+CREATE TRIGGER broker_quota_monotonic BEFORE UPDATE ON broker_daily_quota
+  FOR EACH ROW EXECUTE FUNCTION broker_quota_monotonic();
 `;
 
 /**
@@ -404,7 +421,7 @@ export async function migrate(pool: Pool, appRole: string, adminRole: string): P
 export async function verifySchema(pool: Pool): Promise<void> {
   const problems: string[] = [];
   const triggers = await pool.query<{ tgname: string }>(
-    "SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgenabled <> 'D' AND tgname = ANY($1)",
+    "SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgenabled IN ('O', 'A') AND tgname = ANY($1)",
     [TRIGGERS],
   );
   const enabled = new Set(triggers.rows.map((row) => row.tgname));

@@ -46,3 +46,9 @@ approves the model list in `services/broker/src/pricing.ts`, and approves the ch
 - The shared proxy's link to the LensMate network is a runtime connection. It is lost if the OraOne proxy container
   is recreated. Restore it with `docker network connect lensmate-broker_egress oraone-prod-proxy`, then reload the proxy.
 - The proxy's `/etc/caddy/Caddyfile` is a read-only mount, so reloads use a copy in `/tmp` inside the container.
+
+## Rollback constraint (schema)
+
+The settlement trigger (`broker_reservation_settles_buckets`) moves reserved spend into the buckets itself. A broker build
+older than the one that installed it must not run against the ledger: it would move reserved spend a second time. To roll
+back the code, roll back the schema only by an owner-reviewed migration, never by running the old build alone.

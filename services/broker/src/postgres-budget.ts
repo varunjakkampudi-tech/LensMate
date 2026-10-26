@@ -143,16 +143,24 @@ export class PostgresBudgetStore implements BudgetStore {
       for (const row of stale.rows) {
         // A savepoint per row: one row that cannot be settled is skipped and stays open for the next pass, so it
         // does not roll back the rest of the batch. The settlement trigger charges every bucket the row holds.
+        // The consistency checks are deferred to COMMIT. Checking this row now makes a drifted month fail here, inside
+        // its own savepoint, instead of rolling back the whole batch at COMMIT.
         await client.query("SAVEPOINT reap_row");
         try {
           await client.query(
             "UPDATE broker_reservation SET state = 'settled', actual_paise = $2, closed_at = now() WHERE reservation_id = $1",
             [row.reservation_id, row.amount_paise],
           );
+          // Only after the row's own statement completes, so the check sees the closed row, not the one mid-update.
+          await client.query("SET CONSTRAINTS ALL IMMEDIATE");
+          await client.query("SET CONSTRAINTS ALL DEFERRED");
           await client.query("RELEASE SAVEPOINT reap_row");
           reaped += 1;
         } catch {
+          // The row stays open and is retried on the next pass. The rest of the batch is not affected.
           await client.query("ROLLBACK TO SAVEPOINT reap_row");
+          await client.query("RELEASE SAVEPOINT reap_row");
+          await client.query("SET CONSTRAINTS ALL DEFERRED");
         }
       }
       await client.query("COMMIT");

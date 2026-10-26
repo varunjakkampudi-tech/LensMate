@@ -172,6 +172,20 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
     });
   });
 
+  it("refuses an open reservation that carries a cost, and a daily request count that goes down", async () => {
+    await store.reserve(reserveInput("open-guard", { amountPaise: 10 }));
+    await expect(
+      appPool().query(
+        "UPDATE broker_reservation SET actual_paise = 5 WHERE reservation_id = 'open-guard'",
+      ),
+    ).rejects.toThrow(/no actual cost or close time/);
+    await expect(
+      appPool().query(
+        "UPDATE broker_daily_quota SET requests = requests - 1 WHERE client_id = 'app-1' AND day = '2026-10-24'",
+      ),
+    ).rejects.toThrow(/cannot decrease/);
+  });
+
   it("releases a failed attempt back to the budget", async () => {
     await store.reserve(reserveInput("a", { amountPaise: 100 }));
     await store.release("a");
