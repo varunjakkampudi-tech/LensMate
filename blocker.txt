@@ -567,3 +567,10 @@ Not in the owner's report, so still unverified on the phone:
 - NOT live yet: lensmate.tech resolves to 2.57.91.91, not to this VPS. Let's Encrypt cannot issue a certificate until the owner points the lensmate.tech A record to 200.141.14.57. The route is configured and tested by Host header only.
 - Mode: the broker is still BROKER_MODE=mock. No provider call, no billing. The FX rate (10000) and monthly cap (50000) remain placeholders.
 - Owner actions: (1) set the lensmate.tech A record to 200.141.14.57 (hPanel); (2) decide whether to make the proxy network link persistent; (3) decide when mock mode is replaced by a real provider (BLOCKER-006 items a to i).
+
+## ROUND 2026-10-26 (LensMate public route is LIVE)
+
+- lensmate.tech now resolves to 200.141.14.57 (owner changed the A record in hPanel). Caddy issued the certificate and the route works over HTTPS: https://lensmate.tech/healthz returns {"status":"ok"}, and http:// redirects with 308.
+- oraone.in still returns HTTP 200 after the change.
+- The broker is still in mock mode: no provider call, no billing. The FX rate (10000) and monthly cap (50000) are placeholders awaiting owner confirmation (BLOCKER-006 items c and h).
+- Still open: the proxy network link to the LensMate broker is runtime-only (see the previous record). Owner decision needed on making it permanent.
