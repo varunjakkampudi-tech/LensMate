@@ -15,6 +15,7 @@ import { RequestCancelled } from "../src/ai/assistant";
 import { RunGuard } from "../src/ai/run-guard";
 import { aiErrorText } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
+import { NothingToSummarise, summariseConversation } from "../src/ai/summary";
 import { useMicSession } from "../src/ai/use-voice";
 import { readBrokerConfig } from "../src/broker-config";
 import { Icon, type IconName } from "../src/ui/icon";
@@ -177,7 +178,7 @@ export default function AssistantScreen() {
         ),
       );
     } finally {
-      if (guard.isCurrent(current.id)) {
+      if (guard.isLatest(current.id)) {
         setBusy(false);
       }
     }
@@ -192,6 +193,45 @@ export default function AssistantScreen() {
     setBusy(false);
     if (cancelled) {
       push({ role: "assistant", text: "Stopped. No answer was added to this conversation." });
+    }
+  };
+
+  /**
+   * Summary of this conversation on request (F8). Only the user's lines and the answers are sent: placeholders, failed
+   * requests and the Stop notice have no source and are left out. Stop cancels it like any other request.
+   */
+  const summarise = async () => {
+    if (busy) {
+      return;
+    }
+    const lines = messages
+      .filter((m) => m.role === "user" || m.source !== undefined)
+      .map((m) => ({ role: m.role, text: m.text }));
+    if (lines.length === 0) {
+      setError("Nothing to summarise yet.");
+      return;
+    }
+    setError(null);
+    push({ role: "user", text: "Summarise this conversation" });
+    setBusy(true);
+    const current = guard.begin();
+    try {
+      const a = await summariseConversation(lines, lang, current.signal);
+      if (!guard.isCurrent(current.id)) {
+        return;
+      }
+      guard.finish(current.id);
+      push({ role: "assistant", text: a.text, source: a.source });
+    } catch (e) {
+      if (e instanceof RequestCancelled || !guard.isCurrent(current.id)) {
+        return;
+      }
+      guard.finish(current.id);
+      setError(e instanceof NothingToSummarise ? e.message : aiErrorText(e));
+    } finally {
+      if (guard.isLatest(current.id)) {
+        setBusy(false);
+      }
     }
   };
 
@@ -427,6 +467,24 @@ export default function AssistantScreen() {
         ) : null}
       </ScrollView>
 
+      {messages.length > 0 && !busy ? (
+        <View style={{ paddingHorizontal: 18, paddingBottom: 4, alignItems: "flex-start" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Summarise this conversation"
+            testID="talk-summarise-button"
+            disabled={!voiceOn}
+            onPress={() => void summarise()}
+            style={{ minHeight: 48, justifyContent: "center", opacity: voiceOn ? 1 : 0.5 }}
+          >
+            <Text
+              style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}
+            >
+              Summarise this conversation
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
       <View
         style={{
           flexDirection: "row",

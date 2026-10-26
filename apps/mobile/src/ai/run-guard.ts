@@ -24,6 +24,14 @@ export class RunGuard {
     return id === this.id && this.controller !== null && !this.controller.signal.aborted;
   }
 
+  /**
+   * True when no newer run has started since this one, whether it finished or was cancelled. The busy state is cleared
+   * with this check: a finished run has no longer any controller, so isCurrent would leave the screen busy forever.
+   */
+  isLatest(id: number): boolean {
+    return id === this.id;
+  }
+
   /** Marks a run as finished normally. */
   finish(id: number): void {
     if (this.isCurrent(id)) {

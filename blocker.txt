@@ -732,3 +732,10 @@ Not in the owner's report, so still unverified on the phone:
 - F11: Photo & Ask has a Last photo button. It reopens the newest saved capture from memory (latestSavedPhoto in src/memory/last-photo.ts). Nothing is read until the button is pressed. It shows a message when no saved photo exists.
 - Tests: read-text.test.ts (2 tests), last-photo.test.ts (3 tests). Mobile suite 484 of 484 pass; typecheck, lint and format pass on the changed files.
 - Not verified on a phone. The Last photo button needs the encrypted memory store, which Expo Go cannot open; it needs the development build or the browser app.
+
+## ROUND 2026-10-26 (F8 conversation summaries; busy-state fix on Assistant and Simulator)
+
+- F8: the Assistant has a Summarise this conversation action. It sends the newest 20 user lines and answers (each cut to 600 characters) to the text model with a fixed rule: 2-4 short sentences, no added facts, plain text (src/ai/summary.ts). Placeholders, failed requests and the Stop notice are left out. Stop cancels it like any other request. F8 is phase Next, so it is outside the 16 P-1 core features.
+- Bug fixed: RunGuard.isCurrent returned false after a run finished, so the Assistant and the Simulator never cleared their busy state after a normal answer. The Stop button stayed on screen. Both now clear busy with RunGuard.isLatest, which is true for the newest run until a new one starts or it is cancelled.
+- Tests: summary.test.ts (4), run-guard.test.ts (new isLatest test). Mobile suite 490 of 490 pass; typecheck and lint pass.
+- Not verified on a phone. The Assistant's busy-state fix should be checked on a device: after an answer, the send button should return.

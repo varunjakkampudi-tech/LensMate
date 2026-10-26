@@ -44,4 +44,16 @@ describe("RunGuard", () => {
     expect(current.map((r) => r.id)).toEqual([runs[runs.length - 1]?.id]);
     expect(runs.slice(0, -1).every((r) => r.signal.aborted)).toBe(true);
   });
+
+  it("reports the latest run as latest after it finishes, and no longer once a newer run starts or it is cancelled", () => {
+    const guard = new RunGuard();
+    const run = guard.begin();
+    guard.finish(run.id);
+    expect(guard.isLatest(run.id)).toBe(true);
+    const next = guard.begin();
+    expect(guard.isLatest(run.id)).toBe(false);
+    expect(guard.isLatest(next.id)).toBe(true);
+    guard.cancel();
+    expect(guard.isLatest(next.id)).toBe(false);
+  });
 });

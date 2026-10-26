@@ -171,7 +171,7 @@ export default function SimulatorScreen() {
       guard.finish(run.id);
       setResult(aiErrorText(e));
     } finally {
-      if (guard.isCurrent(run.id)) {
+      if (guard.isLatest(run.id)) {
         setBusy(false);
       }
     }
