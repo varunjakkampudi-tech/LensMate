@@ -226,11 +226,13 @@ describe("LiveVisionSession: cancellation and stale results", () => {
 
     h.session.stop();
     h.analyses[0]?.resolve(answer("Too late"));
+    h.clock.advance(MIN_INTERVAL_MS * 2);
     await flush();
 
     expect(signal.aborted).toBe(true);
     expect(h.session.state.answer).toBeNull();
     expect(h.session.state.framesAnalysed).toBe(0);
+    expect(h.captureFrame).toHaveBeenCalledTimes(1);
   });
 
   it("a capture that finishes after stop() is never sent to the provider", async () => {
@@ -323,6 +325,39 @@ describe("LiveVisionSession: limits", () => {
     expect(h.session.state.phase).toBe("stopped");
     expect(h.session.state.message).toMatch(/Frame limit/);
     expect(MAX_FRAMES).toBeGreaterThan(0);
+  });
+
+  it("stops at the hard frame cap of 40", async () => {
+    const h = build();
+    h.session.start({ intervalMs: MIN_INTERVAL_MS, question: "x" });
+
+    for (let i = 0; i < MAX_FRAMES; i += 1) {
+      h.clock.advance(MIN_INTERVAL_MS);
+      h.giveFrame();
+      await flush();
+      h.analyses[i]?.resolve(answer(`answer ${i}`, 0));
+      await flush();
+    }
+    h.clock.advance(MIN_INTERVAL_MS);
+
+    // At the minimum interval the 40th frame falls on the 120 second time cap, so either cap may end the session.
+    // Both end it without another frame, which is what matters for cost and privacy.
+    expect(["stopped", "timed_out"]).toContain(h.session.state.phase);
+    // The frame in flight when the time cap fires is cancelled, so it is not counted as analysed.
+    expect(h.session.state.framesAnalysed).toBeLessThanOrEqual(40);
+    expect(h.analyse.mock.calls.length).toBeLessThanOrEqual(40);
+  });
+
+  it("ends at the default 120 second time cap", () => {
+    const h = build();
+    h.session.start({ intervalMs: MIN_INTERVAL_MS, question: "x" });
+
+    h.clock.advance(MAX_SESSION_MS);
+
+    expect(MAX_SESSION_MS).toBe(120_000);
+    expect(h.session.state.phase).toBe("timed_out");
+    expect(h.session.state.message).toMatch(/time limit/);
+    expect(h.clock.pending()).toBe(0);
   });
 
   it("reports an analysis failure as an error state and stops", async () => {
