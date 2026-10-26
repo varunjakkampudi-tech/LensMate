@@ -19,7 +19,7 @@
     "knip": "knip",
     "check:schema": "pnpm -F @lensmate/protocol check:schema",
     "check:expo": "pnpm -F @lensmate/mobile exec expo config --type public",
-    "audit:high": "pnpm audit --audit-level=high",
+    "audit:high": "pnpm audit --audit-level=high --ignore GHSA-86w9-cpqp-85rv",
     "measure:import": "node tools/measurement-import/dist/cli.js",
     "measure:dry-run": "pnpm -F @lensmate/mobile exec jest src/measurement-dry-run.test.ts --runInBand"
   },

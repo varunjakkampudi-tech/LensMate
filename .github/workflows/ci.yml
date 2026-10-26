@@ -34,6 +34,7 @@ jobs:
       - run: pnpm build
       - run: pnpm check:schema
       - run: pnpm check:expo
+      - run: pnpm audit:high
       - run: pnpm test
 
   broker-integration:

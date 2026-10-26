@@ -276,6 +276,8 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
       return reply.code(429).send({ error: "rate_limited", code: "RATE_LIMITED" });
     }
     const stored = await backups.get(client, now());
+    // Ciphertext of the user's memory must never be cached by a proxy or the browser.
+    reply.header("cache-control", "no-store");
     if (stored === null) {
       return reply.code(404).send({ error: "not_found", code: "NO_BACKUP" });
     }
