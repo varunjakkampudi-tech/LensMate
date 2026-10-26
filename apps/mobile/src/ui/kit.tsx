@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   View,
+  StyleSheet,
   type ViewStyle,
 } from "react-native";
 import { Icon, type IconName } from "./icon";
@@ -50,7 +51,7 @@ export function Page({
   );
 }
 
-export function Card({
+export const Card = memo(function Card({
   children,
   style,
   glow,
@@ -80,7 +81,7 @@ export function Card({
       {children}
     </View>
   );
-}
+});
 
 export function H2({ children }: { children: ReactNode }) {
   const { c } = useTheme();
@@ -117,7 +118,7 @@ export function Body({
 
 type Tone = "primary" | "ghost" | "danger";
 
-export function Btn(props: {
+export const Btn = memo(function Btn(props: {
   label: string;
   onPress: () => void;
   tone?: Tone;
@@ -139,20 +140,11 @@ export function Btn(props: {
       testID={props.testID}
       disabled={off}
       onPress={props.onPress}
-      style={({ pressed }) => ({
-        minHeight: 48,
-        paddingHorizontal: 18,
-        borderRadius: 999,
-        backgroundColor: bg,
-        borderWidth: tone === "ghost" ? 1 : 0,
-        borderColor: c.border,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        opacity: off ? 0.5 : 1,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
-      })}
+      style={({ pressed }) => [
+        styles.button,
+        { backgroundColor: bg, borderColor: c.border, borderWidth: tone === "ghost" ? 1 : 0 },
+        { opacity: off ? 0.5 : pressed ? 0.78 : 1 },
+      ]}
     >
       {props.busy === true ? (
         <ActivityIndicator color={fg} />
@@ -164,7 +156,7 @@ export function Btn(props: {
       </Text>
     </Pressable>
   );
-}
+});
 
 export function Chip({
   label,
@@ -186,16 +178,14 @@ export function Chip({
       aria-checked={active}
       testID={testID}
       onPress={onPress}
-      style={{
-        minHeight: 48,
-        justifyContent: "center",
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: active ? c.accent : c.border,
-        backgroundColor: active ? c.glow : "transparent",
-      }}
+      style={({ pressed }) => [
+        styles.chip,
+        {
+          borderColor: active ? c.accent : c.border,
+          backgroundColor: active ? c.glow : "transparent",
+          opacity: pressed ? 0.72 : 1,
+        },
+      ]}
     >
       <Text
         style={{
@@ -254,7 +244,7 @@ export function Field(props: {
   );
 }
 
-export function Notice({
+export const Notice = memo(function Notice({
   tone,
   children,
   testID,
@@ -282,7 +272,7 @@ export function Notice({
       </Text>
     </View>
   );
-}
+});
 
 export function Row({ children, wrap }: { children: ReactNode; wrap?: boolean }) {
   return (
@@ -298,3 +288,23 @@ export function Row({ children, wrap }: { children: ReactNode; wrap?: boolean })
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  button: {
+    minHeight: 48,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  chip: {
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+});

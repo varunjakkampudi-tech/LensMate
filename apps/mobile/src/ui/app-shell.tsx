@@ -1,6 +1,6 @@
 import { router, usePathname } from "expo-router";
 import { createElement, useEffect, type ReactNode } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { runDueAutomations } from "../ai/automations";
 import { listItems, saveItem } from "../memory/vault";
@@ -88,7 +88,7 @@ function Header() {
         accessibilityRole="link"
         accessibilityLabel="LensMate home"
         onPress={() => router.navigate("/")}
-        style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}
+        style={({ pressed }) => [styles.brandButton, { opacity: pressed ? 0.72 : 1 }]}
       >
         <BrandGlasses size={18} color={c.accent} />
         <Text
@@ -109,7 +109,7 @@ function Header() {
         accessibilityLabel="Settings"
         testID="header-settings"
         onPress={() => router.navigate("/profile")}
-        style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}
+        style={({ pressed }) => [styles.iconButton, { opacity: pressed ? 0.72 : 1 }]}
       >
         <Icon name="gear" color={c.text} size={22} />
       </Pressable>
@@ -146,16 +146,7 @@ function IndicatorBar() {
         accessibilityLabel={`Stop ${active.kind} session`}
         testID="capture-stop-button"
         onPress={stopAll}
-        style={{
-          minHeight: 48,
-          flexDirection: "row",
-          gap: 6,
-          alignItems: "center",
-          backgroundColor: "rgba(0,0,0,0.25)",
-          paddingHorizontal: 14,
-          paddingVertical: 7,
-          borderRadius: 999,
-        }}
+        style={({ pressed }) => [styles.stopButton, { opacity: pressed ? 0.72 : 1 }]}
       >
         <Icon name="stop" color="#fff" size={16} />
         <Text style={{ color: "#fff", fontWeight: "700" }}>Stop</Text>
@@ -248,13 +239,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 accessibilityLabel={tab.label}
                 testID={`nav-${tab.label.toLowerCase()}`}
                 onPress={() => router.navigate(tab.href)}
-                style={{
-                  flex: 1,
-                  minHeight: 48,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 3,
-                }}
+                style={({ pressed }) => [styles.navButton, { opacity: pressed ? 0.72 : 1 }]}
               >
                 <Icon name={tab.icon} color={on ? c.accent : c.muted} size={22} />
                 <Text
@@ -279,3 +264,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  brandButton: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minHeight: 48 },
+  iconButton: { minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+  stopButton: {
+    minHeight: 48,
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.25)",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  navButton: {
+    flex: 1,
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+});

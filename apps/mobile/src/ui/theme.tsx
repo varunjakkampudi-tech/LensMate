@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { Platform, useColorScheme } from "react-native";
 
 // Neutral, swappable design tokens until the Viswatra identity is approved (Goal 10A.2; blocker.txt).
@@ -9,7 +9,7 @@ const light = {
   surface2: "#EEF3FB",
   border: "rgba(16,42,94,0.08)",
   text: "#0B1B3F",
-  muted: "#6B7A99",
+  muted: "#5E6C88",
   accent: "#1E6BFF",
   accentInk: "#FFFFFF",
   accent2: "#F59E0B",
@@ -61,6 +61,7 @@ const FONT_HREF =
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const isDark = useColorScheme() === "dark";
+  const value = useMemo(() => ({ c: isDark ? dark : light, dark: isDark }), [isDark]);
   useEffect(() => {
     if (Platform.OS !== "web" || document.getElementById("lm-fonts") !== null) {
       return;
@@ -81,11 +82,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.body.style.backgroundColor = (isDark ? dark : light).bg;
     }
   }, [isDark]);
-  return (
-    <ThemeContext.Provider value={{ c: isDark ? dark : light, dark: isDark }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
