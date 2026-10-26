@@ -318,3 +318,12 @@ describe("mock streaming", () => {
     expect(pieces.length).toBeGreaterThan(1);
   });
 });
+
+describe("streamed reply that is cut short", () => {
+  it("is refused when the end marker never arrives, so a truncated answer is not shown as complete", async () => {
+    const provider = new OpenRouterProvider(KEY, "https://example.test/api/v1", () =>
+      Promise.resolve(sseResponse([delta("Partial answer")])),
+    );
+    await expect(provider.stream(request(), () => undefined)).rejects.toThrow(ProviderFailure);
+  });
+});

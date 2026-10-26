@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { PassThrough } from "node:stream";
 import Fastify, {
   type FastifyError,
   type FastifyInstance,
@@ -432,7 +433,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
         });
       } catch {
         log.error({ requestId, client: plan.client }, "ledger unavailable at reserve");
-        return reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
+        return await reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
       }
       if (!reserved.ok) {
         return refusal(reply, reserved.reason);
@@ -447,22 +448,24 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
         controller.abort();
       });
 
-      let streaming = false;
-      const startStream = (): void => {
-        if (streaming) {
-          return;
+      // The body is sent through Fastify, so the headers set on the response (including the browser origin headers)
+      // reach the client. It is created on the first word, so a failure before that is a plain JSON error.
+      let body: PassThrough | undefined;
+      const startStream = (): PassThrough => {
+        if (body === undefined) {
+          body = new PassThrough();
+          reply.header("content-type", "text/event-stream; charset=utf-8");
+          reply.header("cache-control", "no-store");
+          reply.header("x-content-type-options", "nosniff");
+          void reply.send(body);
         }
-        streaming = true;
-        reply.hijack();
-        reply.raw.writeHead(200, {
-          "content-type": "text/event-stream; charset=utf-8",
-          "cache-control": "no-store",
-          "x-content-type-options": "nosniff",
-          connection: "keep-alive",
-        });
+        return body;
       };
       const send = (event: string, data: object): void => {
-        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        startStream().write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+      const finishStream = (): void => {
+        body?.end();
       };
 
       let answer: StreamReply;
@@ -475,7 +478,6 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
             signal: controller.signal,
           },
           (delta) => {
-            startStream();
             send("delta", { text: delta });
           },
         );
@@ -484,6 +486,8 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
         clearTimeout(timer);
         const timedOut = error instanceof ProviderTimeoutError || controller.signal.aborted;
         const outcome = timedOut ? "TIMEOUT" : "PROVIDER_UNAVAILABLE";
+        // Release the upstream connection, whatever failed on our side.
+        controller.abort();
         // The provider may have billed this attempt, so the worst case stays charged.
         const charged = await settleAtWorstCase(reservationId, worstPaise);
         log.info(
@@ -492,19 +496,19 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
         );
         if (!charged) {
           log.error({ requestId, client: plan.client }, "ledger unavailable after failed stream");
-          if (streaming) {
+          if (body !== undefined) {
             send("error", { code: "LEDGER_UNAVAILABLE" });
-            reply.raw.end();
+            finishStream();
             return undefined;
           }
-          return reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
+          return await reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
         }
-        if (streaming) {
+        if (body !== undefined) {
           send("error", { code: outcome });
-          reply.raw.end();
+          finishStream();
           return undefined;
         }
-        return reply.code(503).send({ error: "try_later", code: outcome });
+        return await reply.code(503).send({ error: "try_later", code: outcome });
       }
 
       // Billed at the reported cost. Without a report, the worst case is charged: an unreported bill is never zero.
@@ -526,16 +530,15 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
       } catch {
         // The answer may already be on the phone. The reservation stays open and the reaper settles it at worst case.
         log.error({ requestId, client: plan.client }, "ledger unavailable after streamed answer");
-        if (streaming) {
+        if (body !== undefined) {
           send("error", { code: "LEDGER_UNAVAILABLE" });
-          reply.raw.end();
+          finishStream();
           return undefined;
         }
-        return reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
+        return await reply.code(503).send({ error: "try_later", code: "LEDGER_UNAVAILABLE" });
       }
-      startStream();
       send("done", { costPaise: actualPaise, source: answer.source });
-      reply.raw.end();
+      finishStream();
       return undefined;
     } finally {
       release();

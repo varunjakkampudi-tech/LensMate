@@ -291,7 +291,7 @@ async function forEachSseEvent(
     }
   };
 
-  if (response.body === null) {
+  if (!response.body) {
     const whole = await response.text();
     if (whole.length > MAX_REPLY_CHARS) {
       throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
@@ -315,7 +315,12 @@ async function forEachSseEvent(
       await reader.cancel();
       throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
     }
-    feed(decoder.decode(value, { stream: true }));
+    try {
+      feed(decoder.decode(value, { stream: true }));
+    } catch (error) {
+      await reader.cancel();
+      throw error;
+    }
   }
   feed(decoder.decode());
   if (buffer.trim() !== "") {
@@ -380,6 +385,10 @@ export async function streamBrokerChat(
   let text = "";
   const result: { done?: { costPaise: number; source: "openrouter" | "mock" } } = {};
   await forEachSseEvent(response, (event) => {
+    // Nothing may follow the done event: a second reply would change what was billed.
+    if (result.done !== undefined) {
+      throw new BrokerError("MALFORMED_REPLY", "PROVIDER_ERROR", false);
+    }
     const data = parseEventData(event.data);
     if (event.event === "delta") {
       if (typeof data.text !== "string") {

@@ -268,7 +268,7 @@ async function readStream(
   let total = 0;
   let text = "";
   let usage: StreamReply["usage"] = null;
-  let finished = false;
+  const end = { reached: false };
 
   const handleLine = (line: string): void => {
     const trimmed = line.trim();
@@ -277,7 +277,7 @@ async function readStream(
     }
     const payload = trimmed.slice("data:".length).trim();
     if (payload === "[DONE]") {
-      finished = true;
+      end.reached = true;
       return;
     }
     let chunk: StreamChunk;
@@ -324,7 +324,7 @@ async function readStream(
     buffer = lines.pop() ?? "";
     for (const line of lines) {
       handleLine(line);
-      if (finished) {
+      if (end.reached) {
         await reader.cancel();
         return { text, usage, source: "openrouter" };
       }
@@ -333,6 +333,10 @@ async function readStream(
   buffer += decoder.decode();
   if (buffer !== "") {
     handleLine(buffer);
+  }
+  // Without the end marker the reply was cut short. It is refused rather than shown as complete.
+  if (!end.reached) {
+    throw new ProviderFailure("UNAVAILABLE", false, response.status);
   }
   return { text, usage, source: "openrouter" };
 }

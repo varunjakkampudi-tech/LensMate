@@ -280,3 +280,26 @@ describe("streamBrokerChat", () => {
     expect((failure as BrokerError).code).toBe("BUDGET_EXHAUSTED");
   });
 });
+
+describe("streamBrokerChat without a body", () => {
+  it("reads the whole reply when the response has no body at all", async () => {
+    const text =
+      'event: delta\ndata: {"text":"Ok"}\n\nevent: done\ndata: {"costPaise":2,"source":"openrouter"}\n\n';
+    const bare = new Response(text, { status: 200 });
+    Object.defineProperty(bare, "body", { value: undefined });
+    const options = {
+      baseUrl: "https://broker.test",
+      token: TOKEN,
+      fetch: () => Promise.resolve(bare),
+    };
+    const pieces: string[] = [];
+    const reply = await streamBrokerChat(
+      options,
+      STREAM_REQUEST,
+      (piece) => pieces.push(piece),
+      new AbortController().signal,
+    );
+    expect(pieces).toEqual(["Ok"]);
+    expect(reply.costPaise).toBe(2);
+  });
+});
