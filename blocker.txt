@@ -489,3 +489,13 @@ Not in the owner's report, so still unverified on the phone:
 - Status: the rule is implemented and unit-tested but NOT wired to any store. FEATURE_MATRIX F6, CL18 and CL35 and GAP_MATRIX rows 18 and 35 already say this. No matrix row changed in this decision.
 - Condition: before any capture is written to disk or to the vault in a form that outlives the session, the sweep must be wired and tested end to end. This becomes a blocking item for that change.
 - Not changed: the registry, the feature matrix and the gap matrix.
+
+## ROUND 2026-10-26 (BLOCKER-006 agent evidence; no owner decision made)
+
+- Status of this entry: agent record. It approves nothing and changes no owner decision (a) to (i) in BLOCKER-006. Those answers are still owner-only.
+- Correction: the INR 50 development-test bucket (BROKER_DEV_TEST_CAP_PAISE, maximum 5000 paise) is BUILT and enforced: budget.ts, postgres-budget.ts, the schema trigger in schema.ts, and server.ts. The 2026-10-25 note saying it is "not built yet" is out of date. A live test still needs the owner's approval under (i).
+- Tests (local, dev commit 728a4c5): 111 passed across budget-dual-cap, budget, config, pricing, provider and server. Local runs are not CI evidence.
+- Compose: `docker compose -f docker-compose.yml config -q` exits 0 when BROKER_FX_PAISE_PER_USD=9000 and BROKER_MONTHLY_CAP_PAISE=50000 are given on the command line. This is validation only. 9000 is not owner-confirmed and is not written to any file.
+- Prices: NOT re-verified in this round. The OpenRouter model pages were fetched, but the price fields could not be read reliably. The snapshot in docs/governance/provider-privacy-and-models.md is unchanged and still dated 2026-10-24.
+- Not done: no image build, no stack start, no migration, no provider call, no deployment.
+- Owner answers still needed: (a) to (i) in BLOCKER-006, and the FX rate in (c).
