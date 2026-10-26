@@ -31,8 +31,9 @@ jobs:
         env:
           REF_NAME: ${{ inputs.branch }}
         run: |
-          if [[ ! "$REF_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$ ]] || [[ "$REF_NAME" == *..* ]]; then
-            echo "refusing branch name" >&2
+          # Only the two long-lived branches may be deployed (OWNER-DECISION-002).
+          if [[ "$REF_NAME" != "dev" && "$REF_NAME" != "main" ]]; then
+            echo "only dev and main may be deployed" >&2
             exit 1
           fi
           git ls-remote --exit-code --heads https://github.com/${{ github.repository }}.git "$REF_NAME" >/dev/null

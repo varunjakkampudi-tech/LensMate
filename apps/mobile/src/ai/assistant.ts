@@ -8,7 +8,7 @@ const TEXT_MODEL = "openai/gpt-4.1-nano";
 const VISION_MODEL = "openai/gpt-4o-mini";
 
 /** Thrown when live web research is requested. No verified research model exists yet, so it is not offered. */
-export class ResearchUnavailable extends Error {
+class ResearchUnavailable extends Error {
   constructor() {
     super("Live internet research is not available in this version.");
     this.name = "ResearchUnavailable";
