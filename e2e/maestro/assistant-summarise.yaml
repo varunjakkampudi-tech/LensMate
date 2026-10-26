@@ -1,0 +1,14 @@
+# Flow: the summarise action appears after a message exists (testID talk-summarise-button).
+# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Run: maestro test e2e/maestro/assistant-summarise.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "Hear & Talk"
+- assertVisible: "Assistant"
+- assertNotVisible:
+    id: "talk-summarise-button"
+- tapOn: "What can you do?"
+- assertVisible:
+    id: "talk-summarise-button"

@@ -1,0 +1,15 @@
+# Flow: home screen shows the "Last deployed" line (testID build-time).
+# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Run: maestro test e2e/maestro/home-last-deployed.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- assertVisible: "LensMate"
+- assertVisible: "Hello!"
+- scrollUntilVisible:
+    element:
+      id: "build-time"
+    direction: DOWN
+- assertVisible:
+    id: "build-time"

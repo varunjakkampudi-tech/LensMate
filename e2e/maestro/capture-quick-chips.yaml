@@ -1,0 +1,20 @@
+# Flow: Photo & Ask shows the chips (testIDs quick-describe, quick-read, quick-translate) and last-photo-button.
+# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Run: maestro test e2e/maestro/capture-quick-chips.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "See"
+- assertVisible:
+    id: "last-photo-button"
+- scrollUntilVisible:
+    element:
+      id: "quick-describe"
+    direction: DOWN
+- assertVisible:
+    id: "quick-describe"
+- assertVisible:
+    id: "quick-read"
+- assertVisible:
+    id: "quick-translate"
