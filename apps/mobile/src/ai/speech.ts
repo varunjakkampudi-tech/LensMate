@@ -137,6 +137,74 @@ export function listen(
   return { stop: () => rec.stop() };
 }
 
+/** Spoken words that stop an answer that is being read aloud (F26). Whole phrases only, in each language. */
+const STOP_WORDS = new Set([
+  "stop",
+  "stop please",
+  "please stop",
+  "ఆపు",
+  "ఆపండి",
+  "रुको",
+  "रोको",
+  "बंद करो",
+]);
+
+/** True when a recognised utterance is a stop word on its own. A stop word inside a sentence does not count. */
+export function matchesStopWord(utterance: string): boolean {
+  const normalised = utterance
+    .toLowerCase()
+    .replace(/[.,!?।"“”']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return STOP_WORDS.has(normalised);
+}
+
+/**
+ * Listens only for a spoken stop word while an answer is read aloud (F26, browsers only). It does not cancel speech
+ * itself: the caller stops the speech in onStop. The caller starts it inside a capture session, so the microphone
+ * indicator is shown. Phones without browser recognition get a no-op.
+ */
+export function listenForStop(lang: Lang, onStop: () => void): Listening {
+  const Recognition = recognitionClass();
+  if (isNative() || Recognition === undefined) {
+    return { stop: () => undefined };
+  }
+  let wanted = true;
+  const rec = new Recognition();
+  rec.lang = locale(lang);
+  rec.interimResults = false;
+  rec.continuous = true;
+  rec.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      const result = event.results[i];
+      if (result?.isFinal === true && matchesStopWord(result[0]?.transcript ?? "")) {
+        wanted = false;
+        rec.abort();
+        onStop();
+        return;
+      }
+    }
+  };
+  rec.onerror = (event) => {
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      wanted = false;
+    }
+  };
+  // The browser ends recognition after silence; restart it while the answer is still being read.
+  rec.onend = () => {
+    if (wanted) {
+      rec.start();
+    }
+  };
+  rec.start();
+  return {
+    stop: () => {
+      wanted = false;
+      rec.abort();
+    },
+  };
+}
+
 /**
  * On a phone the installed voices are listed asynchronously, so this cannot be checked here. The engine reports a
  * missing voice through onError when speaking, and the caller's onDone still runs (see speak).

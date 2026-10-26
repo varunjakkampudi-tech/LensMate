@@ -14,10 +14,11 @@ import { confirmAction, runAgentTask, type AgentStep, type PhoneAction } from ".
 import { RequestCancelled } from "../src/ai/assistant";
 import { RunGuard } from "../src/ai/run-guard";
 import { aiErrorText } from "../src/ai/assistant";
-import { speak, stopSpeaking } from "../src/ai/speech";
+import { listenForStop, speak, stopSpeaking } from "../src/ai/speech";
 import { NothingToSummarise, summariseConversation } from "../src/ai/summary";
 import { useMicSession } from "../src/ai/use-voice";
 import { readBrokerConfig } from "../src/broker-config";
+import { useCapture } from "../src/ui/capture-session";
 import { Icon, type IconName } from "../src/ui/icon";
 import { Notice } from "../src/ui/kit";
 import { LangPicker } from "../src/ui/lang-picker";
@@ -234,6 +235,31 @@ export default function AssistantScreen() {
       }
     }
   };
+
+  // F26: while an answer is read aloud, a spoken stop word ends it. The listener runs only inside a capture session,
+  // so the microphone indicator shows, and the shell's Stop control ends it. It waits while a question is being
+  // listened to or answered, because the browser allows one recogniser at a time.
+  const capture = useCapture();
+  const stopRef = useRef(stopAll);
+  stopRef.current = stopAll;
+  const listeningNow = mic.listening !== null;
+  useEffect(() => {
+    if (!speaking || !voiceOn || busy || listeningNow) {
+      return;
+    }
+    const watch = listenForStop(lang, () => {
+      stopRef.current();
+    });
+    const token = capture.begin("microphone", "Stop by voice", () => {
+      watch.stop();
+      stopSpeaking();
+      setSpeaking(false);
+    });
+    return () => {
+      watch.stop();
+      capture.end(token);
+    };
+  }, [speaking, voiceOn, busy, listeningNow, lang, capture]);
 
   // Leaving the screen cancels any request and stops speech and the microphone. The ref holds the latest microphone
   // session, which is rebuilt on each render, so the cleanup stops the current one.

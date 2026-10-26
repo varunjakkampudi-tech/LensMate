@@ -739,3 +739,11 @@ Not in the owner's report, so still unverified on the phone:
 - Bug fixed: RunGuard.isCurrent returned false after a run finished, so the Assistant and the Simulator never cleared their busy state after a normal answer. The Stop button stayed on screen. Both now clear busy with RunGuard.isLatest, which is true for the newest run until a new one starts or it is cancelled.
 - Tests: summary.test.ts (4), run-guard.test.ts (new isLatest test). Mobile suite 490 of 490 pass; typecheck and lint pass.
 - Not verified on a phone. The Assistant's busy-state fix should be checked on a device: after an answer, the send button should return.
+
+## ROUND 2026-10-26 (F26 voice stop in the browser app)
+
+- While an answer is read aloud, the Assistant listens for a stop word: stop, stop please, please stop, and the Telugu and Hindi equivalents (ఆపు, ఆపండి, रुको, रोको, बंद करो). Only a whole utterance counts, so a stop word inside a sentence does not stop the answer (matchesStopWord in src/ai/speech.ts).
+- The listener runs only inside a capture session, so the microphone indicator shows and the shell Stop ends it. It waits while a question is being listened to or answered, since the browser allows one recogniser at a time. Phones without browser recognition get no listener.
+- Known limits: the speaker's sound can be picked up by the microphone, so a quiet room or headphones work best. A native phone build does not listen yet.
+- Tests: speech-stop.test.ts (3 tests). Mobile suite 493 of 493 pass; typecheck and lint pass.
+- Not verified on a device. The browser app is not republished with this change.
