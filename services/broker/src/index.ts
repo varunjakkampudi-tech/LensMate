@@ -5,6 +5,7 @@ import { InMemoryDeviceStore, PostgresDeviceStore, type DeviceStore } from "./de
 import { PostgresBudgetStore } from "./postgres-budget.js";
 import { OpenRouterProvider, MockProvider, type ChatProvider } from "./provider.js";
 import { buildServer } from "./server.js";
+import { createSafeLogStream } from "./safe-log-stream.js";
 import { InMemoryBackupStore, PostgresBackupStore, type BackupStore } from "./backup.js";
 import { verifySchema } from "./schema.js";
 import {
@@ -132,6 +133,8 @@ async function main(): Promise<void> {
         paths: ["req.headers.authorization", "req.headers.cookie"],
         censor: "[redacted]",
       },
+      // Every log line passes the allowlist and redaction in toSafeLogEntry before it reaches stdout.
+      stream: createSafeLogStream(process.stdout),
     },
   });
 

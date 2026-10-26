@@ -305,6 +305,9 @@ importers:
 
   services/broker:
     dependencies:
+      '@lensmate/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       fastify:
         specifier: 5.12.7
         version: 5.12.7
