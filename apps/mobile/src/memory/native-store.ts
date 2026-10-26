@@ -108,6 +108,7 @@ export function createNativeMemoryStore(deps: NativeMemoryDeps): NativeMemorySto
       if (!cipher?.cipher_version) {
         throw new MemoryStoreError("NOT_ENCRYPTED");
       }
+      await db.execAsync("PRAGMA secure_delete = ON;");
       try {
         await db.getFirstAsync("SELECT count(*) AS n FROM sqlite_master", []);
       } catch {

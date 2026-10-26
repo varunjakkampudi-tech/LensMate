@@ -162,7 +162,9 @@ export async function runAgentTask(
     try {
       if (call.tool === "recall_memory") {
         // Broad requests (briefings, "today", "recent") fall back to the newest items.
-        const hits = relevantNotes(await listItems(), str(input.query), 6);
+        const hits = relevantNotes(await listItems(), str(input.query), 6, {
+          fallbackToNewest: true,
+        });
         findings.push(
           `Saved notes: ${hits.map((h) => `${h.title}: ${h.text.slice(0, 300)}`).join(" | ") || "none found"}`,
         );

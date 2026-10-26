@@ -40,18 +40,21 @@ function matchesWord(word: string, haystack: string): boolean {
 }
 
 /**
- * The notes to give the model as context for a question. Notes that match a question word come first. When nothing
- * matches, the newest notes are used, so a broad question still has something to answer from.
+ * The notes to give the model as context for a question. Notes that match a question word come first.
  */
 export function relevantNotes(
   items: readonly MemoryItem[],
   question: string,
   limit: number,
+  options: { fallbackToNewest?: boolean } = {},
 ): MemoryItem[] {
   const words = questionWords(question);
   const matched = items.filter((item) => {
     const haystack = `${item.title} ${item.text}`.toLowerCase();
     return words.some((word) => matchesWord(word, haystack));
   });
-  return (matched.length > 0 ? matched : [...items]).slice(0, limit);
+  return (matched.length > 0 ? matched : options.fallbackToNewest === true ? [...items] : []).slice(
+    0,
+    limit,
+  );
 }

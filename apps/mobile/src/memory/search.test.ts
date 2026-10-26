@@ -21,18 +21,18 @@ describe("relevantNotes", () => {
     expect(relevantNotes([UMBRELLA, PARKING, PHARMACY], "Where did I park?", 8)).toEqual([PARKING]);
   });
 
-  it("ignores question words when looking for matches", () => {
-    expect(relevantNotes([UMBRELLA, PHARMACY], "Where did I leave what?", 8)).toEqual([
-      UMBRELLA,
-      PHARMACY,
-    ]);
+  it("returns no notes when there are no matching question words", () => {
+    expect(relevantNotes([PARKING, UMBRELLA, PHARMACY], "zebra crossing", 8)).toEqual([]);
   });
 
-  it("falls back to the newest notes when nothing matches, keeping the order given", () => {
-    expect(relevantNotes([PARKING, UMBRELLA, PHARMACY], "zebra crossing", 2)).toEqual([
-      PARKING,
-      UMBRELLA,
-    ]);
+  it("returns no notes when the question contains only stop words", () => {
+    expect(relevantNotes([PARKING, UMBRELLA, PHARMACY], "Where did you go?", 8)).toEqual([]);
+  });
+
+  it("uses the newest notes only when fallback is explicitly requested", () => {
+    expect(
+      relevantNotes([PARKING, UMBRELLA, PHARMACY], "zebra crossing", 2, { fallbackToNewest: true }),
+    ).toEqual([PARKING, UMBRELLA]);
   });
 
   it("returns matches first and never more than the limit", () => {

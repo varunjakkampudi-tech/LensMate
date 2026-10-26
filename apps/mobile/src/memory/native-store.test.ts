@@ -114,6 +114,10 @@ function connect(world: World, name: string): SqlDatabase {
         key = pragma[1];
         return;
       }
+      if (source.startsWith("PRAGMA secure_delete")) {
+        world.statements.push(source);
+        return;
+      }
       touch(source);
       claim();
       file.schema = true;
@@ -158,6 +162,23 @@ describe("encrypted native memory store", () => {
     expect(world.statements[0]).toBe(`PRAGMA key = "x'${HEX_KEY_A}'";`);
     expect(world.keys.get(MEMORY_KEY_NAME)).toBe(HEX_KEY_A);
     expect(world.files.get(MEMORY_DB_NAME)?.key).toBe(HEX_KEY_A);
+  });
+
+  it("enables secure_delete after setting the key and before table statements", async () => {
+    const world = makeWorld();
+    const store = createNativeMemoryStore(world.deps(HEX_KEY_A));
+
+    await store.save({ id: "1", createdAt: 1, body: "{}" });
+
+    const keyIndex = world.statements.findIndex((s) => s.startsWith("PRAGMA key"));
+    const secureDeleteIndex = world.statements.indexOf("PRAGMA secure_delete = ON;");
+    const firstTableIndex = world.statements.findIndex(
+      (s) => s.includes("sqlite_master") || s.includes("CREATE TABLE") || s.includes("items"),
+    );
+
+    expect(keyIndex).toBeGreaterThanOrEqual(0);
+    expect(secureDeleteIndex).toBeGreaterThan(keyIndex);
+    expect(firstTableIndex).toBeGreaterThan(secureDeleteIndex);
   });
 
   it("refuses to write when SQLCipher is not active, so nothing is stored as plaintext", async () => {
@@ -223,6 +244,18 @@ describe("encrypted native memory store", () => {
 
     await store.remove("new");
     expect(await store.list()).toEqual(["old"]);
+  });
+
+  it("removes a row when remove() is called", async () => {
+    const world = makeWorld();
+    const store = createNativeMemoryStore(world.deps(HEX_KEY_A));
+    await store.save({ id: "item-1", createdAt: 1, body: "data-1" });
+
+    expect(await store.list()).toEqual(["data-1"]);
+
+    await store.remove("item-1");
+
+    expect(await store.list()).toEqual([]);
   });
 
   it("deletes the file and its key together, and a fresh key starts empty", async () => {

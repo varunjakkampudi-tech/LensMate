@@ -82,11 +82,12 @@ export default function MemoryScreen() {
   const askNotes = async () => {
     setBusy(true);
     setAnswer(null);
-    const context = relevantNotes(
+    const matchedNotes = relevantNotes(
       items.filter((i) => i.kind !== "capture"),
       question,
       8,
-    )
+    );
+    const context = matchedNotes
       .map((i) => `- ${i.title}: ${i.text}`)
       .join("\n")
       .slice(0, 6000);
@@ -95,13 +96,18 @@ export default function MemoryScreen() {
         [
           {
             role: "user",
-            content: `My saved notes:\n${context || "(no matching notes)"}\n\nQuestion: ${question}`,
+            content:
+              context === ""
+                ? `Question: ${question}`
+                : `My saved notes:\n${context}\n\nQuestion: ${question}`,
           },
         ],
         prefs.language,
-        "Answer only from the saved notes. If they do not contain the answer, say so.",
+        context === ""
+          ? "No saved note matched this question. Answer without note context. If you cannot answer, say so."
+          : "Answer only from the saved notes. If they do not contain the answer, say so.",
       );
-      setAnswer(reply.text);
+      setAnswer(context === "" ? `No saved note matched. ${reply.text}` : reply.text);
     } catch (e) {
       setAnswer(aiErrorText(e));
     } finally {
