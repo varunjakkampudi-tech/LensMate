@@ -161,3 +161,17 @@ What moves the verified number most, in order:
 1. Verify on iPhone Safari: F1, F2, F3, F5, F6, F11, F22, F26, F33, F35 (about 10 features).
 2. Build the remaining code: streaming replies (F3), saying "stop" (F26), translation with speech (F20, F21), notes saved on the phone (F4), session rules (F37), phone health messages (F53), and the battery reading (F13, where the browser allows it).
 3. Hardware: wear detection (F12) and the glasses link. These cannot be completed by code on a phone.
+
+## Step 2 detail: streaming replies (F3) and voice stop (F26)
+
+Streaming replies (not started in code):
+
+- Broker: a new streaming route that reuses the same checks as the text route (sign-in, rate limit, validation, model allowlist, reservation, concurrency). It sends OpenRouter's streamed output as server-sent events, and it asks for usage in the final chunk, so the real cost is recorded.
+- A streamed answer cannot be retried after its first word has been sent. The route must settle at worst-case cost if the stream breaks.
+- Phone: read the stream and show text as it arrives. Speak each sentence when it completes.
+- Needs its own tests (a fake streamed provider, a broken stream, a cancelled stream) and an independent security review, because it changes spend accounting.
+
+Voice stop (F26), by voice during a spoken answer:
+
+- Not reliable in Safari, which stops the spoken answer when the microphone starts. The stop button works in the browser.
+- A reliable voice stop needs the native speech engine in a development build, which needs the Apple Developer account.
