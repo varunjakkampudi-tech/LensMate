@@ -4,6 +4,15 @@ import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { rupees, useAiSetup, type AiSetup } from "../src/ai/use-ai-setup";
 import { DEMO } from "../src/demo/demo-strings";
 import { listItems, type MemoryItem } from "../src/memory/vault";
+import {
+  clockOf,
+  dayOf,
+  hydrateAutomations,
+  loadAutomations,
+  type Automation,
+} from "../src/ai/automations";
+import { canListen } from "../src/ai/speech";
+import { hudRows, type HudRow } from "../src/ui/hud-model";
 import { STRINGS } from "../src/strings";
 import { useGlasses } from "../src/ui/glasses";
 import { Icon, type IconName } from "../src/ui/icon";
@@ -229,13 +238,29 @@ export default function HomeScreen() {
   const { prefs } = usePrefs();
   const setup = useAiSetup();
   const [due, setDue] = useState<MemoryItem[]>([]);
+  const [memoryCount, setMemoryCount] = useState(0);
+  const [routines, setRoutines] = useState<readonly Automation[]>([]);
   useEffect(() => {
     void listItems()
-      .then((items) =>
-        setDue(items.filter((i) => i.kind === "reminder" && i.done !== true).slice(0, 3)),
-      )
+      .then((items) => {
+        setDue(items.filter((i) => i.kind === "reminder" && i.done !== true).slice(0, 3));
+        setMemoryCount(items.length);
+      })
       .catch(() => setDue([]));
+    void hydrateAutomations()
+      .then(() => setRoutines(loadAutomations()))
+      .catch(() => setRoutines([]));
   }, []);
+  const now = new Date();
+  const board = hudRows({
+    cameraLive: false,
+    micAvailable: canListen(),
+    memoryCount,
+    automations: routines,
+    aiReady: setup.configured && setup.enrolled && setup.accepted,
+    day: dayOf(now),
+    clock: clockOf(now),
+  });
 
   return (
     <ScrollView
@@ -265,6 +290,7 @@ export default function HomeScreen() {
           <Tile key={t.href} tile={t} />
         ))}
       </View>
+      <JarvisBoard rows={board} />
       <SimulatorCard />
       <ReadinessSection />
       <Text
@@ -349,5 +375,35 @@ export default function HomeScreen() {
         ))}
       </Card>
     </ScrollView>
+  );
+}
+
+/** The JARVIS status board: what is on, what is ready, and what needs setup. Every row comes from hudRows. */
+function JarvisBoard({ rows }: { rows: readonly HudRow[] }) {
+  const { c } = useTheme();
+  const toneColor = { on: c.danger, off: c.muted, ready: c.accent, warn: c.accent2 } as const;
+  return (
+    <Card testID="jarvis-board" style={{ gap: 10 }}>
+      <Text style={{ color: c.text, fontFamily: FONTS.display, fontSize: 16, fontWeight: "700" }}>
+        JARVIS status
+      </Text>
+      {rows.map((r) => (
+        <View key={r.key} testID={`hud-${r.key}`} style={{ gap: 2 }}>
+          <Text
+            style={{
+              color: toneColor[r.tone],
+              fontFamily: FONTS.body,
+              fontSize: 13,
+              fontWeight: "700",
+            }}
+          >
+            {r.label}
+          </Text>
+          <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 }}>
+            {r.value}
+          </Text>
+        </View>
+      ))}
+    </Card>
   );
 }
