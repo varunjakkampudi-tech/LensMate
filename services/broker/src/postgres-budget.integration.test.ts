@@ -148,6 +148,30 @@ suite("PostgresBudgetStore against a real PostgreSQL database", () => {
     ).rejects.toThrow(/carries no actual cost/);
   });
 
+  it("refuses an insert from the application role that is already settled, so no spend can skip the ledger", async () => {
+    await expect(
+      appPool().query(
+        "INSERT INTO broker_reservation (reservation_id, client_id, month, amount_paise, state, actual_paise, dev_test) VALUES ($1, $2, $3, $4, 'settled', 0, false)",
+        ["sneaky", "app-1", "2026-10", 60],
+      ),
+    ).rejects.toThrow(/created open/);
+    expect(await store.summary("2026-10")).toEqual({
+      month: "2026-10",
+      spentPaise: 0,
+      reservedPaise: 0,
+    });
+  });
+
+  it("charges the development-test bucket when a flagged reservation settles", async () => {
+    await store.reserve(reserveInput("dev", { amountPaise: 60, devTestCapPaise: 1000 }));
+    await store.settle("dev", 25);
+    expect(await store.summary("DEV-TEST-CUMULATIVE")).toEqual({
+      month: "DEV-TEST-CUMULATIVE",
+      spentPaise: 25,
+      reservedPaise: 0,
+    });
+  });
+
   it("releases a failed attempt back to the budget", async () => {
     await store.reserve(reserveInput("a", { amountPaise: 100 }));
     await store.release("a");

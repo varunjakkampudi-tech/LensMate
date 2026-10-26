@@ -139,15 +139,24 @@ export class PostgresBudgetStore implements BudgetStore {
         "SELECT reservation_id, month, amount_paise, dev_test FROM broker_reservation WHERE state = 'reserved' AND created_at < now() - ($1::int * interval '1 second') ORDER BY created_at FOR UPDATE SKIP LOCKED",
         [maxAgeSeconds],
       );
+      let reaped = 0;
       for (const row of stale.rows) {
-        // The settlement trigger in the database charges every bucket the reservation holds.
-        await client.query(
-          "UPDATE broker_reservation SET state = 'settled', actual_paise = $2, closed_at = now() WHERE reservation_id = $1",
-          [row.reservation_id, row.amount_paise],
-        );
+        // A savepoint per row: one row that cannot be settled is skipped and stays open for the next pass, so it
+        // does not roll back the rest of the batch. The settlement trigger charges every bucket the row holds.
+        await client.query("SAVEPOINT reap_row");
+        try {
+          await client.query(
+            "UPDATE broker_reservation SET state = 'settled', actual_paise = $2, closed_at = now() WHERE reservation_id = $1",
+            [row.reservation_id, row.amount_paise],
+          );
+          await client.query("RELEASE SAVEPOINT reap_row");
+          reaped += 1;
+        } catch {
+          await client.query("ROLLBACK TO SAVEPOINT reap_row");
+        }
       }
       await client.query("COMMIT");
-      return stale.rows.length;
+      return reaped;
     } catch (error) {
       await rollbackQuietly(client);
       throw error;

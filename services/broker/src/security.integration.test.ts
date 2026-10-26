@@ -330,8 +330,13 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     await owner.query(
       "INSERT INTO broker_budget_month (month) VALUES ('2030-05') ON CONFLICT DO NOTHING",
     );
+    // A reservation is created open and settled through the normal path, which charges the spend in the database.
+    // The budget row and the open reservation commit together, as the application writes them.
     await owner.query(
-      "INSERT INTO broker_reservation (reservation_id, client_id, month, amount_paise, actual_paise, state, closed_at) VALUES ('closed-final-1', 'app-1', '2030-05', 10, 10, 'settled', now())",
+      "BEGIN; INSERT INTO broker_budget_month (month, reserved_paise) VALUES ('2030-05', 10) ON CONFLICT (month) DO UPDATE SET reserved_paise = EXCLUDED.reserved_paise; INSERT INTO broker_reservation (reservation_id, client_id, month, amount_paise, state) VALUES ('closed-final-1', 'app-1', '2030-05', 10, 'reserved'); COMMIT",
+    );
+    await owner.query(
+      "UPDATE broker_reservation SET state = 'settled', actual_paise = 10, closed_at = now() WHERE reservation_id = 'closed-final-1'",
     );
     await expect(
       app.query(

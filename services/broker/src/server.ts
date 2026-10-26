@@ -139,9 +139,9 @@ interface VisionBody {
  */
 export async function buildServer(deps: BrokerDependencies): Promise<FastifyInstance> {
   const { config, budget, provider, now, devices } = deps;
-  // Per client address, so one caller cannot lock out the others. There is no shared ceiling: a shared ceiling would let
-  // one caller refuse enrolment for everyone. Guessing is not practical anyway, because codes carry about 78 random bits.
+  // Per client address, so one caller cannot lock out the others. A single global ceiling still caps total guessing.
   const enrolPerSource = new TokenBucket(5, 1 / 60, now);
+  const enrolGlobal = new TokenBucket(60, 1 / 30, now);
   const app = Fastify<RawServerDefault>({
     logger: deps.logger as NonNullable<FastifyServerOptions["logger"]>,
     // Only a configured number of proxy hops may set the client address. Otherwise a caller could forge it.
@@ -216,7 +216,7 @@ export async function buildServer(deps: BrokerDependencies): Promise<FastifyInst
     async (request, reply) => {
       // Per-client first, so a refused client does not spend the shared ceiling.
       const source = enrolmentKey(deps.enrolmentSource?.(request) ?? request.ip);
-      if (!enrolPerSource.take(source)) {
+      if (!enrolPerSource.take(source) || !enrolGlobal.take("all")) {
         return reply.code(429).send({ error: "try_later", code: "RATE_LIMITED" });
       }
       const result = await redeemEnrolment(devices, request.body.code, request.body.label, now());

@@ -136,6 +136,7 @@ const TRIGGERS = [
   "broker_reservation_reserved_consistent",
   "broker_reservation_closed_final",
   "broker_reservation_settles_buckets",
+  "broker_reservation_opens_only",
 ];
 
 /**
@@ -185,6 +186,21 @@ $fn$;
 DROP TRIGGER IF EXISTS broker_reservation_settles_buckets ON broker_reservation;
 CREATE TRIGGER broker_reservation_settles_buckets BEFORE UPDATE ON broker_reservation
   FOR EACH ROW EXECUTE FUNCTION broker_apply_settlement();
+-- A reservation can only be created open. Inserting one already settled would move no money, so it is refused here.
+CREATE OR REPLACE FUNCTION broker_require_open_insert() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $fn$
+BEGIN
+  IF NEW.state <> 'reserved' OR NEW.actual_paise IS NOT NULL OR NEW.closed_at IS NOT NULL THEN
+    RAISE EXCEPTION 'a reservation must be created open, without an actual cost or a close time';
+  END IF;
+  IF NEW.month = 'DEV-TEST-CUMULATIVE' THEN
+    RAISE EXCEPTION 'the development-test bucket cannot be a reservation month';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+DROP TRIGGER IF EXISTS broker_reservation_opens_only ON broker_reservation;
+CREATE TRIGGER broker_reservation_opens_only BEFORE INSERT ON broker_reservation
+  FOR EACH ROW EXECUTE FUNCTION broker_require_open_insert();
 `;
 
 /**
