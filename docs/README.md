@@ -29,4 +29,4 @@
 - [AI memory review](reviews/2026-10-24-ai-memory-review.md)
 - [Assistant and Home accessibility audit](ui-audit/assistant-home-a11y.md)
 
-Implementation status and verification evidence are maintained in [`PROGRESS.md`](../PROGRESS.md), [`blocker.txt`](../blocker.txt), and the root feature, gap, screen, and test matrices.
+Open items and the plan are in [`product/ROADMAP.md`](product/ROADMAP.md). Feature status is in [`product/feature-register.md`](product/feature-register.md).

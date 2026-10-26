@@ -29,4 +29,4 @@ pnpm -F @lensmate/mobile test
 
 The web icons are used by the manifest, runtime head tags, and service-worker shell; the app icons are referenced by `app.config.ts`.
 
-See [`APP_SCREEN_MATRIX.md`](../../APP_SCREEN_MATRIX.md) and [`PROGRESS.md`](../../PROGRESS.md) for current screen coverage and evidence limits.
+Open items for the product are listed in [`docs/product/ROADMAP.md`](../../docs/product/ROADMAP.md).

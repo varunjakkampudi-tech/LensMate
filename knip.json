@@ -2,7 +2,6 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
-      "entry": ["tools/readiness/generate.mjs"],
       "project": ["**/*.{ts,mjs,cjs}"]
     },
     "packages/core": {

@@ -1,7 +1,7 @@
 name: Dependency audit
 
 # Reports high and critical advisories on a schedule and on demand. It does not block pushes yet:
-# see BLOCKER-010 in blocker.txt. When the owner decides, the same command moves into the quality job.
+# see the open items in docs/product/ROADMAP.md. When the owner decides, the same command moves into the quality job.
 
 on:
   schedule:

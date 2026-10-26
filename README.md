@@ -12,12 +12,11 @@ LensMate is a TypeScript monorepo for an Expo companion app, its shared domain a
 | `services/broker`          | Fastify/PostgreSQL provider broker, tests, and owner-operated deployment files         |
 | `tools/simulator`          | Virtual glasses implementation used by the app and tests                               |
 | `tools/measurement-import` | Measurement CSV validation and import CLI                                              |
-| `tools/readiness`          | Generates the app readiness registry from `FEATURE_MATRIX.md`                          |
 | `firmware`                 | ESP-IDF implementation guidance; hardware work remains gated by owner approval         |
 | `e2e/maestro`              | Authored Maestro flows; execution status is tracked separately                         |
 | `docs`                     | Architecture, decisions, governance, investigations, reviews, and runbooks             |
 
-See [`PROGRESS.md`](PROGRESS.md), [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md), [`GAP_MATRIX.md`](GAP_MATRIX.md), and [`TEST_MATRIX.md`](TEST_MATRIX.md) for dated implementation status and evidence.
+Open items and the product plan are in [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md). Product features are in [`docs/product/feature-register.md`](docs/product/feature-register.md).
 
 ## Requirements and setup
 
@@ -51,5 +50,5 @@ pnpm check:expo
 
 - Do all development on `dev`; production changes to `main` require owner approval. See [`docs/governance/git-branch-policy.md`](docs/governance/git-branch-policy.md).
 - Do not commit secrets, environment files, credentials, recordings, photos, or personal data.
-- Treat owner decisions and open blockers in [`blocker.txt`](blocker.txt) as release controls.
+- Treat owner decisions in [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md) as release controls.
 - Do not infer hardware, provider, emulator, or production readiness from local unit checks.

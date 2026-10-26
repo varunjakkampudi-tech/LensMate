@@ -50,7 +50,6 @@ export const FEATURES = {
   memory: "Notes and memory",
   reminders: "Reminders",
   checks: "Mistake checks",
-  interview: "Interview practice",
   tasks: "Agents and automations",
 } as const;
 export type FeatureKey = keyof typeof FEATURES;
@@ -66,7 +65,6 @@ export const ACTIVE_PHASE: Record<FeatureKey, boolean> = {
   memory: true,
   reminders: true,
   checks: true,
-  interview: false,
   tasks: false,
 };
 

@@ -21,7 +21,6 @@ import { Icon, type IconName } from "../src/ui/icon";
 import { Body, Btn, Card, H2, Notice, Row } from "../src/ui/kit";
 import { usePrefs, type FeatureKey } from "../src/ui/prefs";
 import { brokerStatusText, readBrokerConfig } from "../src/broker-config";
-import { ReadinessSection } from "../src/readiness/readiness-section";
 import { builtAtIso, formatBuildLine } from "../src/build-info";
 import { FONTS, useTheme } from "../src/ui/theme";
 
@@ -69,14 +68,13 @@ const TILES: {
 ];
 
 const TOOLS: {
-  href: "/tasks" | "/interview" | "/measure" | "/demo" | "/enrol";
+  href: "/tasks" | "/measure" | "/demo" | "/enrol";
   label: string;
   icon: IconName;
   /** Set for a feature outside the active phase: the tile is hidden while that feature is switched off. */
   feature?: FeatureKey;
 }[] = [
   { href: "/tasks", label: "Agents & automations", icon: "agent", feature: "tasks" },
-  { href: "/interview", label: "Interview practice", icon: "user", feature: "interview" },
   { href: "/measure", label: STRINGS.openMeasurement, icon: "chart" },
   { href: "/demo", label: DEMO.openButton, icon: "spark" },
   { href: "/enrol", label: STRINGS.openEnrolment, icon: "shield" },
@@ -304,7 +302,6 @@ export default function HomeScreen() {
       <JarvisBoard rows={board} />
       <BriefingCard spoken={briefing.spoken} lines={briefing.lines} />
       <SimulatorCard />
-      <ReadinessSection />
       <Text
         testID="build-time"
         style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 12, textAlign: "center" }}

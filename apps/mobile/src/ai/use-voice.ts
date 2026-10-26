@@ -1,6 +1,5 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { aiErrorText, askText, type Turn } from "./assistant";
 import { canListen, listen, listenErrorText, stopSpeaking, type Listening } from "./speech";
 import { useCapture } from "../ui/capture-session";
 import type { Lang } from "../ui/prefs";
@@ -67,43 +66,4 @@ export function useMicSession(label: string) {
   );
 
   return { listening, partial, error, start, stop, available: canListen() };
-}
-
-/** Short rolling conversation (last 6 turns are sent, to keep cost low). Hidden turns steer the model but are not shown. */
-export function useConversation(lang: Lang, extraSystem = "") {
-  const [turns, setTurns] = useState<(Turn & { hidden?: boolean })[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const send = useCallback(
-    async (text: string, hidden = false): Promise<string | null> => {
-      const history = [...turns, { role: "user" as const, content: text, hidden }];
-      setTurns(history);
-      setBusy(true);
-      setError(null);
-      try {
-        const answer = await askText(
-          history.map(({ role, content }) => ({ role, content })),
-          lang,
-          extraSystem,
-        );
-        setTurns([...history, { role: "assistant", content: answer.text }]);
-        return answer.text;
-      } catch (e) {
-        setError(aiErrorText(e));
-        return null;
-      } finally {
-        setBusy(false);
-      }
-    },
-    [turns, lang, extraSystem],
-  );
-
-  return {
-    turns: turns.filter((t) => t.hidden !== true),
-    busy,
-    error,
-    send,
-    reset: () => setTurns([]),
-  };
 }

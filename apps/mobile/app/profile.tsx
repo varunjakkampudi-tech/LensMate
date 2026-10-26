@@ -338,18 +338,6 @@ export default function MoreScreen() {
           disabled={!prefs.features.tasks}
           onPress={() => router.push("/tasks")}
         />
-        <Body muted size={13}>
-          Mock questions, feedback and debriefs. Practice only: LensMate never helps during a live
-          interview.
-        </Body>
-        <Btn
-          testID="open-interview-button"
-          label="Open interview practice"
-          tone="ghost"
-          icon="user"
-          disabled={!prefs.features.interview}
-          onPress={() => router.push("/interview")}
-        />
         <Text
           style={{
             color: c.text,

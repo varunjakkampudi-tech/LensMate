@@ -15,8 +15,7 @@ describe("feature switches for the active phase", () => {
     }
   });
 
-  it("switches interview practice and agents and automations off by default", () => {
-    expect(ACTIVE_PHASE.interview).toBe(false);
+  it("switches agents and automations off by default", () => {
     expect(ACTIVE_PHASE.tasks).toBe(false);
   });
 
