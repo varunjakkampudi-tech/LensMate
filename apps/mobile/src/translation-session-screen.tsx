@@ -22,9 +22,9 @@ export interface TranslationSessionScreenProps {
 }
 
 /**
- * Translation and caption session screen (v9 5.3, 5.4; Standards section 3). Start and stop buttons, the
- * recording indicator as text, the announcement as a status line, the silence countdown, and the caption area.
- * Taps on the glasses are not handled here: they have no effect in a translation session (v9 5.0).
+ * Translation and caption session screen. Start and stop buttons, the recording indicator as text, the
+ * announcement as a status line, the silence countdown, and the caption area. Taps on the glasses are not handled
+ * here: they have no effect in a translation session.
  */
 export function TranslationSessionScreen({
   link,

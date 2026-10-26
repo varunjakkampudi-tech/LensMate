@@ -44,7 +44,7 @@ enum ButtonAction {
   BUTTON_ACTION_DOUBLE_TAP = 5;
 }
 
-// The recording indicator. It is on for every session that uses the camera or microphone (v9 section 21).
+// The recording indicator. It is on for every session that uses the camera or microphone.
 message IndicatorState {
   bool on = 1;
   IndicatorReason reason = 2;
@@ -59,7 +59,7 @@ enum IndicatorReason {
   INDICATOR_REASON_CAPTION = 5;
 }
 
-// Session types from v9 section 21 that are in the P-1 scope.
+// Session types in the current scope.
 // Companion, walk, sound alert and helper call are not part of this version.
 message SessionState {
   SessionType type = 1;

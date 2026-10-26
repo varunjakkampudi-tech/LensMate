@@ -1,5 +1,5 @@
 /**
- * Spend calculator for Goal 14.2 (label: CALCULATED, not MEASURED).
+ * Spend calculator (label: CALCULATED, not MEASURED).
  *
  * Pure arithmetic. It never calls a provider, reads no environment variable and assumes nothing: prices, token
  * counts, request volumes, the cap and the exchange rate all come from the caller. A projection is refused when the

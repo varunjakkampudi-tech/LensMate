@@ -1,5 +1,5 @@
 /**
- * Chat provider adapters. The broker is the only component that calls OpenRouter (Amendment C.2).
+ * Chat provider adapters. The broker is the only component that calls OpenRouter.
  * Errors carry a status code and a reason, never a response body, so provider output cannot reach logs.
  */
 export interface ChatMessage {

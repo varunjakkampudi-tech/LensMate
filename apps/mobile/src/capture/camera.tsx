@@ -55,7 +55,7 @@ export function pickImageFile(onPicked: (dataUrl: string | null) => void): void 
 
 /**
  * Live camera preview. The stream exists only while this view is mounted inside a camera session; unmounting stops
- * every track, so the camera never keeps running in the background (G5, Locked: always-on camera).
+ * every track, so the camera never keeps running in the background. An always-on camera is not built.
  */
 export const CameraPreview = forwardRef<CameraHandle, { onError: (message: string) => void }>(
   function CameraPreview({ onError }, ref) {

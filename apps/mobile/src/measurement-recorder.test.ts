@@ -171,7 +171,7 @@ describe("CaptureToPhoneRecorder", () => {
     expect(glasses.subscriberCount).toBe(0);
   });
 
-  it("exports tries that pass the P-1 import validator", () => {
+  it("exports tries that pass the measurement import validator", () => {
     const { glasses, recorder } = recorderWith([10, 20, 130]);
     recorder.start();
     glasses.emitButton(CAPTURE_TRIGGER_ACTION, 5);

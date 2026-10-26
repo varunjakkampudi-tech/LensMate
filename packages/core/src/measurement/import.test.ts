@@ -224,13 +224,13 @@ describe("evidence-level claims", () => {
     );
   });
 
-  it("rejects hardware evidence levels, which no P-1 software measurement can reach", () => {
+  it("rejects hardware evidence levels, which no software measurement can reach", () => {
     expect(reasonsFor({ ...VALID_SIM_CAPTURE, evidence_level: "bench hardware" })).toEqual([
-      'evidence_level "bench hardware" is above what the P-1 import accepts (simulator, emulator, real phone)',
+      'evidence_level "bench hardware" is above what the import accepts (simulator, emulator, real phone)',
     ]);
   });
 
-  it("rejects an evidence level that is not in Goal 1.3", () => {
+  it("rejects an evidence level that is not in the list", () => {
     expect(reasonsFor({ ...VALID_SIM_CAPTURE, evidence_level: "lab grade" })).toEqual([
       'unknown evidence_level "lab grade"',
     ]);
@@ -385,7 +385,7 @@ describe("timing source", () => {
 
   it("rejects a transport timing source until clock synchronization is validated", () => {
     expect(reasonsFor({ ...VALID_REAL_CAPTURE, timing_source: "ble_glasses_clock" })).toEqual([
-      'timing_source "ble_glasses_clock" is not supported: transport timing needs a validated clock synchronization, which P-1 does not have yet',
+      'timing_source "ble_glasses_clock" is not supported: transport timing needs a validated clock synchronization, which the app does not have yet',
     ]);
   });
 

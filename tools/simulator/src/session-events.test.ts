@@ -36,7 +36,7 @@ const ON_TRANSLATION = { kind: "INDICATOR", on: true, reason: "INDICATOR_REASON_
 const OFF = { kind: "INDICATOR", on: false, reason: "INDICATOR_REASON_IDLE" };
 
 describe("simulator event log: full sequences", () => {
-  it("logs the app start as session, announcement, then indicator on (G15 order)", async () => {
+  it("logs the app start as session, announcement, then indicator on", async () => {
     let now = 1_000;
     const glasses = await connected(() => now);
     await glasses.send(appSession("SESSION_TYPE_TRANSLATION", "SESSION_PHASE_ACTIVE", 1));
@@ -113,7 +113,7 @@ describe("simulator event log: full sequences", () => {
     expect(glasses.eventLog.some((event) => isIndicatorOff(event))).toBe(false);
   });
 
-  it("refuses a voice start from idle, because nothing user-started is listening (C02)", async () => {
+  it("refuses a voice start from idle, because nothing user-started is listening", async () => {
     const glasses = await connected();
     glasses.voiceCommand("start translation");
     glasses.voiceCommand("start captions");
@@ -276,7 +276,7 @@ describe("simulator event log: announcements and indicator changes", () => {
     ]);
   });
 
-  it("records a caption start with no announcement (G15 covers translation)", async () => {
+  it("records a caption start with no announcement", async () => {
     const glasses = await connected();
     await glasses.send(appSession("SESSION_TYPE_CAPTION", "SESSION_PHASE_ACTIVE", 1));
     expect(glasses.eventLog.some((event) => event.kind === "ANNOUNCEMENT")).toBe(false);
@@ -356,7 +356,7 @@ describe("simulator speech output (SIMULATED, not measured)", () => {
     ]);
   });
 
-  it("records a press that stops speech with a simulated delay inside the G19 target", async () => {
+  it("records a press that stops speech with a simulated delay inside the stop target", async () => {
     const glasses = await connected();
     glasses.speak("Hello");
     glasses.pressButton("BUTTON_ACTION_PRESS");
@@ -364,7 +364,7 @@ describe("simulator speech output (SIMULATED, not measured)", () => {
       kind: "SPEECH_STOPPED_SIMULATED",
       delayMs: SIMULATED_STOP_DELAY_MS,
     });
-    // The simulated delay is checked against the 0.5 second target (v9 G19). Nothing is measured.
+    // The simulated delay is checked against the 0.5 second target. Nothing is measured.
     expect(SIMULATED_STOP_DELAY_MS).toBeLessThanOrEqual(SPEECH_STOP_TARGET_MS);
     expect(glasses.isSpeaking).toBe(false);
   });

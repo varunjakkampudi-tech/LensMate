@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 /**
- * Broker configuration from the server environment only (Engineering Standards 4; Amendment C.2).
+ * Broker configuration from the server environment only.
  *
  * Secrets are read from environment variables and never logged. The error messages name the variable,
  * never its value. Billable mode is refused unless the owner has confirmed the cap in configuration.

@@ -31,7 +31,7 @@ The owner creates a code on the server (see docs/runbooks/broker-deploy.md). Ent
 
 ## 4. Walk the features
 
-For each item: note the result in the register and in blocker.txt.
+For each item: note the result in the register and in docs/product/ROADMAP.md.
 
 - Ask a question: the answer streams in and is spoken (F3).
 - Read all the text on a picture (F2).
@@ -42,4 +42,4 @@ For each item: note the result in the register and in blocker.txt.
 
 ## 5. Record
 
-Write the date, the emulator image, and each result in blocker.txt, under a new round heading. Mark a feature Verified on device only when it was tested on a device (emulator results count as "emulator", not "phone").
+Write the date, the emulator image, and each result in docs/product/ROADMAP.md, under a new round heading. Mark a feature Verified on device only when it was tested on a device (emulator results count as "emulator", not "phone").

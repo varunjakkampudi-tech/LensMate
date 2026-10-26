@@ -1,11 +1,11 @@
 import type { CaptureSessionType } from "./capture-indicator.js";
 
 /**
- * Gesture precedence and session rules for the P-1 scope (v9 section 5.0 and section 21).
+ * Gesture precedence and session rules for the current scope.
  *
  * Each gesture is consumed by the first state that claims it, in this order:
  * cutoff, speaking, translation or caption, push-to-talk, idle.
- * Companion mode, walk, sound alert, helper call and emergency are outside P-1 and have no path here.
+ * Companion mode, walk, sound alert, helper call and emergency are not built and have no path here.
  * Any gesture or mode this file does not know is ignored (fails closed).
  */
 export type GlassesMode = "IDLE" | "PUSH_TO_TALK" | "TRANSLATION" | "CAPTION" | "CUTOFF";
@@ -36,28 +36,28 @@ export type ListeningSessionType = "TRANSLATION" | "CAPTION";
 export interface ListeningSessionStart {
   readonly state: GlassesState;
   readonly accepted: boolean;
-  /** Spoken at the start of a translation session so the other person knows (G15). Null otherwise. */
+  /** Spoken at the start of a translation session so the other person knows. Null otherwise. */
   readonly announcement: string | null;
 }
 
-/** Spoken when a translation session starts (v9 section 5.3, G15, checklist item 3). */
+/** Spoken when a translation session starts. */
 export const TRANSLATION_START_ANNOUNCEMENT =
   "Translation on. This conversation is being listened to for translation";
 
-/** A translation or caption session stops after this much silence (v9 section 5.3, section 21; TARGET). */
+/** A translation or caption session stops after this much silence (TARGET). */
 export const SILENCE_TIMEOUT_MS = 2 * 60 * 1000;
 
-/** Speech stops within this time of a press (v9 G19; TARGET, not a measured value). */
+/** Speech stops within this time of a press (TARGET, not a measured value). */
 export const SPEECH_STOP_TARGET_MS = 500;
 
-/** Voice phrases the glasses act on. Only inside a listening session the user started (v9 C02). */
+/** Voice phrases the glasses act on. Only inside a listening session the user started. */
 export type VoiceCommand =
   "START_TRANSLATION" | "STOP_TRANSLATION" | "START_CAPTIONS" | "STOP_CAPTIONS";
 
 export interface VoiceCommandResult {
   readonly state: GlassesState;
   readonly accepted: boolean;
-  /** Spoken when a translation session starts (G15). Null otherwise. */
+  /** Spoken when a translation session starts. Null otherwise. */
   readonly announcement: string | null;
 }
 
@@ -128,7 +128,7 @@ export function listeningSessionOf(state: GlassesState): ListeningSessionType | 
 }
 
 /**
- * A voice command (v9 5.3, 21, C02). Voice is heard only inside a listening session the user started:
+ * A voice command. Voice is heard only inside a listening session the user started:
  * a push-to-talk hold, or a translation or caption session that is already running. A voice start from
  * idle is refused, because that would mean listening in the background. A voice start during a hold or
  * another session switches to the new session. A voice stop works only on the session it names.
@@ -184,7 +184,7 @@ export function isCapturing(state: GlassesState): boolean {
 }
 
 /**
- * The indicator session a gesture effect opens (G6, section 21). Photo and visual question captures
+ * The indicator session a gesture effect opens. Photo and visual question captures
  * run with the indicator on for the capture. Push-to-talk runs with it on while held.
  */
 export function captureSessionForEffect(effect: GlassesEffect): CaptureSessionType | null {

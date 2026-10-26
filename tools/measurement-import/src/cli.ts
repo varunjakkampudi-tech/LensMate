@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { importMeasurementCsv, summarizeEvidence } from "@lensmate/core";
 
 /**
- * Validates a P-1 measurement result file (Goal 14.2). It reads a CSV, rejects every row that lacks
+ * Validates a measurement result file. It reads a CSV, rejects every row that lacks
  * provenance or makes a claim the evidence rules do not support, and prints a JSON report.
  *
  * Exit code 0 only when the file has no file-level errors and no rejected rows.

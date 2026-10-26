@@ -7,7 +7,7 @@ import {
 } from "./glasses-state.js";
 
 /**
- * The silence limit for translation and caption sessions (v9 5.3, section 21; TARGET).
+ * The silence limit for translation and caption sessions (TARGET).
  * Pure: time is always passed in as milliseconds on one clock. Nothing here schedules a timer. The
  * caller decides when to check (the phone app ticks it; the simulator checks when told to).
  */

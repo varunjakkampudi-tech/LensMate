@@ -71,7 +71,7 @@ describe("cost arithmetic in integers", () => {
   });
 });
 
-describe("the reservation covers the real cost (Amendment C.5)", () => {
+describe("the reservation covers the real cost", () => {
   it("never reserves less than the cost of the largest allowed request, for every allowlisted model", () => {
     // A token is at least one UTF-8 byte, so the bytes of the largest allowed input plus the template allowance bound
     // the prompt tokens. Output is capped by the broker's ceiling. The bound holds only while that rule holds.

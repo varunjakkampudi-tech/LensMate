@@ -1,5 +1,5 @@
 /**
- * Model allowlist and price snapshot for the broker (Amendment 2026-10-20C C.2 and C.5).
+ * Model allowlist and price snapshot for the broker.
  *
  * Prices are the highest tier OpenRouter lists for each model's zero-data-retention endpoints, read on 2026-10-24
  * (the 2.5 models had no ZDR endpoint for this account), stored as integer micro-USD per million
@@ -71,7 +71,7 @@ export function findModel(id: string): ModelPrice | undefined {
  * - a fixed allowance covers the provider's own chat template;
  * - output tokens are the caller's cap, which the broker has already clamped to its ceiling.
  */
-/** Tokens allowed for the provider's own chat template around the messages (upper bound, Amendment C.5). */
+/** Tokens allowed for the provider's own chat template around the messages (upper bound). */
 export const TEMPLATE_ALLOWANCE_TOKENS = 256;
 
 export function worstCaseMicroUsd(

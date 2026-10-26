@@ -1,7 +1,7 @@
 import type { ClassifiedProviderError, GatewayErrorCode } from "./provider-gateway.js";
 
 /**
- * App-side client for the server-side provider broker (Engineering Standards 4; Goal 10A.3).
+ * App-side client for the server-side provider broker.
  *
  * The app holds no provider key. It holds only the broker address and its own client token, which is supplied
  * by the caller from secure device storage. The client never logs the token, a prompt, or a reply.

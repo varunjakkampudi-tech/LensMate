@@ -16,7 +16,7 @@ import type { Gesture, GlassesEffect, GlassesMode, GlassesState } from "./glasse
 
 const GESTURES: readonly Gesture[] = ["SINGLE_TAP", "DOUBLE_TAP", "HOLD", "RELEASE", "PRESS"];
 
-/** Gestures that do not exist in P-1 (v9 5.0: triple tap is companion, five presses is emergency). */
+/** Gestures that are not built (triple tap is companion, five presses is emergency). */
 const OUT_OF_SCOPE_GESTURES = ["TRIPLE_TAP", "FIVE_PRESS"] as unknown as readonly Gesture[];
 
 const PTT: GlassesState = { mode: "PUSH_TO_TALK", speaking: false };
@@ -129,7 +129,7 @@ describe("onGesture precedence table", () => {
     expect(onGesture(unknown, "SINGLE_TAP")).toEqual({ state: unknown, effect: "NONE" });
   });
 
-  it("ignores gestures that are out of P-1 scope in every state, so they never start companion, walk or emergency", () => {
+  it("ignores gestures that are not built, in every state, so they never start companion, walk or emergency", () => {
     const states = [
       IDLE_STATE,
       PTT,
@@ -147,7 +147,7 @@ describe("onGesture precedence table", () => {
   });
 });
 
-describe("speech and the press that stops it (G19)", () => {
+describe("speech and the press that stops it", () => {
   it("a press during speech stops speech and does nothing else", () => {
     expect(onGesture(SPEAKING_IDLE, "PRESS")).toEqual({ state: IDLE_STATE, effect: "STOP_SPEECH" });
   });
@@ -178,7 +178,7 @@ describe("listening sessions from the phone app or voice", () => {
     });
   });
 
-  it("announces translation at every start (G15, checklist item 3) and never announces a refused start", () => {
+  it("announces translation at every start and never announces a refused start", () => {
     expect(TRANSLATION_START_ANNOUNCEMENT).toBe(
       "Translation on. This conversation is being listened to for translation",
     );
@@ -213,7 +213,7 @@ describe("listening sessions from the phone app or voice", () => {
   });
 });
 
-describe("silence timeout for translation and caption (v9 5.3, section 21)", () => {
+describe("silence timeout for translation and caption", () => {
   it("is two minutes", () => {
     expect(SILENCE_TIMEOUT_MS).toBe(120_000);
   });

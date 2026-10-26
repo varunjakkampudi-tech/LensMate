@@ -116,7 +116,7 @@ Phase column: the phase the specification gives. Core means it is in P-1, the cu
 ## Part C: owner items not in the specification
 
 These are not in the three owner documents. Building any of them needs a specification amendment first, with the
-decision recorded in `blocker.txt`. Until then they stay out of P-1.
+decision recorded in `docs/product/ROADMAP.md`. Until then they stay out of P-1.
 
 - Autonomous task execution (7), real mobile actions (8), multi-agent system (11), tools and PC control (12),
   cross-device integration (20), AI planning (22), knowledge graph (27), live internet research (9).
@@ -139,7 +139,7 @@ acceptance tests.
 ## How this file stays current
 
 - Change the status in the same commit as the feature.
-- A status of Verified on device needs a device test note in `blocker.txt`. Simulator or unit tests alone do not count.
+- A status of Verified on device needs a device test note in `docs/product/ROADMAP.md`. Simulator or unit tests alone do not count.
 - Do not add a feature from Part C without an amendment.
 
 ## Progress (P-1 core, measured from the statuses above)

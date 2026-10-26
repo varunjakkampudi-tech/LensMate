@@ -1,10 +1,10 @@
 import { SpendCap } from "./spend-cap.js";
 
 /**
- * App gateway for speech, translation and AI calls (Engineering Standards 4; v9 G2, G10, G33).
+ * App gateway for speech, translation and AI calls.
  *
- * Every paid call passes these checks in order: disclosure accepted for the feature (G33), spend cap
- * (G10), circuit breaker, then a bounded number of attempts, each with a timeout. Only the broker
+ * Every paid call passes these checks in order: disclosure accepted for the feature, spend cap
+ * circuit breaker, then a bounded number of attempts, each with a timeout. Only the broker
  * performs the provider call with keys; this gateway only decides, times and accounts.
  */
 export type GatewayErrorCode =
@@ -58,7 +58,7 @@ export class ProviderGateway {
     private readonly options: GatewayOptions,
   ) {}
 
-  /** Records that the user saw and accepted the cloud disclosure for a feature (G33). */
+  /** Records that the user saw and accepted the cloud disclosure for a feature. */
   acceptDisclosure(feature: string): void {
     this.disclosedFeatures.add(feature);
   }

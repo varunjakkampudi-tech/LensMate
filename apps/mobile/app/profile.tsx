@@ -37,26 +37,25 @@ const PROFILES: { id: Profile; label: string; line: string }[] = [
   { id: "custom", label: "Custom", line: "Your own mix of the switches below." },
 ];
 
-const LATER: { name: string; reason: string }[] = [
+const NOT_BUILT: { name: string; reason: string }[] = [
   {
     name: "Computer (PC) control",
-    reason:
-      "Not in the v9 specification; needs an owner decision and a security review before any design.",
+    reason: "Not planned yet. It needs an owner decision and a security review first.",
   },
   {
     name: "AI companion and proactive help",
     reason:
-      "Needs continuous scene analysis; owner decision G26 and phase P3. An always-on camera is Locked.",
+      "Needs continuous scene analysis, which is an open owner decision. An always-on camera is not built.",
   },
   {
     name: "Walk alerts, obstacle and vehicle detection",
-    reason: "Safety class: stays a disabled stub until tested at a competent facility (S1–S8).",
+    reason: "Safety feature: stays off until it is tested at a proper test facility.",
   },
   {
     name: "Sound alerts and emergency calling",
-    reason: "Profile release, Safety class. Not enabled in P-1.",
+    reason: "Safety feature. Not enabled.",
   },
-  { name: "Personal skills and developer mode", reason: "Phase P3 (v9 section 24)." },
+  { name: "Personal skills and developer mode", reason: "Planned for a later phase." },
   { name: "Firmware updates", reason: "Real glasses only; never run by the agent on hardware." },
 ];
 
@@ -315,8 +314,7 @@ export default function MoreScreen() {
     advanced: (
       <>
         <Body muted size={13}>
-          Switch whole features on or off. Interview practice and agents are outside the current
-          phase and start off.
+          Switch whole features on or off. Agents and automations start off.
         </Body>
         {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (
           <Toggle
@@ -347,10 +345,10 @@ export default function MoreScreen() {
             marginTop: 4,
           }}
         >
-          Later phases
+          Not built yet
         </Text>
-        {LATER.map((l) => (
-          <View key={l.name} testID="later-feature" style={{ gap: 2 }}>
+        {NOT_BUILT.map((l) => (
+          <View key={l.name} testID="not-built-feature" style={{ gap: 2 }}>
             <Body>
               {l.name} · <Text style={{ color: c.accent2 }}>not available yet</Text>
             </Body>

@@ -4,17 +4,17 @@ LensMate is a TypeScript monorepo for an Expo companion app, its shared domain a
 
 ## Repository map
 
-| Path                       | Purpose                                                                                |
-| -------------------------- | -------------------------------------------------------------------------------------- |
-| `apps/mobile`              | Expo app for iOS, Android, and web; app screens, device integrations, and mobile tests |
-| `packages/core`            | Shared domain logic, provider gateway, measurements, privacy and retention helpers     |
-| `packages/protocol`        | Versioned Protocol Buffers schema and codec                                            |
-| `services/broker`          | Fastify/PostgreSQL provider broker, tests, and owner-operated deployment files         |
-| `tools/simulator`          | Virtual glasses implementation used by the app and tests                               |
-| `tools/measurement-import` | Measurement CSV validation and import CLI                                              |
-| `firmware`                 | ESP-IDF implementation guidance; hardware work remains gated by owner approval         |
-| `e2e/maestro`              | Authored Maestro flows; execution status is tracked separately                         |
-| `docs`                     | Architecture, decisions, governance, investigations, reviews, and runbooks             |
+| Path                       | Purpose                                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `apps/mobile`              | Expo app for iOS, Android, and web; app screens, device integrations, and mobile tests  |
+| `packages/core`            | Shared domain logic, provider gateway, measurements, privacy and retention helpers      |
+| `packages/protocol`        | Versioned Protocol Buffers schema and codec                                             |
+| `services/broker`          | Fastify/PostgreSQL provider broker, tests, and owner-operated deployment files          |
+| `tools/simulator`          | Virtual glasses implementation used by the app and tests                                |
+| `tools/measurement-import` | Measurement CSV validation and import CLI                                               |
+| `firmware`                 | ESP-IDF implementation guidance; hardware work remains gated by owner approval          |
+| `e2e/maestro`              | Authored Maestro flows; execution status is tracked separately                          |
+| `docs`                     | Product plan, hardware, architecture, decisions, governance, measurements, and runbooks |
 
 Open items and the product plan are in [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md). Product features are in [`docs/product/feature-register.md`](docs/product/feature-register.md).
 

@@ -151,7 +151,7 @@ describe("VirtualGlasses gestures", () => {
   });
 });
 
-describe("VirtualGlasses session rules (v9 section 21)", () => {
+describe("VirtualGlasses session rules", () => {
   it("refuses an app request to start push-to-talk or a photo session, which start only by gesture", async () => {
     const { glasses, fromGlasses } = await connected();
     await glasses.send(sessionMessage("SESSION_TYPE_PUSH_TO_TALK", "SESSION_PHASE_ACTIVE", 1));
@@ -163,7 +163,7 @@ describe("VirtualGlasses session rules (v9 section 21)", () => {
     expect(glasses.gestureEffects).toEqual(["CAPTURE_PHOTO"]);
   });
 
-  it("announces translation at every start from the app, before the indicator turns on (G15)", async () => {
+  it("announces translation at every start from the app, before the indicator turns on", async () => {
     const { glasses, fromGlasses } = await connected();
     await glasses.send(sessionMessage("SESSION_TYPE_TRANSLATION", "SESSION_PHASE_ACTIVE", 1));
     expect(glasses.spoken).toEqual([TRANSLATION_START_ANNOUNCEMENT]);
@@ -225,7 +225,7 @@ describe("VirtualGlasses session rules (v9 section 21)", () => {
     expect(glasses.gestureEffects).toEqual([]);
   });
 
-  it("stops speech on a press and does nothing else with that press (G19)", async () => {
+  it("stops speech on a press and does nothing else with that press", async () => {
     const { glasses } = await connected();
     glasses.speak("Here is the answer");
     expect(glasses.isSpeaking).toBe(true);

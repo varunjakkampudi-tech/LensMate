@@ -4,7 +4,7 @@ import { STRINGS } from "./strings";
 
 const T = STRINGS.translationSession;
 
-/** The two listening sessions the phone can start (v9 section 21). */
+/** The two listening sessions the phone can start. */
 export type ListeningKind = "TRANSLATION" | "CAPTION";
 
 /**
@@ -16,7 +16,7 @@ export interface TranslationSessionModel {
   readonly session: ListeningKind | null;
   readonly indicatorOn: boolean;
   readonly indicatorReason: string;
-  /** The last announcement the glasses made (G15). */
+  /** The last announcement the glasses made. */
   readonly announcement: string | null;
   /** Caption text received during the running session. Kept only in memory; not stored. */
   readonly captions: readonly string[];
@@ -119,7 +119,7 @@ export function ackErrorText(code: string): string {
   return T.errors.failed;
 }
 
-/** Text for the indicator, shown as words so it is not only a colour (Standards section 3). */
+/** Text for the indicator, shown as words so it is not only a colour. */
 export function indicatorText(model: TranslationSessionModel): string {
   if (!model.indicatorOn) {
     return T.indicatorOff;

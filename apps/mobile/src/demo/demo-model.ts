@@ -90,7 +90,7 @@ export type OcrOutcome =
 
 /** The synthetic translation session. Its timer runs on simulated time; the glasses state holds the mode. */
 interface TranslationState {
-  /** The spoken-announcement text, recorded when the session starts (G15). Null when no session runs. */
+  /** The spoken-announcement text, recorded when the session starts. Null when no session runs. */
   readonly announcement: string | null;
   /** Core's silence timer for the running session, or null. */
   readonly timer: SilenceTimer | null;
@@ -362,7 +362,7 @@ function readText(state: DemoState): DemoState {
 
 /**
  * Starts a translation session through core's rule. The announcement is recorded in the same step that turns
- * the indicator on, so the indicator never shows a session that has not been announced (G15).
+ * the indicator on, so the indicator never shows a session that has not been announced.
  */
 function startTranslation(state: DemoState): DemoState {
   if (isBusy(state) || state.photoCapture) {

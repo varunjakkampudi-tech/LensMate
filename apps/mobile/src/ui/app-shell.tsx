@@ -117,7 +117,7 @@ function Header() {
   );
 }
 
-/** Session indicator (G6): visible on every screen while camera or microphone runs, with one-tap Stop. */
+/** Session indicator: visible on every screen while camera or microphone runs, with one-tap Stop. */
 function IndicatorBar() {
   const { c } = useTheme();
   const { active, stopAll } = useCapture();

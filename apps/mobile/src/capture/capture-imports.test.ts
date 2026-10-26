@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 /**
- * Hidden-capture guard (v9 privacy, item 17). Camera and photo-library APIs may be imported only by the capture
+ * Hidden-capture guard. Camera and photo-library APIs may be imported only by the capture
  * module, so no other screen or service can take a photo or read the library without the capture screen. This is a
  * static check over source text: it runs no device and calls no provider. MOCK-level evidence, not device evidence.
  */

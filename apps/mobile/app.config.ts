@@ -21,7 +21,7 @@ if (existsSync(rootEnvFile)) {
 }
 
 // Continuous Native Generation: native settings live here and in config plugins.
-// ios/ and android/ are generated and never hand-edited (Engineering Standards 1).
+// ios/ and android/ are generated and never hand-edited.
 const config: ExpoConfig = {
   name: "LensMate",
   slug: "lensmate",

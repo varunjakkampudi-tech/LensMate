@@ -81,8 +81,8 @@ export default function TranslateScreen() {
   const detectedRef = useRef<Lang | null>(null);
   const size = prefs.largeCaptions ? 26 : 20;
 
-  // A translation session starts with the first request, and ends after two minutes without one (v9 section 21).
-  // Every session starts with the spoken announcement (G15), not only the first one on this screen.
+  // A translation session starts with the first request, and ends after two minutes without one.
+  // Every session starts with the spoken announcement, not only the first one on this screen.
   const lastRequest = useRef<number | null>(null);
   const announce = () => {
     const now = Date.now();

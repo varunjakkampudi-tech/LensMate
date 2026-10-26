@@ -1,5 +1,5 @@
 /**
- * Durable budget and quota accounting (Goal 10A.3; Amendment C.5). The cap is enforced here, on the server.
+ * Durable budget and quota accounting. The cap is enforced here, on the server.
  *
  * Every provider attempt reserves its worst-case cost before the call. The reservation is settled to the actual
  * cost when the provider answers, or released when the attempt fails. A reservation is never reused for a second

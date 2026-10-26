@@ -1,13 +1,13 @@
 /**
- * Session types that use the camera or microphone in the P-1 scope (v9 section 21).
- * Companion, walk, sound alert and helper call are not part of P-1 and have no code path.
+ * Session types that use the camera or microphone in the current scope.
+ * Companion, walk, sound alert and helper call are not built and have no code path.
  */
 export type CaptureSessionType = "PUSH_TO_TALK" | "PHOTO_QUESTION" | "TRANSLATION" | "CAPTION";
 
 export type IndicatorOffResult = { ok: true } | { ok: false; reason: "CAPTURE_ACTIVE" };
 
 /**
- * The recording indicator rule (v9 G6, Standards section 3): the indicator is on while any
+ * The recording indicator rule: the indicator is on while any
  * capture session is active, and software can never turn it off during capture.
  */
 export class CaptureIndicator {

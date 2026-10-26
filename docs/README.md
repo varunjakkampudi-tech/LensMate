@@ -24,9 +24,5 @@
 - [Broker deployment and backup instructions](../services/broker/deploy/README.md)
 - [Measurement procedures and evidence template](measurements/README.md)
 - [Measurement traceability](measurements/traceability.md)
-- [Blocker 010 dependency audit](investigations/blocker-010-audit.md)
-- [Broker local test failures](investigations/broker-local-test-failures.md)
-- [AI memory review](reviews/2026-10-24-ai-memory-review.md)
-- [Assistant and Home accessibility audit](ui-audit/assistant-home-a11y.md)
 
 Open items and the plan are in [`product/ROADMAP.md`](product/ROADMAP.md). Feature status is in [`product/feature-register.md`](product/feature-register.md).

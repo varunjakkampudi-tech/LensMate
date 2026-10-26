@@ -1,6 +1,6 @@
 # LensMate roadmap and open items
 
-Last updated: 2026-10-26. This file replaces the old blocker log, the progress log and the matrices, which were removed in
+Last updated: 2026-10-27. This file replaces the old blocker log, the progress log and the matrices, which were removed in
 the cleanup. Their last versions are on the branch `archive/pre-cleanup-2026-10-26`.
 
 ## 1. Product direction (owner, 2026-10-26)
@@ -56,7 +56,7 @@ Status key: **Built** (in code, tested), **Partial**, **Not started**, **Owner**
 | A2  | Buy the parts after the exact models and totals are confirmed                                             | Owner                            |
 | A3  | Set up the Linux board, camera capture and the recording light, controlled by firmware                    | Not started                      |
 | A4  | Photo capture at high quality, saved on the glasses, then sent to the phone over Wi-Fi                    | Not started                      |
-| A5  | Video capture with a length limit, saved to the phone after recording                                     | Not started                      |
+| A5  | Video capture, limited to 40 seconds per recording, saved to the phone after recording                    | Not started                      |
 | A6  | Button and voice triggers (press to capture, hold to talk, double press for video)                        | Not started                      |
 | A7  | Battery and charging circuit, measured life                                                               | Not started                      |
 | A8  | Comfortable frame, tested with four hours of wear                                                         | Not started                      |
@@ -74,29 +74,29 @@ Status key: **Built** (in code, tested), **Partial**, **Not started**, **Owner**
 
 ### C. Phone features
 
-| #   | Item                                                           | Status                                                         |
-| --- | -------------------------------------------------------------- | -------------------------------------------------------------- |
-| C1  | Home status board (camera, microphone, memory, routines, AI)   | Built                                                          |
-| C2  | Morning briefing with Read aloud                               | Built                                                          |
-| C3  | Confirm-before-act for every phone action                      | Built (actions are proposals; nothing opens until tapped)      |
-| C4  | Save glasses photos and video into encrypted phone storage     | Not started (main requirement)                                 |
-| C5  | Native Android build with native voice switched on             | Partial (permissions declared; build needs owner's Expo login) |
-| C6  | Notification reading aloud on Android (owner grants access)    | Not started                                                    |
-| C7  | Named-person notes: add, edit, and "what do I know about X"    | Not started                                                    |
-| C8  | Voice barge-in (interrupt the answer by speaking)              | Not started                                                    |
-| C9  | Background routines (run while the app is closed)              | Not started (needs a native scheduler)                         |
-| C10 | Stop-command latency measured on a device, median under 300 ms | Partial (measured in code only)                                |
-| C11 | Over-the-air phone updates through Expo Updates                | Not started                                                    |
+| #   | Item                                                                                                   | Status                                                         |
+| --- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| C1  | Home status board (camera, microphone, memory, routines, AI)                                           | Built                                                          |
+| C2  | Morning briefing with Read aloud                                                                       | Built                                                          |
+| C3  | Confirm-before-act for every phone action                                                              | Built (actions are proposals; nothing opens until tapped)      |
+| C4  | Save glasses photos and video into encrypted phone storage                                             | Not started (main requirement)                                 |
+| C5  | Native Android build with native voice switched on                                                     | Partial (permissions declared; build needs owner's Expo login) |
+| C6  | Notification reading aloud on Android (owner grants access)                                            | Not started                                                    |
+| C7  | Named-person notes: add, edit, and "what do I know about X"                                            | Not started                                                    |
+| C8  | Voice barge-in (interrupt the answer by speaking)                                                      | Not started                                                    |
+| C9  | Background routines (run while the app is closed)                                                      | Not started (needs a native scheduler)                         |
+| C10 | Stop-command latency measured on a device: stop within 500 ms in 95 percent of tries (the code target) | Partial (measured in code only)                                |
+| C11 | Over-the-air phone updates through Expo Updates                                                        | Not started                                                    |
 
 ### D. AI and broker
 
-| #   | Item                                                                                             | Status                                                                                 |
-| --- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| D1  | Monthly AI budget for the glasses (current cap INR 500 a month is too small for photo and video) | Owner (set the amount)                                                                 |
-| D2  | Free OpenRouter models: rejected, because they fail the zero-retention rule (tested)             | Owner (choose a paid model that passes, or accept data-keeping for non-personal tests) |
-| D3  | Vision model for photo questions, chosen to pass zero-retention                                  | Not started (after D2)                                                                 |
-| D4  | Research provider for live web answers                                                           | Owner (choose provider and budget)                                                     |
-| D5  | Anthropic as a second provider                                                                   | Skipped by owner                                                                       |
+| #   | Item                                                                                 | Status                                                                                 |
+| --- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| D1  | Monthly AI budget for the glasses: INR 500 a month (owner decision, 2026-10-27)      | Decided                                                                                |
+| D2  | Free OpenRouter models: rejected, because they fail the zero-retention rule (tested) | Owner (choose a paid model that passes, or accept data-keeping for non-personal tests) |
+| D3  | Vision model for photo questions, chosen to pass zero-retention                      | Not started (after D2)                                                                 |
+| D4  | Research provider for live web answers                                               | Owner (choose provider and budget)                                                     |
+| D5  | Anthropic as a second provider                                                       | Skipped by owner                                                                       |
 
 ### E. Owner-only
 
@@ -107,17 +107,17 @@ Status key: **Built** (in code, tested), **Partial**, **Not started**, **Owner**
 | E3  | Apple Developer account (for iPhone, later)                                 | Owner                                   |
 | E4  | Decision: approve notification reading on Android                           | Owner                                   |
 | E5  | Decision: people approach (named notes only, no automatic face recognition) | Owner (recommended)                     |
-| E6  | Maximum video length per recording                                          | Owner                                   |
+| E6  | Maximum video length per recording: 40 seconds (owner decision, 2026-10-27) | Decided                                 |
 
 ### F. Engineering debt to clean next
 
-| #   | Item                                                                                                          | Status                   |
-| --- | ------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| F1  | Remove the stale links to the removed files in older runbooks, measurement procedures and ADRs                | Not started              |
-| F2  | Remove the demo screen and its mock data if the owner does not use it                                         | Owner (decide)           |
-| F3  | Remove the first-version glasses-link comments that describe the old plan                                     | Not started              |
-| F4  | Remove unused demo-only code paths once C4 is built                                                           | Not started              |
-| F5  | Remove the Android permissions not needed by the app (draw-over-apps, external storage) after the device test | Not started (test first) |
+| #   | Item                                                                                                          | Status                                                                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | Remove the stale references to the removed files and to the old spec numbers (v9, Goal, G-numbers) in docs    | Partly done (code comments, links and runbook instructions fixed; traceability tables, ADRs and the feature register still hold old references) |
+| F2  | Remove the demo screen and its mock data if the owner does not use it                                         | Owner (decide)                                                                                                                                  |
+| F3  | Remove the first-version glasses-link comments that describe the old plan                                     | Not started                                                                                                                                     |
+| F4  | Remove unused demo-only code paths once C4 is built                                                           | Not started                                                                                                                                     |
+| F5  | Remove the Android permissions not needed by the app (draw-over-apps, external storage) after the device test | Not started (test first)                                                                                                                        |
 
 ## 6. Working method (same for LensMate, CareerScope and OraOne)
 

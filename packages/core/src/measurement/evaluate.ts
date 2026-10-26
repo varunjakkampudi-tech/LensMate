@@ -102,7 +102,7 @@ function attemptInterval(
   }
 }
 
-/** Glasses capture to phone. A stage budget: 300 ms or less passes (v9 section 6.4). */
+/** Glasses capture to phone. A stage budget: 300 ms or less passes. */
 export function captureToPhoneReport(attempts: readonly MeasuredAttempt[]): LanguageReport[] {
   return evaluateByLanguage(
     attempts,
@@ -111,7 +111,7 @@ export function captureToPhoneReport(attempts: readonly MeasuredAttempt[]): Lang
   );
 }
 
-/** Total short request, capture to speech start. Strictly under 2500 ms passes (v9 section 6.4). */
+/** Total short request, capture to speech start. Strictly under 2500 ms passes. */
 export function latencyTotalReport(attempts: readonly MeasuredAttempt[]): LanguageReport[] {
   return evaluateByLanguage(
     attempts,
@@ -120,7 +120,7 @@ export function latencyTotalReport(attempts: readonly MeasuredAttempt[]): Langua
   );
 }
 
-/** Interruption, press to speech stopped. 500 ms or less passes (G19 TARGET). */
+/** Interruption, press to speech stopped. 500 ms or less passes (TARGET). */
 export function interruptionReport(attempts: readonly MeasuredAttempt[]): LanguageReport[] {
   return evaluateByLanguage(
     attempts,
@@ -129,7 +129,7 @@ export function interruptionReport(attempts: readonly MeasuredAttempt[]): Langua
   );
 }
 
-/** Goal 14.2: at least 50 requests and at least 90 percent meeting the budget, for this language. */
+/** At least 50 requests and at least 90 percent meeting the budget, for this language. */
 export function latencyCriterionMet(report: LanguageReport): boolean {
   return (
     report.attempts >= LATENCY_ACCEPTANCE.minimumAttempts &&
@@ -137,7 +137,7 @@ export function latencyCriterionMet(report: LanguageReport): boolean {
   );
 }
 
-/** GAP_MATRIX item 7: at least 95 percent of tries. No minimum number of tries is set in the documents. */
+/** At least 95 percent of tries. No minimum number of tries is set. */
 export function interruptionCriterionMet(report: LanguageReport): boolean {
   return report.attempts > 0 && report.passPercent >= INTERRUPTION_ACCEPTANCE.requiredPassPercent;
 }

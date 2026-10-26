@@ -11,7 +11,7 @@ const APP_ROLE = "broker_app_test";
 const ADMIN_ROLE = "broker_admin_test";
 
 /**
- * Real PostgreSQL integration (Engineering Standards, broker integration with PostgreSQL in CI).
+ * Real PostgreSQL integration (runs in CI).
  *
  * Runs only when BROKER_TEST_DATABASE_URL is set. It DROPS and recreates the broker tables, so the URL must point
  * at a dedicated test database, never at production or a shared database. Without the variable this suite is

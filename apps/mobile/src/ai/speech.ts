@@ -11,7 +11,7 @@ import {
 
 /**
  * HEAR and TALK on the free platform speech engines (owner choice, 2026-10-24). Listening runs only while the user
- * holds a microphone session; speaking can be interrupted at any time (G18, G19).
+ * holds a microphone session; speaking can be interrupted at any time.
  * Chrome's recognition sends audio to Google for transcription; the cloud notice says so.
  * Native phones speak through expo-speech, which uses the device's own text-to-speech engine (no cloud route).
  * Native listening is not built: it needs an on-device recogniser verified on a phone (see docs/decisions/0001).

@@ -1,6 +1,6 @@
 /**
  * Minimal CSV reader and writer for measurement files. Handles quoted fields, embedded commas, quotes and
- * line breaks, and both LF and CRLF line endings. No dependency is needed for the P-1 template.
+ * line breaks, and both LF and CRLF line endings. No dependency is needed for the result template.
  */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];

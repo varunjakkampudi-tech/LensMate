@@ -31,7 +31,7 @@ Each measure is listed with the tries the documents require. Nothing here is a d
 | Translation                       | v9 section 12 scripts for each language pair; native-speaker scoring by the owner                                | NOT INSTRUMENTED                                                                                               |
 | Spend                             | Cost per request type and projected monthly cost against the cap                                                 | CALCULATED by `calculateSpend` (not measured). Measured spend NOT INSTRUMENTED (needs approved provider calls) |
 
-Owner questions. The agent does not choose these; the owner decides and records the answer in `blocker.txt`:
+Owner questions. The agent does not choose these; the owner decides and records the answer in `docs/product/ROADMAP.md`:
 
 1. Minimum number of tries for interruption. The 95 percent target is set; the number of tries is not.
 2. Size and content of each speech sample set (English, Telugu, Hindi, mixed).
@@ -74,7 +74,7 @@ Each of these must be met. Until then the iPhone run is not runnable:
 3. **Timing rule for real transport.** Two independent device clocks may not be subtracted until a clock synchronization is validated. The screen and the virtual glasses share one clock, so a run on the iPhone with virtual glasses measures only the in-app path. A run with real Bluetooth glasses needs a validated clock synchronization first. Until then it is not measurable.
 4. **Owner-run only.** The agent never runs tests on the owner's phone. The validator rejects real phone rows run by the agent.
 5. **Real phone evidence is labelled as such.** The device name must not say simulator or emulator. The validator rejects the contradiction.
-6. **Accessibility on device.** VoiceOver on the iPhone has not been checked. The automated checks cover roles, labels and states only. The owner runs a VoiceOver pass on the screen and records the result in `PROGRESS.md`.
+6. **Accessibility on device.** VoiceOver on the iPhone has not been checked. The automated checks cover roles, labels and states only. The owner runs a VoiceOver pass on the screen and records the result in `docs/product/ROADMAP.md`.
 7. **Language sample sets.** English, Telugu, Hindi and mixed speech sample sets are owner-supplied and stay outside the repository. The sample set name goes in the provenance.
 
 ## Recording results

@@ -323,8 +323,8 @@ export default function TasksScreen() {
       </Card>
       <Notice tone="warn">
         Not built, by design: control of a computer, payments, background camera or microphone, and
-        scene-watching companion mode. These need owner decisions and are outside the v9 P-1 scope
-        (see Profile → Later phases).
+        scene-watching companion mode. These need owner decisions first (see Profile → Not built
+        yet).
       </Notice>
     </Page>
   );

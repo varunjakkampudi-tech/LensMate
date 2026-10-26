@@ -55,8 +55,7 @@ export const FEATURES = {
 export type FeatureKey = keyof typeof FEATURES;
 
 /**
- * The features the Goal places in the active phase are on by default. Interview practice and agents and automations are
- * outside the active phase: their code stays, but they are off until the user turns them on in Profile → Features.
+ * The features on by default. Agents and automations are off until the user turns them on in Profile.
  */
 export const ACTIVE_PHASE: Record<FeatureKey, boolean> = {
   vision: true,

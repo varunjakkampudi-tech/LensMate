@@ -2,7 +2,7 @@ import { SPEECH_STOP_TARGET_MS } from "@lensmate/core";
 import type { PhraseId, QuestionId, SceneId } from "./demo-catalogue";
 
 /**
- * Every user-facing string of the SEE-HEAR-TALK demo. Components read from here only (Standards section 3).
+ * Every user-facing string of the SEE-HEAR-TALK demo. Components read from here only.
  * The demo is synthetic: scenes, transcripts and answers are made up, and answers are canned mock output.
  */
 export const DEMO_MOCK_LABEL = "MOCK RESPONSE — canned demo answer, not AI output";

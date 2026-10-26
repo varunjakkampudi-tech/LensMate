@@ -26,7 +26,7 @@ export interface DemoScreenProps {
 
 /**
  * The SEE-HEAR-TALK demo screen. Every value shown comes from the demo state, which runs on core's glasses
- * rules, the spend cap and a mock provider. It is labelled as synthetic and mock throughout (Standards section 3).
+ * rules, the spend cap and a mock provider. It is labelled as synthetic and mock throughout.
  */
 export function DemoScreen({ onBack }: DemoScreenProps) {
   const session = useDemoSession();

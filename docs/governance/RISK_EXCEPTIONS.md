@@ -12,4 +12,4 @@ blocks the build until it is renewed or the issue is fixed.
   high or critical advisory. This one is excluded by name: `pnpm audit:high` passes `--ignore GHSA-86w9-cpqp-85rv`.
 - Re-check date: 2026-11-30. Expiry: 2026-12-31. At either point, re-check the npm registry for a patched node-forge,
   and remove the exclusion when one exists.
-- Approver: owner, by delegation of the decision on 2026-10-26 (recorded in blocker.txt, BLOCKER-010).
+- Approver: owner, by delegation of the decision on 2026-10-26 (recorded in docs/product/ROADMAP.md, BLOCKER-010).

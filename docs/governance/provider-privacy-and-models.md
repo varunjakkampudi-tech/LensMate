@@ -10,7 +10,7 @@ re-read before any live use.
 
 The OpenRouter amendment header says PENDING_OWNER_APPROVAL, while section C.6 says the provider is
 CONFIRMED_OWNER_CONFIGURATION. The owner's current instruction treats OpenRouter as the approved gateway. Confirm
-the approval in writing, and record the date, in `blocker.txt`. Until then no live call is made.
+the approval in writing, and record the date, in `docs/product/ROADMAP.md`. Until then no live call is made.
 
 ## 2. Key name
 

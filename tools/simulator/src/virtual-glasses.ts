@@ -29,7 +29,7 @@ import {
 /** SIMULATED: speech output lasts the text length times this many milliseconds. Nothing is measured. */
 export const SIMULATED_MS_PER_CHARACTER = 60;
 
-/** SIMULATED: the virtual glasses stop speech at once on a press. Nothing is measured (v9 G19). */
+/** SIMULATED: the virtual glasses stop speech at once on a press. Nothing is measured. */
 export const SIMULATED_STOP_DELAY_MS = 0;
 
 export type SessionSource = "APP" | "VOICE";
@@ -120,10 +120,10 @@ function isListeningType(type: CaptureSessionType): type is ListeningSessionType
 }
 
 /**
- * Virtual glasses: a GlassesLink that behaves like the glasses for the app (v9 section 13, Goal 7).
+ * Virtual glasses: a GlassesLink that behaves like the glasses for the app.
  * Every envelope passes through the protocol codec in both directions, so schema violations fail here
- * the same way they would on the real link. The indicator rule (G6), the gesture precedence (v9 5.0),
- * the voice rules (C02) and the silence limit (v9 5.3) are enforced here as on hardware.
+ * the same way they would on the real link. The indicator rule, the gesture precedence,
+ * the voice rules and the silence limit are enforced here as on hardware.
  *
  * Scripted input that has no wire message yet (speech activity, voice commands, caption text, speech
  * output) goes through the event log and `subscribeEvents`. The protocol package is not changed for it.
@@ -141,7 +141,7 @@ export class VirtualGlasses implements GlassesLink {
   private sequence = 0;
   private gestureState: GlassesState = IDLE_STATE;
   private readonly effects: GlassesEffect[] = [];
-  /** The silence timer for the running listening session. Speech resets it (v9 5.3). */
+  /** The silence timer for the running listening session. Speech resets it. */
   private silence: SilenceTimer = { lastSpeechMs: 0 };
 
   /** Time of the most recent button event, on `clock`, in milliseconds. Used by the phone-side measurement. */
@@ -248,7 +248,7 @@ export class VirtualGlasses implements GlassesLink {
     this.applyEffect(transition.effect);
   }
 
-  /** The glasses start speaking a line. A press during speech stops it (G19). Duration is SIMULATED. */
+  /** The glasses start speaking a line. A press during speech stops it. Duration is SIMULATED. */
   speak(line: string): void {
     this.requireConnected();
     if (this.gestureState.mode === "CUTOFF") {
@@ -268,7 +268,7 @@ export class VirtualGlasses implements GlassesLink {
     this.gestureState = speechEnded(this.gestureState);
   }
 
-  /** Speech heard on the listening session, from either speaker. Resets the silence timer (v9 5.3). */
+  /** Speech heard on the listening session, from either speaker. Resets the silence timer. */
   heardSpeech(): void {
     const atMs = this.clock();
     this.silence = recordSpeech(atMs);
@@ -276,7 +276,7 @@ export class VirtualGlasses implements GlassesLink {
   }
 
   /**
-   * A scripted voice phrase. Accepted only inside a listening session the user started (C02). Anything
+   * A scripted voice phrase. Accepted only inside a listening session the user started. Anything
    * else is logged as not accepted and changes nothing.
    */
   voiceCommand(phrase: string): void {
@@ -312,7 +312,7 @@ export class VirtualGlasses implements GlassesLink {
     return true;
   }
 
-  /** Ends a translation or caption session after two minutes without speech (v9 5.3, section 21). */
+  /** Ends a translation or caption session after two minutes without speech. */
   checkSilence(): void {
     const check = checkSilenceTimer(this.gestureState, this.silence, this.clock());
     if (check.endedSession === null) {
@@ -321,7 +321,7 @@ export class VirtualGlasses implements GlassesLink {
     this.endListening(check.endedSession, "SILENCE", check.state);
   }
 
-  /** Thermal, battery or privacy cutoff (v9 5.0 precedence item 1): camera and radio off. */
+  /** Thermal, battery or privacy cutoff (first in the gesture precedence): camera and radio off. */
   cutOff(): void {
     const ended = listeningSessionOf(this.gestureState);
     this.gestureState = applyCutoff();
@@ -352,7 +352,7 @@ export class VirtualGlasses implements GlassesLink {
     }
   }
 
-  /** A single or double tap captures one frame. The indicator is on for the capture (G6, section 21). */
+  /** A single or double tap captures one frame. The indicator is on for the capture. */
   private runPhotoCapture(): void {
     this.indicator.startSession("PHOTO_QUESTION");
     this.lastReason = INDICATOR_REASONS.PHOTO_QUESTION;
@@ -380,7 +380,7 @@ export class VirtualGlasses implements GlassesLink {
   private handleSession(message: EnvelopeMessage): void {
     const session = message.session;
     const type = session?.type === undefined ? undefined : SESSION_TYPES[session.type];
-    // Push-to-talk and photo start only by gesture (v9 section 21), so the app cannot open them.
+    // Push-to-talk and photo start only by gesture, so the app cannot open them.
     if (session === undefined || type === undefined || !isListeningType(type)) {
       this.emitAck(message.sequence, "ERROR_CODE_MALFORMED");
       return;
@@ -405,7 +405,7 @@ export class VirtualGlasses implements GlassesLink {
   /**
    * Starts a listening session from idle (app) or from a hold or another session (voice). The new session
    * starts before the old one ends, so the indicator stays on through a switch. The announcement is
-   * recorded before the indicator turns on (G15).
+   * recorded before the indicator turns on.
    */
   private switchTo(
     next: GlassesState,

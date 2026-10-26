@@ -9,7 +9,7 @@ import {
 } from "@lensmate/core";
 import type { EnvelopeMessage } from "@lensmate/protocol";
 
-/** The button event that starts one capture-to-phone try. A single tap takes a photo (v9 section 5.0). */
+/** The button event that starts one capture-to-phone try. A single tap takes a photo. */
 export const CAPTURE_TRIGGER_ACTION = "BUTTON_ACTION_SINGLE_TAP";
 
 /**
@@ -24,7 +24,7 @@ export interface TimedGlasses extends GlassesLink {
 }
 
 /**
- * Provenance for one run (Goal 14.2). The operator fills it in; nothing here is inferred or guessed.
+ * Provenance for one run. The operator fills it in; nothing here is inferred or guessed.
  * `runId` must be unique for each run and must not contain personal details.
  */
 export interface RecorderContext {
@@ -43,9 +43,9 @@ export interface RecorderContext {
 }
 
 /**
- * Times capture to phone from event timestamps only (Engineering Standards section 2.1: no per-frame or
- * per-sample work in JavaScript). Each trigger event is one try. A try that cannot be timed is recorded as
- * failed, with the reason, and is never estimated.
+ * Times capture to phone from event timestamps only, with no per-frame or per-sample work in JavaScript. Each
+ * trigger event is one try. A try that cannot be timed is recorded as failed, with the reason, and is never
+ * estimated.
  */
 export class CaptureToPhoneRecorder {
   private readonly records: MeasurementRecord[] = [];
@@ -83,7 +83,7 @@ export class CaptureToPhoneRecorder {
     return this.records;
   }
 
-  /** Every try recorded so far, in the template format. Accepted by the P-1 import validator. */
+  /** Every try recorded so far, in the template format. Accepted by the measurement import validator. */
   exportCsv(): string {
     return serializeMeasurementCsv(this.records);
   }

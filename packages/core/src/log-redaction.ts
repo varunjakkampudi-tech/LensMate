@@ -1,5 +1,5 @@
 /**
- * Log hygiene (v9 section 8; Engineering Standards 4 and 5; Global standard 11).
+ * Log hygiene.
  *
  * Logs carry only an allowlist of fields. Any other field is dropped, not redacted, so new fields
  * cannot leak by accident. Values that still look like secrets or personal data are replaced.

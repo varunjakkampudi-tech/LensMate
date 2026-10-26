@@ -25,7 +25,7 @@ import {
   type TimingSource,
 } from "./targets.js";
 
-/** Columns of the P-1 result template, in order. A file must contain every column and no others. */
+/** Columns of the result template, in order. A file must contain every column and no others. */
 export const MEASUREMENT_COLUMNS = [
   "measurement_id",
   "measure",
@@ -258,7 +258,7 @@ function checkEvidence(raw: Record<string, string>): string[] {
   }
   if (!isOneOf(level, IMPORTABLE_EVIDENCE_LEVELS)) {
     reasons.push(
-      `evidence_level "${level}" is above what the P-1 import accepts (simulator, emulator, real phone)`,
+      `evidence_level "${level}" is above what the import accepts (simulator, emulator, real phone)`,
     );
     return reasons;
   }
@@ -295,7 +295,7 @@ function checkTiming(raw: Record<string, string>): string[] {
     return ["missing timing_source"];
   }
   return [
-    `timing_source "${source}" is not supported: transport timing needs a validated clock synchronization, which P-1 does not have yet`,
+    `timing_source "${source}" is not supported: transport timing needs a validated clock synchronization, which the app does not have yet`,
   ];
 }
 

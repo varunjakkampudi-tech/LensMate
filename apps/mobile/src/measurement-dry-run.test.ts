@@ -17,7 +17,7 @@ import {
 import { createVirtualGlasses } from "./virtual-glasses-link";
 
 /**
- * Simulator dry run of the capture-to-phone procedure (Goal 14.2). It exercises the harness, the export and
+ * Simulator dry run of the capture-to-phone procedure. It exercises the harness, the export and
  * the import validator, and writes the validated CSV to measurement-output/ (ignored by git). It is NOT a
  * physical-iPhone measurement: its evidence level is "simulator", and its timings measure the simulator in Node,
  * not glasses or phone latency. The importer refuses any real phone row that carries the dry-run marker.

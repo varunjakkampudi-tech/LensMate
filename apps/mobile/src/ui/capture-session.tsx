@@ -9,7 +9,7 @@ import {
 } from "react";
 
 /**
- * Capture sessions (v9 section 21, G5, G6): camera or microphone input exists only inside a session the user started.
+ * Capture sessions: camera or microphone input exists only inside a session the user started.
  * While one runs, the shell shows the indicator and a one-tap Stop. Stopping always runs the session's own cleanup.
  */
 export type CaptureKind = "camera" | "microphone";
