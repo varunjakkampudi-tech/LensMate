@@ -714,3 +714,9 @@ Not in the owner's report, so still unverified on the phone:
 - Tests: broker 55 server, 21 provider, core 16 client plus 2 added, mobile 474, PostgreSQL 57 of 57 (run before the review fixes; the suite does not cover the streaming route itself). Full suite after the fixes: root 530 and mobile 474 passing.
 - Deployed: broker healthy at 00b8ef4. The route refuses unsigned calls (401) and answers the browser origin. The browser app is republished at https://lensmate.tech/app.
 - Not verified on a device: streamed display on Safari and on Android. Android testing starts when the phone arrives.
+
+## ROUND 2026-10-26 (F20 two-way conversation and F21 captions: turn-based, built)
+
+- Translation screen: each completed turn is kept in a transcript (conversation-transcript) showing what was heard and its translation. After each turn the languages swap, so the other person's speech is in the other language (handOver, src/ai/conversation.ts). The transcript keeps at most 50 turns.
+- Tests: conversation.test.ts (3 tests); the full mobile suite passes, 477 of 477.
+- Not verified on a device. Speech input on the phone depends on the platform's recognition; on Android the browser app and the native build will be tested in the emulator once Android Studio is installed.

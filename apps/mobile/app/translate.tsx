@@ -3,6 +3,7 @@ import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { aiErrorText, askVision, translate, LANG_NAME } from "../src/ai/assistant";
 import { hasVoiceFor, speak } from "../src/ai/speech";
 import { startsNewSession } from "../src/ai/session";
+import { appendTurn, handOver, type ConversationTurn } from "../src/ai/conversation";
 import { useMicSession } from "../src/ai/use-voice";
 import { pickImageFile } from "../src/capture/camera";
 import { memoryErrorText, saveItem } from "../src/memory/vault";
@@ -74,6 +75,8 @@ export default function TranslateScreen() {
   const [keyboard, setKeyboard] = useState(false);
   const [typed, setTyped] = useState("");
   const [savedNote, setSavedNote] = useState(false);
+  // The two-way conversation: each completed turn is kept, and the speaking turn passes to the other person.
+  const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const size = prefs.largeCaptions ? 26 : 20;
 
   // A translation session starts with the first request, and ends after two minutes without one (v9 section 21).
@@ -99,6 +102,20 @@ export default function TranslateScreen() {
       const r = await translate(text, from, to);
       setResult({ text: r.translation, uncertain: r.uncertain });
       setSavedNote(false);
+      setTurns((prev) =>
+        appendTurn(prev, {
+          id: Date.now(),
+          heard: text,
+          from,
+          translated: r.translation,
+          to,
+          uncertain: r.uncertain,
+        }),
+      );
+      // The other person speaks next: the languages swap, so the next speech is in the other language.
+      const speakerNext = handOver(from, from, to);
+      setFrom(speakerNext);
+      setTo(speakerNext === from ? to : from);
       if (prefs.autoSpeak || hasVoiceFor(to)) {
         speak(r.translation, to, prefs.voiceRate);
       }
@@ -407,6 +424,24 @@ export default function TranslateScreen() {
           No {LANG_NAME[to]} voice in this browser: the translation is shown as captions.
         </Text>
       )}
+      {turns.length > 0 ? (
+        <View testID="conversation-transcript" style={{ gap: 10 }}>
+          <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 14 }}>Conversation</Text>
+          {turns.map((turn) => (
+            <View
+              key={turn.id}
+              style={{ gap: 4, padding: 12, borderRadius: 14, backgroundColor: c.surface }}
+            >
+              <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 13 }}>
+                {LANG_NAME[turn.from]}: {turn.heard}
+              </Text>
+              <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 18 }}>
+                {LANG_NAME[turn.to]}: {turn.translated}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
