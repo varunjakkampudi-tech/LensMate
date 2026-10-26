@@ -631,3 +631,27 @@ Not in the owner's report, so still unverified on the phone:
 - The database init script (services/broker/deploy/db/01-create-app-role.sh) now reads the role passwords inside psql, so they never appear on a command line. Known limit: the Postgres container runs the script as its own user, so the secret files must be readable by that user for a fresh first start. The roles were created by hand on the VPS, so the running system is not affected.
 - Live-test budget: USD 0.50 (5000 paise) via BROKER_DEV_TEST_CAP_PAISE on the VPS (set and redeployed at be33abb). Live calls are still OFF. Before they can run, the owner must approve in writing: the cloud-processing disclosure text, the model list, and the charging rule for failed calls, then set BROKER_MODE=live and BROKER_PAID_CALLS. Live calls share the same budget as the monthly cap: the dev-test bucket is capped at USD 0.50 and sits inside the INR 500 monthly cap.
 - Spec gaps: NOT closed in this round. Open items are listed in the earlier records (measurements, OCR, voice notes, quick actions, language auto-detect, retention sweep wiring, Maestro in CI, accessibility on devices, commit IDs in Markdown). Each is product work; this round did not complete them.
+
+## ROUND 2026-10-26 (owner delegation: best recommended approach; progress and the feature order)
+
+- Scope: blockers 001 through 011 except 001 (Apple, as instructed). Status after this round:
+  - 002, 003, 004: RESOLVED (unchanged).
+  - 010: ACCEPTED RISK by delegated owner decision, option (c). Entry RE-001 in docs/governance/RISK_EXCEPTIONS.md, re-check 2026-11-30, expiry 2026-12-31. The CI quality job now runs `pnpm audit:high`, which blocks every other high advisory. Done.
+  - 008: partly done. The backup response carries cache-control no-store (done). Still open before live calls: (a) settlement is not tied to spend in the database, so the application role can still set a reservation's state and actual cost directly; plan: database functions for settle and release, with direct updates revoked, plus tests against PostgreSQL 17; (b) overrun above the worst case is recorded but not capped; accepted as a bounded residual while the live budget is USD 0.50, to be revisited with (a); (c) one global enrolment bucket can block enrolment for all clients; plan: per-source buckets only. A fresh-context re-review is required after (a) to (c).
+  - 006: live budget USD 0.50 set on the VPS. Live mode NOT enabled: the cloud-processing disclosure text is not yet recorded as approved, and blocker 008 item (a) is open. Live will be enabled only after both are closed.
+  - 007: not closed by this round. The recommended decisions are listed in the earlier records; they are not recorded as approved here because each needs its text or value to be checked.
+  - 009: still owner check. Public repository standard runners are free per GitHub documentation, which the agent has not verified for this account.
+  - 011: still open. The fresh review is required, and contrast, font, and simulator-route decisions are not made in this round.
+- Feature build order (one at a time; each ends with tests and a device check where the spec requires one):
+  1. Live-safe broker: finish blocker 008 (a) to (c), fresh review, then enable live at USD 0.50.
+  2. Speech in and out on the phone (F3, F26): enable speech input, stop-word interruption within 0.5 s.
+  3. Vision: scene description (F1, F33) and reading visible text (F2, OCR).
+  4. Two-way translation English and Telugu (F20, F21): live captions and the announcement rule (G15).
+  5. Memory: save, recall, delete (F6), voice notes (F5), and the 24-hour retention split (G13, G34), with the sweep wired to a real store.
+  6. Capture session rules and the capture indicator on the phone (F4, F40, CL1, CL33).
+  7. Quick actions, automatic language detection, custom vocabulary, tone (F11, F22, F27, F35).
+  8. Measurements: instrument latency, interruption, speech accuracy and translation accuracy for the P-1 harness (Goal 14).
+  9. Accessibility review (011 fixes plus a fresh review), then English, Telugu and Hindi strings (sections 10A and 13).
+  10. Maestro flows in CI, then owner device runs (005) once Apple membership is in place (001).
+  11. Documentation: remove commit identifiers from Markdown (Standards 1.2).
+- Honest status: this round closed the parts that did not need new product code. Steps 1 to 11 are product work and are not complete.
