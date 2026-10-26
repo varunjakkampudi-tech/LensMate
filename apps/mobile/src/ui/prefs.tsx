@@ -27,8 +27,14 @@ export const LANGS = {
 } as const;
 export type Lang = keyof typeof LANGS;
 
+/** How LensMate phrases answers. Warm is the default; brief is one or two sentences; formal avoids slang. */
+export type Tone = "warm" | "brief" | "formal";
+export const TONES: readonly Tone[] = ["warm", "brief", "formal"];
+export const TONE_LABEL: Record<Tone, string> = { warm: "Warm", brief: "Brief", formal: "Formal" };
+
 export interface Prefs {
   readonly profile: Profile;
+  readonly tone: Tone;
   readonly language: Lang;
   readonly autoSpeak: boolean;
   readonly largeCaptions: boolean;
@@ -66,6 +72,7 @@ export const ACTIVE_PHASE: Record<FeatureKey, boolean> = {
 
 const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "profile">> = {
   personal: {
+    tone: "warm",
     autoSpeak: false,
     largeCaptions: false,
     detailedDescriptions: false,
@@ -73,6 +80,7 @@ const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "prof
     features: ACTIVE_PHASE,
   },
   blind: {
+    tone: "warm",
     autoSpeak: true,
     largeCaptions: false,
     detailedDescriptions: true,
@@ -80,6 +88,7 @@ const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "prof
     features: ACTIVE_PHASE,
   },
   hearing: {
+    tone: "warm",
     autoSpeak: false,
     largeCaptions: true,
     detailedDescriptions: false,

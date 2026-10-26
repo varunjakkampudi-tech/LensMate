@@ -1,6 +1,6 @@
 import { BrokerError } from "@lensmate/core";
 import { BrokerCallBlocked, callBroker, callBrokerVision } from "../broker-call";
-import { LANGS, type Lang } from "../ui/prefs";
+import { LANGS, type Lang, type Tone } from "../ui/prefs";
 
 // Owner-approved allowlist (services/broker/src/pricing.ts). Zero-data-retention routing is set by the broker.
 // Lowest-cost verified models with zero-data-retention endpoints. Must match services/broker/src/pricing.ts.
@@ -49,6 +49,17 @@ const RULES =
   "Say clearly when you are unsure and why. Never identify people or guess who someone is. " +
   "Never say a road, path or crossing is safe, clear or that the user can go; describe what you see and advise caution instead. " +
   "Give information, not instructions for dangerous tasks. Plain text only, no markdown.";
+
+const TONE_RULE: Record<Tone, string> = {
+  warm: "Be warm and encouraging, like a kind friend.",
+  brief: "Be very brief: one or two short sentences.",
+  formal: "Be formal and precise. Use full sentences and no slang.",
+};
+
+/** The style instruction for the chosen tone. It is added to the system prompt; the safety rules above it still apply. */
+export function toneInstruction(tone: Tone): string {
+  return TONE_RULE[tone];
+}
 
 export const LANG_NAME = Object.fromEntries(
   Object.entries(LANGS).map(([k, v]) => [k, v.name]),

@@ -133,6 +133,7 @@ export default function AssistantScreen() {
           }
         },
         current.signal,
+        prefs.tone,
       );
       // A late answer from a cancelled or replaced request is dropped: never shown, never spoken.
       if (!guard.isCurrent(current.id)) {

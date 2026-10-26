@@ -690,3 +690,9 @@ Not in the owner's report, so still unverified on the phone:
 - Why: native speech input needs a development build, which needs the Apple Developer account. The browser app uses Safari's own speech recognition on iPhone, so speech can be tested now without that account.
 - Known trade-off: in the browser the device credential lives in browser storage, not in the iPhone keychain. This is acceptable for the owner's own testing and will be replaced when the native build exists.
 - Not yet verified: speech input and barge-in on iPhone Safari (the owner to test). Automatic language detection is not supported by the browser speech API.
+
+## ROUND 2026-10-26 (feature F35 built: answer tone)
+
+- Warm, Brief and Formal tones are chosen on Profile (tone-warm, tone-brief, tone-formal) and stored with the other preferences. They are added to the assistant's system prompt for text answers and for the agent's final answer. The safety rules and the "never claim to be human" rule remain above them.
+- Tests: 13 tests in the preferences and tone group pass; the agent tests pass after their mock includes the new function. Full mobile suite run before the agent-mock fix: 472 of 473, with the one failure being that mock; now fixed.
+- Not yet verified on a phone. Remaining for step 2: streaming replies, saying "stop" (barge-in), and the language choice.

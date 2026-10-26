@@ -12,7 +12,14 @@ import { DEFAULT_OPEN, PROFILE_SECTIONS, sectionTitle } from "../src/profile/sec
 import { STRINGS } from "../src/strings";
 import { Body, Btn, Chip, Page, Row } from "../src/ui/kit";
 import { LangPicker } from "../src/ui/lang-picker";
-import { FEATURES, usePrefs, type FeatureKey, type Profile } from "../src/ui/prefs";
+import {
+  FEATURES,
+  TONES,
+  TONE_LABEL,
+  usePrefs,
+  type FeatureKey,
+  type Profile,
+} from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
 const PROFILES: { id: Profile; label: string; line: string }[] = [
@@ -155,6 +162,20 @@ export default function MoreScreen() {
               label={`${r}×`}
               active={prefs.voiceRate === r}
               onPress={() => update({ voiceRate: r })}
+            />
+          ))}
+        </Row>
+        <Body muted size={14}>
+          Answer style: {TONE_LABEL[prefs.tone]}
+        </Body>
+        <Row>
+          {TONES.map((t) => (
+            <Chip
+              key={t}
+              testID={`tone-${t}`}
+              label={TONE_LABEL[t]}
+              active={prefs.tone === t}
+              onPress={() => update({ tone: t })}
             />
           ))}
         </Row>

@@ -2,7 +2,8 @@ import { Linking } from "react-native";
 import { askText, research, RequestCancelled, translate, type AiAnswer } from "./assistant";
 import { relevantNotes } from "../memory/search";
 import { listItems, saveItem } from "../memory/vault";
-import { LANGS, type Lang } from "../ui/prefs";
+import { LANGS, type Lang, type Tone } from "../ui/prefs";
+import { toneInstruction } from "./assistant";
 
 /**
  * Multi-agent task runner. A planner agent splits the user's goal into at most four tool steps; specialist agents
@@ -112,6 +113,7 @@ export async function runAgentTask(
   lang: Lang,
   onStep: (s: AgentStep) => void,
   signal?: AbortSignal,
+  tone: Tone = "warm",
 ): Promise<AgentResult> {
   // Checked before every step, so a cancelled task runs no further tools and records no further steps.
   const stopIfCancelled = () => {
@@ -240,7 +242,8 @@ export async function runAgentTask(
       },
     ],
     lang,
-    "You are the writer agent. When agent results exist, base the answer on them and never invent news, prices or saved items; when there are none, answer from your general knowledge. Be concise and concrete. Mention uncertainty. Do not claim an action was done unless the results say so.",
+    "You are the writer agent. When agent results exist, base the answer on them and never invent news, prices or saved items; when there are none, answer from your general knowledge. Be concise and concrete. Mention uncertainty. Do not claim an action was done unless the results say so. " +
+      toneInstruction(tone),
     signal,
   );
   stopIfCancelled();

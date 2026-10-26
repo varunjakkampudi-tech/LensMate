@@ -6,6 +6,7 @@ jest.mock("./assistant", () => ({
   askText: jest.fn(),
   research: jest.fn(),
   translate: jest.fn(),
+  toneInstruction: jest.fn(() => "Be warm and encouraging, like a kind friend."),
 }));
 jest.mock("../memory/vault", () => ({ listItems: jest.fn(), saveItem: jest.fn() }));
 
