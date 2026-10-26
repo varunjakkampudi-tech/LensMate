@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Text, View } from "react-native";
 import { confirmAction, runAgentTask, type AgentResult, type AgentStep } from "../src/ai/agent";
 import { aiErrorText, costNote, research } from "../src/ai/assistant";
 import {
+  hydrateAutomations,
   loadAutomations,
   runAutomation,
   saveAutomations,
@@ -40,13 +41,23 @@ export default function TasksScreen() {
   const [found, setFound] = useState<string | null>(null);
   const [autoResult, setAutoResult] = useState<string | null>(null);
   const [list, setList] = useState<Automation[]>(loadAutomations);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  // On a phone the saved list is read from the encrypted store once the screen opens.
+  useEffect(() => {
+    void hydrateAutomations().then(() => setList(loadAutomations()));
+  }, []);
   const [name, setName] = useState("");
   const [time, setTime] = useState("08:00");
   const [autoGoal, setAutoGoal] = useState("");
 
   const store = (next: Automation[]) => {
     setList(next);
-    saveAutomations(next);
+    saveAutomations(next)
+      .then(() => setStorageError(null))
+      .catch((e: unknown) => {
+        setList(loadAutomations());
+        setStorageError(memoryErrorText(e));
+      });
   };
 
   const runTask = async () => {
@@ -107,6 +118,7 @@ export default function TasksScreen() {
           onPress={() => void runTask()}
         />
         {error === null ? null : <Notice tone="error">{error}</Notice>}
+        {storageError === null ? null : <Notice tone="error">{storageError}</Notice>}
         {steps.map((s, i) => (
           <Text
             key={i}

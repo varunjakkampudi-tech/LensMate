@@ -7,7 +7,8 @@ import { nativeMemory } from "./native-store";
  * kept. On web each item is encrypted with AES-GCM under a non-extractable key that never leaves this browser.
  * On a phone items are stored in an SQLCipher database whose key sits in device secure storage (native-store.ts).
  */
-export type MemoryKind = "note" | "capture" | "answer" | "reminder" | "debrief";
+/** "state" rows hold app settings such as automations. They are never listed as memory items. */
+export type MemoryKind = "note" | "capture" | "answer" | "reminder" | "debrief" | "state";
 
 export interface MemoryItem {
   readonly id: string;
@@ -138,12 +139,51 @@ export async function saveItem(
   return full;
 }
 
+/** Saves an app setting on the phone, encrypted with the memory store. Browsers keep settings in their own storage. */
+export async function saveState(key: string, value: unknown): Promise<void> {
+  if (Platform.OS === "web") {
+    return;
+  }
+  await saveItem({
+    id: stateId(key),
+    kind: "state",
+    title: key,
+    text: JSON.stringify(value),
+    createdAt: 0,
+  });
+}
+
+/** Reads an app setting saved by saveState. Null when nothing is stored or the stored value cannot be read. */
+export async function loadState<T>(key: string): Promise<T | null> {
+  if (Platform.OS === "web") {
+    return null;
+  }
+  for (const body of await nativeMemory().list()) {
+    try {
+      const item = JSON.parse(body) as MemoryItem;
+      if (item.id === stateId(key) && item.kind === "state") {
+        return JSON.parse(item.text) as T;
+      }
+    } catch {
+      // An unreadable row is skipped, the same as a damaged memory item.
+    }
+  }
+  return null;
+}
+
+function stateId(key: string): string {
+  return `state:${key}`;
+}
+
 export async function listItems(): Promise<MemoryItem[]> {
   if (Platform.OS !== "web") {
     const items: MemoryItem[] = [];
     for (const body of await nativeMemory().list()) {
       try {
-        items.push(JSON.parse(body) as MemoryItem);
+        const item = JSON.parse(body) as MemoryItem;
+        if (item.kind !== "state") {
+          items.push(item);
+        }
       } catch {
         // A row that is not valid JSON is skipped, never shown.
       }

@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 import { runAgentTask } from "./agent";
-import { saveItem } from "../memory/vault";
+import { loadState, saveItem, saveState } from "../memory/vault";
 
 /**
  * User-created automations (proactive help without cameras or microphones). They run only while the app is open, at
@@ -32,9 +32,12 @@ const MAX_RUNS_PER_OPEN = 5;
 const KEY = "lensmate.automations.v1";
 let running = false;
 
+/** On a phone the list is held here, after hydrateAutomations() has read it from the encrypted store. */
+let phoneList: Automation[] = [];
+
 export function loadAutomations(): Automation[] {
   if (Platform.OS !== "web") {
-    return [];
+    return phoneList;
   }
   try {
     const parsed: unknown = JSON.parse(globalThis.localStorage.getItem(KEY) ?? "[]");
@@ -44,9 +47,31 @@ export function loadAutomations(): Automation[] {
   }
 }
 
-export function saveAutomations(list: readonly Automation[]): void {
+/** Reads the saved automations into memory. Call before reading them on a phone. */
+export async function hydrateAutomations(): Promise<void> {
+  if (Platform.OS === "web") {
+    return;
+  }
+  const stored = await loadState<Automation[]>(KEY);
+  phoneList = Array.isArray(stored) ? stored : [];
+}
+
+/**
+ * Saves the list. Resolves only once it is stored. On a phone a failed save restores the previous list and rejects, so
+ * the screen never shows automations that were not stored.
+ */
+export async function saveAutomations(list: readonly Automation[]): Promise<void> {
   if (Platform.OS === "web") {
     globalThis.localStorage.setItem(KEY, JSON.stringify(list));
+    return;
+  }
+  const previous = phoneList;
+  phoneList = [...list];
+  try {
+    await saveState(KEY, phoneList);
+  } catch (error) {
+    phoneList = previous;
+    throw error;
   }
 }
 
@@ -101,8 +126,8 @@ export function withOutcome(
   });
 }
 
-function recordOutcome(id: string, day: string, outcome: RunOutcome): void {
-  saveAutomations(withOutcome(loadAutomations(), id, day, outcome));
+async function recordOutcome(id: string, day: string, outcome: RunOutcome): Promise<void> {
+  await saveAutomations(withOutcome(loadAutomations(), id, day, outcome));
 }
 
 function describeError(error: unknown): string {
@@ -115,10 +140,13 @@ export async function runAutomation(a: Automation): Promise<string> {
   try {
     const result = await runAgentTask(a.goal, "en", () => undefined);
     await saveItem({ kind: "answer", title: `Automation: ${a.name}`, text: result.answer });
-    recordOutcome(a.id, day, { ok: true });
+    await recordOutcome(a.id, day, { ok: true });
     return result.answer;
   } catch (error) {
-    recordOutcome(a.id, day, { ok: false, error: describeError(error) });
+    // The original failure is what the caller needs; a second storage failure must not hide it.
+    await recordOutcome(a.id, day, { ok: false, error: describeError(error) }).catch(
+      () => undefined,
+    );
     throw error;
   }
 }
@@ -133,6 +161,7 @@ export async function runDueAutomations(
   if (running) {
     return;
   }
+  await hydrateAutomations();
   const now = new Date();
   const day = dayOf(now);
   const clock = clockOf(now);

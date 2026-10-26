@@ -1,11 +1,22 @@
 import {
   clockOf,
+  hydrateAutomations,
+  loadAutomations,
+  saveAutomations,
   dayOf,
   isDue,
   MAX_ATTEMPTS_PER_DAY,
   withOutcome,
   type Automation,
 } from "./automations";
+
+jest.mock("../memory/vault", () => ({
+  loadState: jest.fn(),
+  saveState: jest.fn(),
+  saveItem: jest.fn(),
+}));
+
+import { loadState, saveState } from "../memory/vault";
 
 const base: Automation = {
   id: "a1",
@@ -76,5 +87,35 @@ describe("clock helpers", () => {
     const now = new Date(2026, 9, 26, 7, 5);
     expect(dayOf(now)).toBe("2026-10-26");
     expect(clockOf(now)).toBe("07:05");
+  });
+});
+
+describe("phone storage of automations", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it("reads the saved list when the phone hydrates, and starts empty when nothing is stored", async () => {
+    (loadState as jest.Mock).mockResolvedValueOnce([base]);
+    await hydrateAutomations();
+    expect(loadAutomations()).toEqual([base]);
+    (loadState as jest.Mock).mockResolvedValueOnce(null);
+    await hydrateAutomations();
+    expect(loadAutomations()).toEqual([]);
+  });
+
+  it("stores the list before it resolves", async () => {
+    (saveState as jest.Mock).mockResolvedValueOnce(undefined);
+    await saveAutomations([base]);
+    expect(saveState).toHaveBeenCalledWith("lensmate.automations.v1", [base]);
+    expect(loadAutomations()).toEqual([base]);
+  });
+
+  it("restores the previous list and rejects when the save fails", async () => {
+    (saveState as jest.Mock).mockResolvedValueOnce(undefined);
+    await saveAutomations([base]);
+    (saveState as jest.Mock).mockRejectedValueOnce(new Error("disk full"));
+    await expect(saveAutomations([])).rejects.toThrow("disk full");
+    expect(loadAutomations()).toEqual([base]);
   });
 });
