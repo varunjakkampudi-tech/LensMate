@@ -59,7 +59,30 @@ describe("encrypted memory backup", () => {
     expect(saved.json()).toEqual({ updatedAt: 1_000, expiresAt: 1_000 + 30 * DAY });
     expect((await call("GET")).json()).toMatchObject({ ciphertext: "v1.c2FsdA.aXY.Y2lwaGVy" });
     expect((await call("DELETE")).statusCode).toBe(204);
+    expect((await call("DELETE")).statusCode).toBe(204);
     expect((await call("GET")).statusCode).toBe(404);
+  });
+
+  it("keeps active devices from reading or overwriting each other's backups", async () => {
+    const { call, devices } = await setup({ now: 1_000 });
+    const otherDeviceId = "22222222-2222-4222-8222-222222222222";
+    const otherDeviceSecret = "another-device-secret-which-is-long-enough";
+    const otherAuth = `Bearer ${otherDeviceId}.${otherDeviceSecret}`;
+    devices.seedDevice(otherDeviceId, otherDeviceSecret);
+
+    expect(
+      (await call("PUT", { ciphertext: "device-a-ciphertext", retentionDays: 30 })).statusCode,
+    ).toBe(200);
+    expect((await call("GET", undefined, otherAuth)).statusCode).toBe(404);
+    expect(
+      (await call("PUT", { ciphertext: "device-b-ciphertext", retentionDays: 30 }, otherAuth))
+        .statusCode,
+    ).toBe(200);
+
+    expect((await call("GET", undefined, otherAuth)).json()).toMatchObject({
+      ciphertext: "device-b-ciphertext",
+    });
+    expect((await call("GET")).json()).toMatchObject({ ciphertext: "device-a-ciphertext" });
   });
 
   it("forgets a backup once its retention period has passed", async () => {

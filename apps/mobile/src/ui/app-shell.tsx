@@ -143,6 +143,7 @@ function IndicatorBar() {
       </Text>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`Stop ${active.kind} session`}
         testID="capture-stop-button"
         onPress={stopAll}
         style={{

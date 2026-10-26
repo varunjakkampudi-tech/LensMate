@@ -390,7 +390,7 @@ export default function CaptureScreen() {
           placeholder="What is this? Is it good for indoors?"
           placeholderTextColor={c.muted}
           onSubmitEditing={() => ask(question)}
-          style={{ flex: 1, color: c.text, fontFamily: FONTS.body, fontSize: 14, minHeight: 40 }}
+          style={{ flex: 1, color: c.text, fontFamily: FONTS.body, fontSize: 14, minHeight: 48 }}
         />
         <Pressable
           accessibilityRole="button"
@@ -416,6 +416,7 @@ export default function CaptureScreen() {
           <Pressable
             key={label}
             accessibilityRole="button"
+            accessibilityLabel={label}
             testID={testID}
             disabled={photo === null || busy}
             onPress={() => ask(request)}
@@ -502,6 +503,7 @@ export default function CaptureScreen() {
               <Pressable
                 key={f}
                 accessibilityRole="button"
+                accessibilityLabel={f}
                 testID="followup-chip"
                 disabled={busy}
                 onPress={() => ask(f)}

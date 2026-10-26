@@ -53,7 +53,14 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       sourceType: "commonjs",
-      globals: { module: "writable", require: "readonly", __dirname: "readonly" },
+      globals: {
+        module: "writable",
+        require: "readonly",
+        __dirname: "readonly",
+        URL: "readonly",
+        fetch: "readonly",
+        AbortSignal: "readonly",
+      },
     },
   },
 );

@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import {
   authenticateDevice,
+  InMemoryDeviceStore,
   issueEnrolmentCode,
   normalizeCode,
   PostgresDeviceStore,
@@ -10,8 +11,11 @@ import {
 import { migrate, SchemaError, verifySchema } from "./schema.js";
 import { checkContinuity, FileAnchor, AnchorError } from "./ledger-anchor.js";
 import { PostgresBudgetStore } from "./postgres-budget.js";
-import { PostgresBackupStore } from "./backup.js";
-import { createHash } from "node:crypto";
+import { PostgresBackupStore, type BackupStore } from "./backup.js";
+import { InMemoryBudgetStore } from "./budget.js";
+import { MockProvider } from "./provider.js";
+import { buildServer } from "./server.js";
+import { TEST_AUTH_HEADER, TEST_CLIENT_SECRET, TEST_DEVICE_ID, testConfig } from "./test-config.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -38,6 +42,29 @@ function withDatabase(url: string, database: string, user?: string): string {
     parsed.username = user;
   }
   return parsed.toString();
+}
+
+async function createBackupBroker(backups: BackupStore) {
+  const devices = new InMemoryDeviceStore();
+  devices.seedDevice(TEST_DEVICE_ID, TEST_CLIENT_SECRET);
+  const server = await buildServer({
+    config: testConfig(),
+    budget: new InMemoryBudgetStore(),
+    devices,
+    provider: new MockProvider(),
+    backups,
+    now: () => Date.now(),
+    logger: { level: "silent", redact: { paths: [], censor: "" } },
+  });
+  await server.listen({ host: "127.0.0.1", port: 0 });
+  return { server, origin: server.listeningOrigin };
+}
+
+async function registerBackupDevice(pool: Pool, deviceId: string): Promise<void> {
+  await pool.query(
+    "INSERT INTO broker_device (device_id, label, secret_sha256) VALUES ($1, 'backup-test', $2)",
+    [deviceId, sha256Hex(`integration-only-${deviceId}`)],
+  );
 }
 
 suite("PostgreSQL security: least-privilege roles, schema guard and device enrolment", () => {
@@ -82,30 +109,64 @@ suite("PostgreSQL security: least-privilege roles, schema guard and device enrol
     await expect(verifySchema(owner)).resolves.toBeUndefined();
   });
 
-  it("a PostgreSQL memory backup survives a fresh store connection", async () => {
-    const writer = new PostgresBackupStore(owner);
-    const deviceId = "backup-recovery-test-device";
-    const ciphertext = "v1.c2FsdA.aXY.Y2lwaGVy";
-    const updatedAt = Date.now();
-    const expiresAt = updatedAt + 30 * 86_400_000;
-    const reader = new Pool({ connectionString: withDatabase(BASE_URL ?? "", DB), max: 1 });
-    const secretHash = createHash("sha256").update(deviceId).digest("hex");
+  it("does not return an expired backup from PostgreSQL", async () => {
+    const backups = new PostgresBackupStore(app);
+    const deviceId = "33333333-3333-4333-8333-333333333333";
+    const now = Date.now();
     try {
-      // A backup row must reference a registered device (foreign key), so register the test device first.
-      await owner.query(
-        "INSERT INTO broker_device (device_id, label, secret_sha256) VALUES ($1, 'backup-test', $2)",
-        [deviceId, secretHash],
-      );
-      await writer.put(deviceId, ciphertext, updatedAt, expiresAt);
-      const restored = await new PostgresBackupStore(reader).get(deviceId, updatedAt);
-      expect(restored).toMatchObject({ ciphertext, updatedAt, expiresAt });
+      await registerBackupDevice(owner, deviceId);
+      await backups.put(deviceId, "v1.c2FsdA.aXY.Y2lwaGVy", now, now + 1_000);
+      expect(await backups.get(deviceId, now + 1_000)).toBeNull();
     } finally {
-      try {
-        await writer.remove(deviceId);
-        await owner.query("DELETE FROM broker_device WHERE device_id = $1", [deviceId]);
-      } finally {
-        await reader.end();
-      }
+      await backups.remove(deviceId);
+      await owner.query("DELETE FROM broker_device WHERE device_id = $1", [deviceId]);
+    }
+  });
+
+  it("deletes a PostgreSQL backup idempotently", async () => {
+    const backups = new PostgresBackupStore(app);
+    const deviceId = "44444444-4444-4444-8444-444444444444";
+    const now = Date.now();
+    try {
+      await registerBackupDevice(owner, deviceId);
+      await backups.put(deviceId, "v1.c2FsdA.aXY.Y2lwaGVy", now, now + 30 * 86_400_000);
+      await backups.remove(deviceId);
+      await expect(backups.get(deviceId, now)).resolves.toBeNull();
+      await expect(backups.remove(deviceId)).resolves.toBeUndefined();
+    } finally {
+      await backups.remove(deviceId);
+      await owner.query("DELETE FROM broker_device WHERE device_id = $1", [deviceId]);
+    }
+  });
+
+  it("restores a PostgreSQL memory backup after a new broker app instance starts", async () => {
+    const backups = new PostgresBackupStore(app);
+    const ciphertext = "v1.c2FsdA.aXY.Y2lwaGVy";
+    let first: Awaited<ReturnType<typeof createBackupBroker>> | undefined;
+    let second: Awaited<ReturnType<typeof createBackupBroker>> | undefined;
+    try {
+      await registerBackupDevice(owner, TEST_DEVICE_ID);
+      first = await createBackupBroker(backups);
+      const saved = await fetch(`${first.origin}/v1/backup`, {
+        method: "PUT",
+        headers: { authorization: TEST_AUTH_HEADER, "content-type": "application/json" },
+        body: JSON.stringify({ ciphertext, retentionDays: 30 }),
+      });
+      expect(saved.status).toBe(200);
+      await first.server.close();
+      first = undefined;
+
+      second = await createBackupBroker(backups);
+      const restored = await fetch(`${second.origin}/v1/backup`, {
+        headers: { authorization: TEST_AUTH_HEADER },
+      });
+      expect(restored.status).toBe(200);
+      expect(await restored.json()).toMatchObject({ ciphertext });
+    } finally {
+      await first?.server.close();
+      await second?.server.close();
+      await backups.remove(TEST_DEVICE_ID);
+      await owner.query("DELETE FROM broker_device WHERE device_id = $1", [TEST_DEVICE_ID]);
     }
   });
 

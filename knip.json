@@ -12,7 +12,7 @@
       "entry": ["app/**/*.tsx"]
     },
     "services/broker": {
-      "entry": ["src/admin-cli.ts", "src/migrate-cli.ts"]
+      "entry": ["src/admin-cli.ts", "src/migrate-cli.ts", "scripts/verify-pricing.mjs"]
     }
   },
   "ignore": ["apps/mobile/public/sw.js"]

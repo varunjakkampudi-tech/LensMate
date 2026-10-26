@@ -99,6 +99,7 @@ function Tile({ tile }: { tile: (typeof TILES)[number] }) {
   return (
     <Pressable
       accessibilityRole="link"
+      accessibilityLabel={tile.title}
       testID={`tile-${tile.title.toLowerCase().replace(/[^a-z]+/g, "-")}`}
       onPress={() => router.push(tile.href)}
       style={({ pressed }) => ({

@@ -258,6 +258,7 @@ export default function TranslateScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Speak original"
+              hitSlop={14}
               onPress={() => speak(original, from, prefs.voiceRate)}
             >
               <Icon name="speaker" color={c.accent} size={20} />
@@ -291,6 +292,7 @@ export default function TranslateScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Speak translation"
+              hitSlop={14}
               testID="speak-translation"
               onPress={() => speak(result.text, to, prefs.voiceRate)}
             >
@@ -317,6 +319,7 @@ export default function TranslateScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Copy translation"
+                hitSlop={15}
                 onPress={() => void navigator.clipboard.writeText(result.text)}
               >
                 <Icon name="copy" color={c.muted} size={18} />
@@ -325,6 +328,7 @@ export default function TranslateScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Save translation"
+              hitSlop={15}
               testID="save-translation"
               onPress={() =>
                 void saveItem({

@@ -181,6 +181,7 @@ export function Chip({
   return (
     <Pressable
       accessibilityRole="radio"
+      accessibilityLabel={label}
       accessibilityState={{ selected: active, checked: active }}
       aria-checked={active}
       testID={testID}
