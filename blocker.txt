@@ -809,3 +809,10 @@ Still open, and why:
 - Decision needed (owner): adopt Mem0 as a memory service behind the broker? It adds a Python service, hosting and cost, and personal-data handling. Not started.
 - Decision needed (owner): adopt Browser Use for web actions? It needs a threat model and a security review first. Not started.
 - No code was copied from any reference in this round. LiveKit and Pipecat are design references only (Python, and one voice framework is enough).
+
+## ROUND 2026-10-26 (memory review, docs/research/memory-review.md)
+
+- Privacy (high, to fix now): memory.tsx sends the newest notes to the AI when a question matches no note (search.ts fallback). Unrelated personal notes can leave the phone. Fix: send nothing when nothing matches.
+- Deleted rows may remain in the encrypted file until overwritten (low). Fix: secure_delete on the encrypted database.
+- Retention: no temporary item is persisted, so the sweep has no caller. Recorded, not changed.
+- Export is plaintext by design (user-initiated, share sheet). Owner decision on a warning or encryption before share.
