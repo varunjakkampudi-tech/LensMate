@@ -683,3 +683,10 @@ Not in the owner's report, so still unverified on the phone:
 - Defect found and fixed during this step: the compose file did not pass BROKER_PAID_CALLS or BROKER_DEV_TEST_CAP_PAISE into the container, so live mode was refused, and the USD 0.50 budget would not have been enforced. Both are now passed through (services/broker/deploy/docker-compose.yml). Paid calls default to off.
 - Not done in this step: no test call was made. The first live call should come from an enrolled phone so that the whole path is tested. Each call is capped by the USD 0.50 dev-test bucket and the INR 500 monthly cap, and failed calls are charged at worst case.
 - Known cosmetic issue: some pino lines (the startup messages) are logged as unknown_event, because their message text is not a plain word phrase. No content leaks; a later change can map them to fixed names.
+
+## ROUND 2026-10-26 (feature step 2 started: browser app for speech on iPhone, no Apple account needed)
+
+- The Expo web build is served from the shared proxy at https://lensmate.tech/app. The app shell loads with no security-policy errors (checked in Chrome). The Caddy policy for /app allows only the app's own scripts and https://api.lensmate.tech. The broker accepts the browser origin https://lensmate.tech (BROKER_CORS_ORIGINS, passed into the container; verified with a CORS header).
+- Why: native speech input needs a development build, which needs the Apple Developer account. The browser app uses Safari's own speech recognition on iPhone, so speech can be tested now without that account.
+- Known trade-off: in the browser the device credential lives in browser storage, not in the iPhone keychain. This is acceptable for the owner's own testing and will be replaced when the native build exists.
+- Not yet verified: speech input and barge-in on iPhone Safari (the owner to test). Automatic language detection is not supported by the browser speech API.
