@@ -74,6 +74,8 @@ describe("encrypted memory backup", () => {
       (await call("PUT", { ciphertext: "device-a-ciphertext", retentionDays: 30 })).statusCode,
     ).toBe(200);
     expect((await call("GET", undefined, otherAuth)).statusCode).toBe(404);
+    expect((await call("DELETE", undefined, otherAuth)).statusCode).toBe(204);
+    expect((await call("GET")).json()).toMatchObject({ ciphertext: "device-a-ciphertext" });
     expect(
       (await call("PUT", { ciphertext: "device-b-ciphertext", retentionDays: 30 }, otherAuth))
         .statusCode,
