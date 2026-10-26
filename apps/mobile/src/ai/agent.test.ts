@@ -84,4 +84,25 @@ describe("runAgentTask", () => {
     const writerPrompt = (askText as jest.Mock).mock.calls[1][0][0].content as string;
     expect(writerPrompt).toContain("not done yet");
   });
+
+  it("sends no saved notes to the AI for a broad recall that matches none", async () => {
+    (askText as jest.Mock)
+      .mockResolvedValueOnce(
+        answer(
+          JSON.stringify({
+            calls: [{ tool: "recall_memory", input: { query: "what did I note this week" } }],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(answer("Nothing matched.", 1));
+    (listItems as jest.Mock).mockResolvedValue([
+      { id: "u", kind: "note", title: "Umbrella", text: "Bring the blue umbrella", createdAt: 1 },
+    ]);
+
+    await runAgentTask("briefing", "en", () => undefined);
+
+    const writerPrompt = (askText as jest.Mock).mock.calls[1][0][0].content as string;
+    expect(writerPrompt).toContain("none found");
+    expect(writerPrompt).not.toContain("Umbrella");
+  });
 });

@@ -817,8 +817,8 @@ Still open, and why:
 - Retention: no temporary item is persisted, so the sweep has no caller. Recorded, not changed.
 - Export is plaintext by design (user-initiated, share sheet). Owner decision on a warning or encryption before share.
 
-## ROUND 2026-10-26 (memory privacy fix merged; one owner decision left)
+## ROUND 2026-10-26 (memory privacy fix merged; recall decision applied)
 
 - Fixed: the memory screen sends no unrelated notes to the AI when no note matches (search.ts relevantNotes no longer falls back to the newest notes by default).
 - Fixed: encrypted database sets secure_delete after the key, so deleted rows are scrubbed (native-store.ts). Not verified on a device.
-- Owner decision: the agent's recall_memory step still uses the newest notes for broad requests such as briefings (explicit fallbackToNewest option in agent.ts). Those notes go to the AI when the planner chooses that step. Keep, or restrict to the user's explicit request?
+- Decided (recommended option, applied without waiting for the owner): the agent's recall_memory step sends only notes that match the question. Broad requests such as briefings get "none found" instead of the newest notes. Covered by agent.test.ts. Reverse this only with a new owner decision.

@@ -161,10 +161,8 @@ export async function runAgentTask(
     stopIfCancelled();
     try {
       if (call.tool === "recall_memory") {
-        // Broad requests (briefings, "today", "recent") fall back to the newest items.
-        const hits = relevantNotes(await listItems(), str(input.query), 6, {
-          fallbackToNewest: true,
-        });
+        // Only notes that match the question are sent to the AI. Broad requests get no notes, never the newest ones.
+        const hits = relevantNotes(await listItems(), str(input.query), 6);
         findings.push(
           `Saved notes: ${hits.map((h) => `${h.title}: ${h.text.slice(0, 300)}`).join(" | ") || "none found"}`,
         );
