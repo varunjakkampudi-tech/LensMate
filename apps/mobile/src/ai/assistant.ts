@@ -3,9 +3,17 @@ import { BrokerCallBlocked, callBroker, callBrokerVision } from "../broker-call"
 import { LANGS, type Lang } from "../ui/prefs";
 
 // Owner-approved allowlist (services/broker/src/pricing.ts). Zero-data-retention routing is set by the broker.
-const TEXT_MODEL = "google/gemini-3.1-flash-lite";
-const VISION_MODEL = "google/gemini-3.5-flash-lite";
-const RESEARCH_MODEL = "google/gemini-3.1-flash-lite:online";
+// Lowest-cost verified models with zero-data-retention endpoints. Must match services/broker/src/pricing.ts.
+const TEXT_MODEL = "openai/gpt-4.1-nano";
+const VISION_MODEL = "openai/gpt-4o-mini";
+
+/** Thrown when live web research is requested. No verified research model exists yet, so it is not offered. */
+export class ResearchUnavailable extends Error {
+  constructor() {
+    super("Live internet research is not available in this version.");
+    this.name = "ResearchUnavailable";
+  }
+}
 const TIMEOUT_MS = 30_000;
 
 export interface AiAnswer {
@@ -153,27 +161,16 @@ export function askVision(
   );
 }
 
-/** Live internet research (OpenRouter web search, zero data retention). The broker charges the worst case per call. */
-export function research(question: string, lang: Lang, external?: AbortSignal): Promise<AiAnswer> {
-  return timed(
-    "research",
-    (signal) =>
-      callBroker(
-        {
-          model: RESEARCH_MODEL,
-          messages: [
-            {
-              role: "system",
-              content: `${RULES} Use current web results. End with up to 3 short source names or domains. Reply in ${LANG_NAME[lang]}.`,
-            },
-            { role: "user", content: question },
-          ],
-          maxOutputTokens: 350,
-        },
-        signal,
-      ),
-    external,
-  );
+/**
+ * Live internet research. Not offered in this version: the only research model was the `:online` variant, whose
+ * zero-data-retention compatibility is unverified, so the call is refused here without contacting the broker.
+ */
+export function research(
+  _question: string,
+  _lang: Lang,
+  _external?: AbortSignal,
+): Promise<AiAnswer> {
+  return Promise.reject(new ResearchUnavailable());
 }
 
 /** Removes markdown emphasis and headings that some replies still contain. */

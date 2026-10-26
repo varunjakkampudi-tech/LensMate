@@ -10,6 +10,8 @@ describe("model allowlist", () => {
   it("contains only the approved text and vision models", () => {
     expect(MODEL_ALLOWLIST.map((model) => model.id)).toEqual([
       "google/gemini-3.1-flash-lite",
+      "openai/gpt-4.1-nano",
+      "openai/gpt-4o-mini",
       "google/gemini-3.5-flash-lite",
     ]);
   });
@@ -18,6 +20,18 @@ describe("model allowlist", () => {
     expect(findModel("openai/gpt-4o")).toBeUndefined();
     expect(findModel("google/gemini-3.1-flash-lite")?.feature).toBe("text");
     expect(findModel("google/gemini-3.5-flash-lite")?.acceptsImages).toBe(true);
+  });
+
+  it("allows the verified GPT text and vision models at the ZDR price ceilings", () => {
+    expect(findModel("openai/gpt-4.1-nano")).toMatchObject({
+      feature: "text",
+      inputMicroUsdPerMillion: 110_000,
+      outputMicroUsdPerMillion: 440_000,
+    });
+    expect(findModel("openai/gpt-4o-mini")).toMatchObject({
+      feature: "vision",
+      acceptsImages: true,
+    });
   });
 
   it("refuses the :online web-research variant until its zero-retention compatibility is verified", () => {

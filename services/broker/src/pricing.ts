@@ -31,8 +31,26 @@ export const MODEL_ALLOWLIST: readonly ModelPrice[] = [
     acceptsImages: false,
     feature: "text",
   },
-  // google/gemini-3.1-flash-lite:online is disabled (owner decision, 2026-10-26) until its zero-data-retention
-  // compatibility is verified. Re-add it only with that verification and a reviewed price snapshot.
+  // Lowest-cost verified text model with zero-data-retention endpoints (OpenRouter ZDR list, read 2026-10-26; Azure).
+  {
+    id: "openai/gpt-4.1-nano",
+    inputMicroUsdPerMillion: 110_000,
+    outputMicroUsdPerMillion: 440_000,
+    maxContextTokens: 1_047_576,
+    acceptsImages: false,
+    feature: "text",
+  },
+  // Lowest-cost verified vision model with zero-data-retention endpoints (same source; Azure).
+  {
+    id: "openai/gpt-4o-mini",
+    inputMicroUsdPerMillion: 165_000,
+    outputMicroUsdPerMillion: 660_000,
+    maxContextTokens: 128_000,
+    acceptsImages: true,
+    feature: "vision",
+  },
+  // google/gemini-3.1-flash-lite:online stays refused: its zero-data-retention compatibility is not verified, and
+  // there is no verified web-research model yet. Live research is therefore unavailable in this version.
   {
     id: "google/gemini-3.5-flash-lite",
     inputMicroUsdPerMillion: 540_000,

@@ -102,3 +102,21 @@ speech route.
 The broker keeps no prompt, reply, image or audio. Its ledger keeps the month, the client id, the amounts in paise,
 reservation states and the daily request count. Choose how long ledger rows are kept (owner decision). Container logs
 hold outcome, cost and latency only; their retention is also an owner decision.
+
+## Update 2026-10-26: cheapest verified models, research not offered
+
+Source: OpenRouter's public zero-data-retention endpoint list (GET https://openrouter.ai/api/v1/endpoints/zdr, read 2026-10-26) and public model list (GET https://openrouter.ai/api/v1/models). Prices are the highest listed for each model's ZDR endpoints, in USD per million tokens.
+
+| Route | Model | Input | Output | ZDR endpoint | Status |
+| --- | --- | --- | --- | --- | --- |
+| text (default) | openai/gpt-4.1-nano | 0.11 | 0.44 | Azure | allowlisted; mock-tested only |
+| vision | openai/gpt-4o-mini | 0.165 | 0.66 | Azure | allowlisted; mock-tested only |
+| text (earlier) | google/gemini-3.1-flash-lite | 0.45 | 2.70 (ceiling used in code) | Google | still allowlisted, not used by the app |
+| vision (earlier) | google/gemini-3.5-flash-lite | 0.54 | 4.50 (ceiling used in code) | Google | still allowlisted, not used by the app |
+| research | google/gemini-3.1-flash-lite:online | not verified | not verified | none listed | refused; live research not offered |
+
+- The app now sends openai/gpt-4.1-nano for text and openai/gpt-4o-mini for vision. The broker refuses any model not on the allowlist.
+- Live research is not offered. The app returns "not available in this version" without contacting the broker.
+- The broker still sends zdr: true and data_collection: "deny" on every request.
+- Live calls stay off until the owner sets a live-test budget above zero, approves the cloud-processing disclosure, and approves the model list. Prices are a snapshot. Re-check them before any live use.
+- Expected monthly cost at the cap of INR 500 is far above the cost of a test call. The cap, not the model choice, is the limit.
