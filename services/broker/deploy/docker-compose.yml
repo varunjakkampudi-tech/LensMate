@@ -36,6 +36,8 @@ services:
       # USD 0.50 limit is enforced in the container and not only in the env file.
       BROKER_PAID_CALLS: ${BROKER_PAID_CALLS:-off}
       BROKER_DEV_TEST_CAP_PAISE: ${BROKER_DEV_TEST_CAP_PAISE:-}
+      # Browser origin allowed to call the broker, for the web app. Empty means no browser origin is allowed.
+      BROKER_CORS_ORIGINS: ${BROKER_CORS_ORIGINS:-}
       BROKER_FX_PAISE_PER_USD: ${BROKER_FX_PAISE_PER_USD:?set the owner exchange-rate setting}
       BROKER_DATABASE_URL_FILE: /run/secrets/broker_app_database_url
       OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key

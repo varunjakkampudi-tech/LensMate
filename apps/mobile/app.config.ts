@@ -63,6 +63,8 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
+    // Set only for the browser build served under a path, for example /app. Unset keeps the root path.
+    ...(process.env.EXPO_BASE_URL ? { baseUrl: process.env.EXPO_BASE_URL } : {}),
   },
   extra: {
     eas: {
