@@ -14,7 +14,7 @@ import { Bubble, WaveBars, type Message } from "../src/assistant/message-parts";
 import { RequestCancelled } from "../src/ai/assistant";
 import { RunGuard } from "../src/ai/run-guard";
 import { aiErrorText } from "../src/ai/assistant";
-import { listenForStop, speak, stopSpeaking } from "../src/ai/speech";
+import { listenForStop, speak, stopSpeaking, voiceInputUnavailableText } from "../src/ai/speech";
 import { NothingToSummarise, summariseConversation } from "../src/ai/summary";
 import { useMicSession } from "../src/ai/use-voice";
 import { readBrokerConfig } from "../src/broker-config";
@@ -220,7 +220,7 @@ export default function AssistantScreen() {
         ? "Speaking…"
         : mic.available
           ? "Ready · microphone off"
-          : "Microphone not available in this browser · type your question";
+          : voiceInputUnavailableText();
   const statusColor = listening ? c.danger : busy ? c.accent2 : speaking ? c.accent : c.muted;
   const providerLabel =
     lastAnswer?.source === "openrouter"
@@ -449,7 +449,7 @@ export default function AssistantScreen() {
           accessibilityRole="button"
           accessibilityLabel={
             !mic.available
-              ? "Microphone not available in this browser"
+              ? voiceInputUnavailableText()
               : listening
                 ? "Stop listening, microphone on"
                 : "Start listening, microphone off"

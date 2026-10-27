@@ -40,10 +40,11 @@ must show the wearer when camera or conversation-assistance capture is active.
 The app currently uses the virtual device implementation in `tools/simulator`. The app has no real glasses firmware or
 Bluetooth/Wi-Fi transport. The protocol in `packages/protocol/proto/lensmate/v1/link.proto` covers device identity,
 button events, capture indicators, sessions, and acknowledgements; it does not transfer image, video, or audio data.
-The phone can capture and ask about a photo using its own camera and supports spoken questions using the phone
-microphone and speaker. It does not yet receive media from glasses, return answers to a glasses speaker, or persist
-glasses captures. There is no wake-word listener, conversation-assistance mode, consent-based person recognition, or
-Spotify integration.
+The phone can capture and ask about a photo using its own camera. Browser builds can accept spoken questions using the
+browser speech API; native builds have on-device speech output, while native speech input remains disabled pending
+local-recognition verification on real phones. The app does not yet receive media from glasses, return answers to a
+glasses speaker, or persist glasses captures. There is no wake-word listener, conversation-assistance mode,
+consent-based person recognition, or Spotify integration.
 
 Treat these as gaps, not as supported hardware behavior. Select and validate the camera, compute platform, radio, battery,
 and frame before committing to hardware-specific resolution, video mode, wireless transport, or runtime claims.

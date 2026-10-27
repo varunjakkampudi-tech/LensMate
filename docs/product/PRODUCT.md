@@ -60,8 +60,10 @@ encrypted storage, controls, and future connections to services such as Spotify.
 
 ## Current implementation
 
-- The mobile app supports phone-camera photo questions, voice questions through the phone, basic encrypted personal
-  notes, device status, and diagnostics.
+- The mobile app supports phone-camera photo questions, typed questions, basic encrypted personal notes, device status,
+  and diagnostics. Browser builds can use browser speech recognition. Native builds can speak answers through the phone's
+  system audio, but voice input remains disabled pending local-recognition verification on real phones; there is no
+  direct glasses-speaker route yet.
 - Glasses currently exist only as a virtual development device. There is no real glasses firmware or wireless link.
 - The current protocol does not transfer photo, video, or audio payloads from glasses.
 - The broker provides authenticated AI requests and privacy and spend safeguards. It does not implement continuous

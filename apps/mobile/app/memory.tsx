@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Image, View } from "react-native";
 import { aiErrorText, askText } from "../src/ai/assistant";
 import { useMicSession } from "../src/ai/use-voice";
+import { voiceInputUnavailableText } from "../src/ai/speech";
 import { relevantNotes } from "../src/memory/search";
 import {
   deleteAll,
@@ -103,6 +104,7 @@ export default function MemoryScreen() {
             label={mic.listening !== null ? "Stop dictation" : "Dictate note"}
             tone="ghost"
             icon="mic"
+            disabled={!mic.available}
             onPress={() => {
               if (mic.listening !== null) {
                 mic.stop();
@@ -113,6 +115,11 @@ export default function MemoryScreen() {
               );
             }}
           />
+          {!mic.available ? (
+            <Body muted size={14}>
+              {voiceInputUnavailableText()}
+            </Body>
+          ) : null}
           {mic.partial !== "" ? (
             <Body muted size={14}>
               {mic.partial}

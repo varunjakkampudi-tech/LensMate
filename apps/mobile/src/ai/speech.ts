@@ -14,7 +14,7 @@ import {
  * holds a microphone session; speaking can be interrupted at any time.
  * Chrome's recognition sends audio to Google for transcription; the cloud notice says so.
  * Native phones speak through expo-speech, which uses the device's own text-to-speech engine (no cloud route).
- * Native listening is not built: it needs an on-device recogniser verified on a phone (see docs/decisions/0001).
+ * Native listening is implemented but disabled pending on-device verification on a phone (see docs/decisions/0001).
  */
 const locale = (lang: Lang) => LANGS[lang].locale;
 
@@ -70,6 +70,13 @@ export function canListen(): boolean {
 
 export function canSpeak(): boolean {
   return isNative() || (Platform.OS === "web" && typeof speechSynthesis !== "undefined");
+}
+
+/** Clear, platform-specific explanation shown when voice input is unavailable. */
+export function voiceInputUnavailableText(): string {
+  return isNative()
+    ? "Voice input isn't enabled on this phone build yet; type your question instead."
+    : "Voice input isn't available in this browser; type your question instead.";
 }
 
 export interface Listening {

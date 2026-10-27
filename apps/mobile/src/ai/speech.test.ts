@@ -1,6 +1,6 @@
 import * as Speech from "expo-speech";
 import { LANGS } from "../ui/prefs";
-import { canSpeak, listen, speak, stopSpeaking } from "./speech";
+import { canSpeak, listen, speak, stopSpeaking, voiceInputUnavailableText } from "./speech";
 
 jest.mock("expo-speech-recognition", () => ({ ExpoSpeechRecognitionModule: {} }));
 
@@ -35,6 +35,12 @@ beforeEach(() => {
 describe("native speech output", () => {
   it("is available on a phone", () => {
     expect(canSpeak()).toBe(true);
+  });
+
+  it("explains that native voice input is disabled pending device verification", () => {
+    expect(voiceInputUnavailableText()).toBe(
+      "Voice input isn't enabled on this phone build yet; type your question instead.",
+    );
   });
 
   it("speaks with the language locale and rate, stopping anything already queued", () => {
