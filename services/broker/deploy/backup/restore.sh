@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restores an encrypted ledger backup into a NEW, EMPTY database (BLOCKER-006). It verifies the integrity tag before
+# Restores an encrypted ledger backup into a NEW, EMPTY database. It verifies the integrity tag before
 # decrypting, refuses a target that already holds ledger tables, and requires the owner to type the target name.
 # After a restore, run the migration (owner role) to re-apply the application and admin grants.
 #

@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 /**
- * Ledger schema and role setup (BLOCKER-006 items 1, 3, 6 and 7). Three roles, each with only the rights it needs:
+ * Ledger schema and role setup. Three roles, each with only the rights it needs:
  * - the owner (migrator) role creates tables and grants rights. It runs `pnpm migrate` only, never the broker;
  * - the application role (BROKER_APP_ROLE) records reservations and spend, reads devices, registers devices and redeems
  *   enrolment codes. It cannot issue codes, revoke devices, delete rows, change the schema, or lower recorded spend;

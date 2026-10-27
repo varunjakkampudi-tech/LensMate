@@ -2,7 +2,7 @@ import type { DeviceStore } from "./devices.js";
 import { issueEnrolmentCode } from "./devices.js";
 
 /**
- * Owner commands for devices (BLOCKER-006 item 3). Each command returns the text to print. The enrolment code is
+ * Owner commands for devices. Each command returns the text to print. The enrolment code is
  * printed once and never stored in clear. Device secrets are never printed, because the broker does not keep them.
  */
 /** An owner-facing error. Its message is fixed text written by this module; it never includes a secret or a URL. */

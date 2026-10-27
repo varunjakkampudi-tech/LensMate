@@ -36,7 +36,7 @@ const config: ExpoConfig = {
     output: "single",
     name: "LensMate",
     shortName: "LensMate",
-    description: "Smart-glasses help for seeing, hearing and talking. Works in your browser.",
+    description: "AI glasses and a private phone companion for capture, questions and memory.",
     lang: "en",
     display: "standalone",
     orientation: "portrait",
@@ -64,7 +64,7 @@ const config: ExpoConfig = {
       "expo-camera",
       {
         cameraPermission:
-          "LensMate uses the camera only while the See screen is open, to answer questions about what you point it at.",
+          "LensMate uses the camera only while Capture and ask is open, to answer questions about what you point it at.",
         microphonePermission:
           "LensMate uses the microphone only when you press to speak or start a voice session.",
       },
@@ -77,7 +77,6 @@ const config: ExpoConfig = {
           "LensMate turns your speech into text on this phone when you press to speak.",
       },
     ],
-    "expo-notifications",
     // Encrypts the memory database (native-store.ts). Applies only to a native build made after this change.
     ["expo-sqlite", { useSQLCipher: true }],
   ],

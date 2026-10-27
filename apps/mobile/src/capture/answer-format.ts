@@ -1,5 +1,4 @@
-import type { LiveState } from "../vision/live-session";
-import type { SeeAnswer } from "./session";
+import type { CaptureAnswer } from "./session";
 
 export interface Answer {
   readonly title: string;
@@ -42,22 +41,6 @@ export function parse(raw: string): Parsed {
 }
 
 /** "MOCK" is shown whenever no AI provider was paid for this answer. */
-export function metaOf(a: SeeAnswer): string {
+export function metaOf(a: CaptureAnswer): string {
   return `${a.source === "mock" ? "MOCK · " : ""}${(a.latencyMs / 1000).toFixed(1)} s · ₹${(a.costPaise / 100).toFixed(2)}`;
-}
-
-/** One plain line for the Live Vision panel. It says what is happening and why it stopped. */
-export function liveStatusText(state: LiveState): string {
-  switch (state.phase) {
-    case "idle":
-      return "Not running. The camera sends nothing until you press Start.";
-    case "running":
-      return `Running. ${state.framesAnalysed} analysed, ${state.invalidFrames} unusable frames skipped.`;
-    case "stopped":
-      return state.message ?? "Stopped. No more frames are sent.";
-    case "budget_reached":
-    case "timed_out":
-    case "error":
-      return state.message ?? "Stopped.";
-  }
 }

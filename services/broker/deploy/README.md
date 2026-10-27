@@ -2,8 +2,8 @@
 
 Status: PREPARED. The agent has not built the image, started the stack, connected to the VPS, or contacted any
 provider. Every step below that changes a server, creates a secret, or starts billable calls needs the owner's
-explicit approval for that step. The VPS audit is in `PREDEPLOYMENT-AUDIT.md`, and it is incomplete until the owner
-sends the read-only inventory.
+explicit approval for that step. Before deploying, complete the read-only VPS inventory and confirm its findings with
+the owner. Record the host, operating system, open ports, reverse proxy, disk and memory capacity, and backup status.
 
 ## What is in this folder
 
@@ -121,7 +121,8 @@ scratch copy with that one check removed. The owner must run these scripts on th
 - Use the compose project name `lensmate-broker`. Do not share containers, networks, volumes or databases with
   OraOne, CareerScope or FixHub24.
 - The Hostinger VPS currently runs OraOne. Do not modify its containers, files or firewall rules.
-- Confirm the port and resource plan from the read-only inventory (`PREDEPLOYMENT-AUDIT.md`, section 7) first.
+- Confirm the port and resource plan from the read-only VPS inventory first. Do not infer available capacity or assume
+  a port is unused; inspect the host and agree the plan with the owner.
 
 ## Owner decisions
 

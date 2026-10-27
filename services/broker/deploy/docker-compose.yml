@@ -1,4 +1,4 @@
-# Broker stack for the single Hostinger VPS (BLOCKER-006). Not deployed by the agent; owner approval is required.
+# Broker stack for the single Hostinger VPS. Production changes require the owner's explicit approval.
 # Isolation: its own project name, its own networks and volume, no published database port, and no shared
 # containers with other Viswatra products. Secrets come from files under ./secrets (not committed).
 name: lensmate-broker

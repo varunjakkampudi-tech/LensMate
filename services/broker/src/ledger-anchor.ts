@@ -23,7 +23,7 @@ import {
 } from "./budget.js";
 
 /**
- * Spend continuity (BLOCKER-006, fail-closed restoration).
+ * Spend continuity through fail-closed restoration.
  *
  * The ledger in PostgreSQL can be rolled back by restoring an old backup or by a wrong manual change. Nothing inside the
  * database can detect that, because an old copy is internally consistent. So after every change to recorded spend the

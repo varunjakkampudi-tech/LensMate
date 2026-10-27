@@ -1,19 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import {
-  READ_TEXT_REQUEST,
-  TRANSLATE_TEXT_REQUEST,
-  aiErrorText,
-  askVision,
-} from "../src/ai/assistant";
+import { READ_TEXT_REQUEST, aiErrorText, askVision } from "../src/ai/assistant";
 import { speak, stopSpeaking } from "../src/ai/speech";
 import { CameraPreview, pickImageFile, type CameraHandle } from "../src/capture/camera";
 import { latestSavedPhoto } from "../src/memory/last-photo";
 import { listItems, memoryErrorText, saveItem } from "../src/memory/vault";
-import { createLiveSession } from "../src/vision/create-live-session";
-import type { LiveState, LiveVisionSession } from "../src/vision/live-session";
-import { SeeSession, type SeeAnswer, type SeeState } from "../src/see/session";
-import { FORMAT, liveStatusText, metaOf, parse, type Answer } from "../src/see/answer-format";
+import { CaptureSession, type CaptureAnswer, type CaptureState } from "../src/capture/session";
+import { FORMAT, metaOf, parse, type Answer } from "../src/capture/answer-format";
 import { useCapture } from "../src/ui/capture-session";
 import { Icon } from "../src/ui/icon";
 import { Btn, Card, Field, Notice } from "../src/ui/kit";
@@ -24,10 +17,9 @@ import { FONTS, useTheme } from "../src/ui/theme";
 const QUICK_CHIPS = [
   { label: "Describe what you see", request: "Describe what you see", testID: "quick-describe" },
   { label: "Read all the text", request: READ_TEXT_REQUEST, testID: "quick-read" },
-  { label: "Translate the text", request: TRANSLATE_TEXT_REQUEST, testID: "quick-translate" },
 ] as const;
 
-/** See – Photo & Ask: capture or upload, ask, follow up, read aloud, save. Mistake checks live under More. */
+/** Capture and ask: capture or upload a photo, ask about it, read the answer aloud, and save it. */
 export default function CaptureScreen() {
   const { c } = useTheme();
   const { prefs } = usePrefs();
@@ -40,9 +32,9 @@ export default function CaptureScreen() {
   const captureRef = useRef(capture);
   captureRef.current = capture;
 
-  const sessionRef = useRef<SeeSession | null>(null);
+  const sessionRef = useRef<CaptureSession | null>(null);
   if (sessionRef.current === null) {
-    sessionRef.current = new SeeSession({
+    sessionRef.current = new CaptureSession({
       startCamera: () => {
         token.current = captureRef.current.begin("camera", "Photo & Ask", () =>
           sessionRef.current?.cancelCamera(),
@@ -50,7 +42,7 @@ export default function CaptureScreen() {
       },
       capture: () => camera.current?.capture() ?? Promise.resolve(null),
       releaseCamera: () => captureRef.current.end(token.current),
-      ask: async (image, question, signal): Promise<SeeAnswer> => {
+      ask: async (image, question, signal): Promise<CaptureAnswer> => {
         const p = prefsRef.current;
         const a = await askVision(question, image, p.language, p.detailedDescriptions);
         if (signal.aborted) {
@@ -68,63 +60,51 @@ export default function CaptureScreen() {
   }
   const session = sessionRef.current;
 
-  // Live Vision reads frames from the same camera preview. It has its own controller and never starts by itself.
-  const liveRef = useRef<LiveVisionSession | null>(null);
-  if (liveRef.current === null) {
-    liveRef.current = createLiveSession(() => camera.current?.capture() ?? Promise.resolve(null));
-  }
-  const liveSession = liveRef.current;
-
-  const [see, setSee] = useState<SeeState>(session.state);
-  const [vision, setVision] = useState<LiveState>(liveSession.state);
-  const [visionEvery, setVisionEvery] = useState(5000);
+  const [captureState, setCaptureState] = useState<CaptureState>(session.state);
   const [question, setQuestion] = useState("");
   const [saved, setSaved] = useState(false);
   const [more, setMore] = useState(false);
   const [checks, setChecks] = useState("Is the stove switched off?\nIs the door locked?");
 
-  useEffect(() => session.subscribe(setSee), [session]);
-  useEffect(() => liveSession.subscribe(setVision), [liveSession]);
-  // Leaving the screen stops speech, any request, live analysis, and releases the camera.
+  useEffect(() => session.subscribe(setCaptureState), [session]);
+  // Leaving the screen stops speech, any request, and releases the camera.
   useEffect(() => () => session.end(), [session]);
-  useEffect(() => () => liveSession.stop(), [liveSession]);
 
   // The answer's own parse happens once per answer, not on every render.
   const answer: Answer | null = useMemo(() => {
-    if (see.answer === null) {
+    if (captureState.answer === null) {
       return null;
     }
-    const p = parse(see.answer.text);
-    return { title: p.title, text: p.text, followups: p.followups, meta: metaOf(see.answer) };
-  }, [see.answer]);
+    const p = parse(captureState.answer.text);
+    return {
+      title: p.title,
+      text: p.text,
+      followups: p.followups,
+      meta: metaOf(captureState.answer),
+    };
+  }, [captureState.answer]);
 
   // A new answer is unsaved, and reads aloud when the user has chosen auto-speak. The refs give the effect the
   // current phase, preference and session, so it runs only when a new answer arrives.
-  const seeRef = useRef(see);
-  seeRef.current = see;
+  const captureStateRef = useRef(captureState);
+  captureStateRef.current = captureState;
   useEffect(() => {
     setSaved(false);
     if (
-      seeRef.current.phase === "answered" &&
-      seeRef.current.answer !== null &&
+      captureStateRef.current.phase === "answered" &&
+      captureStateRef.current.answer !== null &&
       prefsRef.current.autoSpeak
     ) {
       sessionRef.current?.speak();
     }
     // Only a new answer triggers this; re-renders must not read it again.
-  }, [see.answer]);
+  }, [captureState.answer]);
 
-  const photo = see.photo;
-  const live = see.phase === "previewing";
-  const busy = see.phase === "thinking";
-  // Live Vision needs the open preview. Closing the preview (take photo, cancel, leave) stops it.
-  useEffect(() => {
-    if (!live) {
-      liveSession.stop();
-    }
-  }, [live, liveSession]);
+  const photo = captureState.photo;
+  const live = captureState.phase === "previewing";
+  const busy = captureState.phase === "thinking";
   const [saveError, setSaveError] = useState<string | null>(null);
-  const error = see.message ?? saveError;
+  const error = captureState.message ?? saveError;
 
   const onCamError = (m: string) => session.reportCameraError(m);
 
@@ -194,9 +174,6 @@ export default function CaptureScreen() {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={{ padding: 18, gap: 14, paddingBottom: 40 }}
     >
-      {!prefs.features.vision ? (
-        <Notice tone="warn">Vision help is switched off in Profile → Features.</Notice>
-      ) : null}
       <Text
         accessibilityLiveRegion="polite"
         testID="camera-status"
@@ -283,7 +260,6 @@ export default function CaptureScreen() {
             testID="start-camera-button"
             label={photo === null ? "Camera" : "Retake"}
             icon="camera"
-            disabled={!prefs.features.vision}
             onPress={() => session.start()}
           />
         )}
@@ -293,7 +269,6 @@ export default function CaptureScreen() {
             label="Upload"
             tone="ghost"
             icon="upload"
-            disabled={!prefs.features.vision}
             onPress={() => pickImageFile((d) => session.setPhoto(d))}
           />
         ) : null}
@@ -303,92 +278,10 @@ export default function CaptureScreen() {
             label="Last photo"
             tone="ghost"
             icon="camera"
-            disabled={!prefs.features.vision}
             onPress={openLastPhoto}
           />
         ) : null}
       </View>
-
-      {live ? (
-        <Card style={{ gap: 10 }}>
-          <Text style={{ color: c.text, fontFamily: FONTS.display, fontWeight: "700" }}>
-            Live Vision
-          </Text>
-          <Text style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 13, lineHeight: 19 }}>
-            Sends one still frame at a time while running. It stops after 2 minutes, 40 frames, a
-            spending limit, or when you press Stop. Nothing runs in the background.
-          </Text>
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            {[3000, 5000, 10000].map((ms) => (
-              <Pressable
-                key={ms}
-                accessibilityRole="button"
-                accessibilityLabel={`Analyse every ${ms / 1000} seconds`}
-                accessibilityState={{
-                  selected: visionEvery === ms,
-                  disabled: vision.phase === "running",
-                }}
-                testID={`live-interval-${ms / 1000}`}
-                disabled={vision.phase === "running"}
-                onPress={() => setVisionEvery(ms)}
-                style={{
-                  minHeight: 48,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 12,
-                  backgroundColor: visionEvery === ms ? c.accent : c.surface,
-                  opacity: vision.phase === "running" ? 0.5 : 1,
-                }}
-              >
-                <Text
-                  style={{
-                    color: visionEvery === ms ? "#fff" : c.text,
-                    fontFamily: FONTS.body,
-                    fontSize: 13,
-                    fontWeight: "600",
-                  }}
-                >
-                  Every {ms / 1000} s
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Btn
-            testID="live-start-button"
-            label={vision.phase === "running" ? "Stop Live Vision" : "Start Live Vision"}
-            icon="camera"
-            tone={vision.phase === "running" ? "ghost" : "primary"}
-            onPress={() => {
-              if (vision.phase === "running") {
-                liveSession.stop();
-                return;
-              }
-              liveSession.start({
-                intervalMs: visionEvery,
-                question: "Describe what is in front of me in one or two short sentences.",
-              });
-            }}
-          />
-          <Text
-            testID="live-status"
-            style={{ color: c.muted, fontFamily: FONTS.body, fontSize: 12 }}
-          >
-            {liveStatusText(vision)}
-          </Text>
-          {vision.answer === null ? null : (
-            <View testID="live-answer" style={{ gap: 4 }}>
-              <Text
-                style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 11, fontWeight: "700" }}
-              >
-                {vision.answer.source === "mock" ? "MOCK RESULT · NO AI CALLED" : "LIVE RESULT"}
-              </Text>
-              <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 14, lineHeight: 20 }}>
-                {vision.answer.text}
-              </Text>
-            </View>
-          )}
-        </Card>
-      ) : null}
 
       <View
         style={{
@@ -495,9 +388,9 @@ export default function CaptureScreen() {
           </Card>
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
             {pill(
-              see.phase === "speaking" ? "Stop" : "Read Aloud",
+              captureState.phase === "speaking" ? "Stop" : "Read Aloud",
               "speaker",
-              () => (see.phase === "speaking" ? session.interrupt() : session.speak()),
+              () => (captureState.phase === "speaking" ? session.interrupt() : session.speak()),
               "read-aloud-button",
             )}
             {pill(

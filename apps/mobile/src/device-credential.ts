@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 /**
- * The phone's own broker credential (BLOCKER-006). It is issued once, when the owner's single-use enrolment code is
+ * The phone's own broker credential. It is issued once, when the owner's single-use enrolment code is
  * exchanged, and it is kept only in device secure storage. No broker secret is shared across devices or built into
  * the app. The secret is never logged, shown, or returned to the UI.
  *

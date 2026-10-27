@@ -1,7 +1,7 @@
 name: Dependency audit
 
-# Reports high and critical advisories on a schedule and on demand. It does not block pushes yet:
-# see the open items in docs/product/ROADMAP.md. When the owner decides, the same command moves into the quality job.
+# Reports high and critical advisories on a schedule and on demand. The quality job also runs this audit.
+# The accepted exception and its recheck date are recorded in docs/governance/RISK_EXCEPTIONS.md.
 
 on:
   schedule:

@@ -2,7 +2,7 @@
   "name": "lensmate",
   "version": "0.0.0",
   "private": true,
-  "description": "LensMate AI smart glasses software track (app, protocol, core, broker, simulator, firmware, e2e)",
+  "description": "Personal AI glasses and encrypted phone companion",
   "packageManager": "pnpm@12.5.1",
   "engines": {
     "node": ">=22"
@@ -19,9 +19,7 @@
     "knip": "knip",
     "check:schema": "pnpm -F @lensmate/protocol check:schema",
     "check:expo": "pnpm -F @lensmate/mobile exec expo config --type public",
-    "audit:high": "pnpm audit --audit-level=high --ignore GHSA-86w9-cpqp-85rv",
-    "measure:import": "node tools/measurement-import/dist/cli.js",
-    "measure:dry-run": "pnpm -F @lensmate/mobile exec jest src/measurement-dry-run.test.ts --runInBand"
+    "audit:high": "pnpm audit --audit-level=high --ignore GHSA-86w9-cpqp-85rv"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

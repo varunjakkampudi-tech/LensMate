@@ -1,25 +1,13 @@
 import { Linking } from "react-native";
-import { askText, askTextStreamed, RequestCancelled, translate, type AiAnswer } from "./assistant";
+import { askText, askTextStreamed, RequestCancelled, type AiAnswer } from "./assistant";
 import { relevantNotes } from "../memory/search";
 import { listItems, saveItem } from "../memory/vault";
-import { LANGS, type Lang, type Tone } from "../ui/prefs";
+import { type Lang, type Tone } from "../ui/prefs";
 import { toneInstruction } from "./assistant";
 import { MAX_CALLS, validateCall, type ToolCall } from "./tool-calls";
 
-/**
- * Multi-agent task runner. A planner agent splits the user's goal into at most four tool steps; specialist agents
- * (researcher, memory keeper, scheduler, action agent, translator) run them; a writer agent composes the result.
- * Phone actions are never executed by the agent: they are returned as proposals the user must tap to confirm.
- * No PC control, no background camera or microphone, and nothing outside the user's request.
- */
-type AgentName =
-  | "Planner"
-  | "Researcher"
-  | "Memory keeper"
-  | "Scheduler"
-  | "Action agent"
-  | "Translator"
-  | "Writer";
+/** Plans a small number of user-requested memory or phone actions. Phone actions always wait for the user's tap. */
+type AgentName = "Planner" | "Researcher" | "Memory keeper" | "Action agent" | "Writer";
 
 export interface AgentStep {
   readonly agent: AgentName;
@@ -44,11 +32,10 @@ export interface AgentResult {
 
 const PLANNER = [
   "You are the planner of a smart-glasses assistant. Break the user's goal into at most 4 tool calls. Tools:",
-  'recall_memory{"query"} (search the user\'s saved notes); save_note{"title","text"}; set_reminder{"title","minutes"};',
-  `translate{"text","from","to"} (language codes: ${Object.keys(LANGS).join(", ")});`,
+  'recall_memory{"query"} (search the user\'s saved notes); save_note{"title","text"};',
   'phone_action{"kind":"call"|"sms"|"email"|"maps"|"web","target","body"} (only propose, the user confirms).',
   'Reply with JSON only: {"calls":[{"tool":"...","input":{...}}]}. Use an empty list if no tool is needed.',
-  "Plan save_note, set_reminder or phone_action ONLY when the user explicitly asks for them. For general questions you can answer yourself, plan no tools.",
+  "Plan save_note or phone_action ONLY when the user explicitly asks for them. For general questions you can answer yourself, plan no tools.",
   "Never plan actions that identify people, record in the background, control a computer, or pay money.",
 ].join(" ");
 
@@ -179,34 +166,6 @@ export async function runAgentTask(
           summary: `Saved note “${str(input.title)}”`,
           status: "done",
         });
-      } else if (call.tool === "set_reminder") {
-        const minutes = Math.max(1, Number(input.minutes) || 30);
-        await saveItem({
-          kind: "reminder",
-          title: str(input.title) || goal,
-          text: "",
-          dueAt: Date.now() + minutes * 60_000,
-        });
-        findings.push(
-          `Done: reminder "${str(input.title)}" set for ${new Date(Date.now() + minutes * 60_000).toLocaleTimeString()}.`,
-        );
-        step({
-          agent: "Scheduler",
-          summary: `Reminder in ${minutes} min: ${str(input.title)}`,
-          status: "done",
-        });
-      } else if (call.tool === "translate") {
-        const code = (v: unknown, fallback: Lang): Lang =>
-          str(v) in LANGS ? (str(v) as Lang) : fallback;
-        const result = await translate(
-          str(input.text),
-          code(input.from, "en"),
-          code(input.to, lang),
-          signal,
-        );
-        charge(result.answer);
-        findings.push(`Translation: ${result.translation}`);
-        step({ agent: "Translator", summary: result.translation, status: "done" });
       } else if (call.tool === "phone_action") {
         const action = actionUrl(str(input.kind), str(input.target), str(input.body));
         if (action !== null) {

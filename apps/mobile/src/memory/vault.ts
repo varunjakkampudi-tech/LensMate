@@ -3,11 +3,11 @@ import { MemoryStoreError } from "./memory-error";
 import { nativeMemory } from "./native-store";
 
 /**
- * On-phone memory (F4 to F6): notes, saved captures, answers and reminders. Only items the user chooses to save are
+ * On-phone memory: notes, saved captures and answers. Only items the user chooses to save are
  * kept. On web each item is encrypted with AES-GCM under a non-extractable key that never leaves this browser.
  * On a phone items are stored in an SQLCipher database whose key sits in device secure storage (native-store.ts).
  */
-/** "state" rows hold app settings such as automations. They are never listed as memory items. */
+/** Internal state rows are not shown as personal memory items. */
 export type MemoryKind = "note" | "capture" | "answer" | "reminder" | "debrief" | "state";
 
 export interface MemoryItem {

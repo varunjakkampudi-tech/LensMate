@@ -11,20 +11,12 @@ export { SpendCap } from "./spend-cap.js";
 export type { SpendDecision } from "./spend-cap.js";
 export {
   IDLE_STATE,
-  SILENCE_TIMEOUT_MS,
-  SPEECH_STOP_TARGET_MS,
-  TRANSLATION_START_ANNOUNCEMENT,
   applyCutoff,
-  applySilenceTimeout,
   captureSessionForEffect,
   isCapturing,
-  listeningSessionOf,
   onGesture,
-  onVoiceCommand,
   speechEnded,
   speechStarted,
-  startListeningSession,
-  stopListeningSession,
 } from "./glasses-state.js";
 export type {
   Gesture,
@@ -32,19 +24,7 @@ export type {
   GlassesMode,
   GlassesState,
   GlassesTransition,
-  ListeningSessionStart,
-  ListeningSessionType,
-  VoiceCommand,
-  VoiceCommandResult,
 } from "./glasses-state.js";
-export {
-  checkSilenceTimer,
-  recordSpeech,
-  silenceRemainingMs,
-  silentForMs,
-  startSilenceTimer,
-} from "./silence-timer.js";
-export type { SilenceCheck, SilenceTimer } from "./silence-timer.js";
 export { ProviderGateway, ProviderTimeout } from "./provider-gateway.js";
 export type {
   GatewayErrorCode,
@@ -60,41 +40,6 @@ export {
   sweepTemporaryItems,
 } from "./retention.js";
 export type { TemporaryItem } from "./retention.js";
-export * from "./measurement/targets.js";
-export {
-  captureToPhoneReport,
-  evaluateByLanguage,
-  interruptionCriterionMet,
-  interruptionReport,
-  intervalMs,
-  latencyCriterionMet,
-  latencyTotalReport,
-} from "./measurement/evaluate.js";
-export type { LanguageReport, MarkName, Marks, MeasuredAttempt } from "./measurement/evaluate.js";
-export {
-  MEASUREMENT_COLUMNS,
-  importMeasurementCsv,
-  serializeMeasurementCsv,
-  summarizeEvidence,
-} from "./measurement/import.js";
-export type {
-  EvidenceSummary,
-  ImportResult,
-  MeasurementRecord,
-  NetworkType,
-  Outcome,
-  RejectedRow,
-  RunByRole,
-} from "./measurement/import.js";
-export { parseCsv } from "./measurement/csv.js";
-export { calculateSpend } from "./measurement/spend.js";
-export type {
-  PerRequestCost,
-  PriceEntry,
-  RequestAssumption,
-  SpendCalculation,
-  SpendCalculationInput,
-} from "./measurement/spend.js";
 export {
   BrokerError,
   enrolDevice,

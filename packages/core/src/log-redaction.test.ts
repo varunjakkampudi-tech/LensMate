@@ -19,7 +19,7 @@ describe("toSafeLogEntry", () => {
       timestamp: "2026-10-20T00:00:00Z",
       level: "error",
       requestId: "req-1",
-      feature: "translation",
+      feature: "assistant",
       durationMs: 120,
       errorCode: "PROVIDER_TIMEOUT",
       transcript: SYNTHETIC.transcript,

@@ -1,6 +1,6 @@
 /**
  * Retention for temporary captures.
- * Temporary items (photos, audio, frames, translation text) live on the phone only and expire after
+ * Temporary items (photos, audio, frames, assistant text) live on the phone only and expire after
  * 24 hours or at session end, whichever comes first. Saved notes and memories are not handled here:
  * they stay until the user deletes them.
  */

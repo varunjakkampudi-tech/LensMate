@@ -109,10 +109,20 @@
                 "INDICATOR_REASON_UNSPECIFIED": 0,
                 "INDICATOR_REASON_IDLE": 1,
                 "INDICATOR_REASON_PUSH_TO_TALK": 2,
-                "INDICATOR_REASON_PHOTO_QUESTION": 3,
-                "INDICATOR_REASON_TRANSLATION": 4,
-                "INDICATOR_REASON_CAPTION": 5
-              }
+                "INDICATOR_REASON_PHOTO_QUESTION": 3
+              },
+              "reserved": [
+                [
+                  4,
+                  4
+                ],
+                [
+                  5,
+                  5
+                ],
+                "INDICATOR_REASON_TRANSLATION",
+                "INDICATOR_REASON_CAPTION"
+              ]
             },
             "SessionState": {
               "fields": {
@@ -130,10 +140,20 @@
               "values": {
                 "SESSION_TYPE_UNSPECIFIED": 0,
                 "SESSION_TYPE_PUSH_TO_TALK": 1,
-                "SESSION_TYPE_PHOTO_QUESTION": 2,
-                "SESSION_TYPE_TRANSLATION": 3,
-                "SESSION_TYPE_CAPTION": 4
-              }
+                "SESSION_TYPE_PHOTO_QUESTION": 2
+              },
+              "reserved": [
+                [
+                  3,
+                  3
+                ],
+                [
+                  4,
+                  4
+                ],
+                "SESSION_TYPE_TRANSLATION",
+                "SESSION_TYPE_CAPTION"
+              ]
             },
             "SessionPhase": {
               "values": {

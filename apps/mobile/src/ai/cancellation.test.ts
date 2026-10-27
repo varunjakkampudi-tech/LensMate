@@ -92,10 +92,10 @@ describe("cancelling a request", () => {
     expect(steps).toEqual([]);
   });
 
-  it("passes the cancel signal to the translate request, so it can be stopped", async () => {
+  it("passes the cancel signal to the memory answer request, so it can be stopped", async () => {
     transport
       .mockResolvedValueOnce(
-        reply('{"calls":[{"tool":"translate","input":{"text":"hi","from":"en","to":"te"}}]}'),
+        reply('{"calls":[{"tool":"recall_memory","input":{"query":"last time"}}]}'),
       )
       .mockImplementationOnce(hangUntilAborted())
       .mockResolvedValue(reply("ok"));
@@ -105,8 +105,8 @@ describe("cancelling a request", () => {
     setTimeout(() => controller.abort(), 5);
 
     await expect(pending).rejects.toBeInstanceOf(RequestCancelled);
-    const translateSignal = transport.mock.calls[1]?.[1] as AbortSignal;
-    expect(translateSignal.aborted).toBe(true);
+    const answerSignal = transport.mock.calls[1]?.[1] as AbortSignal;
+    expect(answerSignal.aborted).toBe(true);
   });
 
   it("still returns a normal answer when nothing is cancelled", async () => {

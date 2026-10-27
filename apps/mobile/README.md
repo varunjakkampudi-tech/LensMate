@@ -1,6 +1,8 @@
 # LensMate mobile app
 
-Expo Router app for iOS, Android, and web. The app includes home, assistant, photo-and-ask, translation, memory, profile, diagnostics, enrolment, measurement, simulator, and demo routes. Native projects are generated through Expo; do not hand-edit generated `ios/` or `android/` directories.
+Expo Router phone companion for iOS, Android, and web. The core app surface is device status, photo capture and ask,
+spoken assistant, private memory, and diagnostics. The virtual glasses route is a development tool. Native projects are
+generated through Expo; do not hand-edit generated `ios/` or `android/` directories.
 
 ## Local development
 
@@ -29,4 +31,4 @@ pnpm -F @lensmate/mobile test
 
 The web icons are used by the manifest, runtime head tags, and service-worker shell; the app icons are referenced by `app.config.ts`.
 
-Open items for the product are listed in [`docs/product/ROADMAP.md`](../../docs/product/ROADMAP.md).
+The product contract is in [`docs/product/PRODUCT.md`](../../docs/product/PRODUCT.md).

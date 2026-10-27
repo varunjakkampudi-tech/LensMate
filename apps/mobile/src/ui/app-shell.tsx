@@ -1,24 +1,22 @@
 import { router, usePathname } from "expo-router";
-import { createElement, useEffect, type ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { runDueAutomations } from "../ai/automations";
-import { listItems, saveItem } from "../memory/vault";
 import { useCapture } from "./capture-session";
 import { useGlasses } from "./glasses";
 import { Icon, type IconName } from "./icon";
 import { FONTS, useTheme } from "./theme";
 
 const TABS: {
-  href: "/" | "/simulator" | "/capture" | "/assistant" | "/profile";
+  href: "/" | "/capture" | "/assistant" | "/memory" | "/profile";
   label: string;
   icon: IconName;
 }[] = [
   { href: "/", label: "Home", icon: "home" },
-  { href: "/simulator", label: "Simulator", icon: "glasses" },
   { href: "/capture", label: "Capture", icon: "camera" },
-  { href: "/assistant", label: "Assistant", icon: "user" },
-  { href: "/profile", label: "Profile", icon: "sliders" },
+  { href: "/assistant", label: "Ask", icon: "user" },
+  { href: "/memory", label: "Memory", icon: "note" },
+  { href: "/profile", label: "Settings", icon: "sliders" },
 ];
 
 /** Brand mark: the blue glasses glyph from the mock-up. */
@@ -155,43 +153,6 @@ function IndicatorBar() {
   );
 }
 
-/** Reminders and automations run while the app is open (checked every 30 s). */
-function useTicker() {
-  useEffect(() => {
-    const notify = (title: string, body: string) => {
-      if (
-        Platform.OS === "web" &&
-        typeof Notification !== "undefined" &&
-        Notification.permission === "granted"
-      ) {
-        new Notification(title, { body });
-      } else if (Platform.OS === "web") {
-        globalThis.alert(`${title}: ${body}`);
-      }
-    };
-    const timer = setInterval(() => {
-      void listItems()
-        .then(async (items) => {
-          for (const item of items) {
-            if (
-              item.kind === "reminder" &&
-              item.done !== true &&
-              item.dueAt !== undefined &&
-              item.dueAt <= Date.now()
-            ) {
-              await saveItem({ ...item, done: true });
-              notify("LensMate reminder", item.title);
-            }
-          }
-        })
-        .catch(() => undefined);
-      // Encrypted notes can be unavailable (Expo Go, lost key). The reminder check then skips silently.
-      void runDueAutomations(notify).catch(() => undefined);
-    }, 30_000);
-    return () => clearInterval(timer);
-  }, []);
-}
-
 /**
  * Height that clears a screen edge (notch, home indicator). Phones use the measured inset. On web, the browser reports
  * the inset as a CSS env() value, which react-native-web passes through unchanged; the cast reflects that.
@@ -204,7 +165,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { c } = useTheme();
   const path = usePathname();
   const insets = useSafeAreaInsets();
-  useTicker();
   const immersive = path.startsWith("/simulator");
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 

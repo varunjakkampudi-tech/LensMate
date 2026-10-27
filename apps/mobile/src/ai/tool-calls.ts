@@ -1,25 +1,13 @@
-import { LANGS } from "../ui/prefs";
-
-/**
- * The tools the planner may call. Research is not here: no verified zero-retention research model exists, so a planned
- * research call is dropped before it can run (see assistant.ts research).
- */
-type ToolName = "recall_memory" | "save_note" | "set_reminder" | "translate" | "phone_action";
+/** The small set of actions the assistant can propose or perform from an explicit user request. */
+type ToolName = "recall_memory" | "save_note" | "phone_action";
 
 export interface ToolCall {
   readonly tool: ToolName;
   readonly input: Record<string, unknown>;
 }
 
-const TOOLS: readonly ToolName[] = [
-  "recall_memory",
-  "save_note",
-  "set_reminder",
-  "translate",
-  "phone_action",
-];
+const TOOLS: readonly ToolName[] = ["recall_memory", "save_note", "phone_action"];
 const ACTION_KINDS = ["call", "sms", "email", "maps", "web"] as const;
-const LANG_CODES: readonly string[] = Object.keys(LANGS);
 
 /** Upper bounds on what the planner may send. A call over a bound is refused, not cut short. */
 export const TOOL_LIMITS = {
@@ -28,8 +16,6 @@ export const TOOL_LIMITS = {
   query: 300,
   target: 320,
   body: 1000,
-  /** One week, in minutes. */
-  minutes: 10080,
 } as const;
 
 type Input = Record<string, unknown>;
@@ -62,36 +48,6 @@ function validInput(tool: ToolName, input: Input): Input | null {
       const title = textField(input, "title", TOOL_LIMITS.title);
       const text = requiredText(input, "text", TOOL_LIMITS.text);
       return title === null || text === null ? null : { title, text };
-    }
-    case "set_reminder": {
-      const title = textField(input, "title", TOOL_LIMITS.title);
-      if (title === null) {
-        return null;
-      }
-      const minutes = input["minutes"];
-      if (
-        minutes !== undefined &&
-        !(
-          Number.isInteger(minutes) &&
-          (minutes as number) >= 1 &&
-          (minutes as number) <= TOOL_LIMITS.minutes
-        )
-      ) {
-        return null;
-      }
-      return minutes === undefined ? { title } : { title, minutes };
-    }
-    case "translate": {
-      const text = requiredText(input, "text", TOOL_LIMITS.text);
-      const from = textField(input, "from", 8);
-      const to = textField(input, "to", 8);
-      if (text === null || from === null || to === null) {
-        return null;
-      }
-      if ((from !== "" && !LANG_CODES.includes(from)) || (to !== "" && !LANG_CODES.includes(to))) {
-        return null;
-      }
-      return { text, from, to };
     }
     case "phone_action": {
       const kind = input["kind"];

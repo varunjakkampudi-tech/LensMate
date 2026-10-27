@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import type { Pool } from "pg";
 
 /**
- * Per-device authentication (BLOCKER-006 item 3). No secret is shared between devices, and none is embedded in the
+ * Per-device authentication. No secret is shared between devices, and none is embedded in the
  * mobile app. A device enrols once with a single-use, short-lived code that the owner issues on the server. The
  * broker then gives the device its own random secret, which it stores only as a SHA-256 hash. Each device can be
  * revoked on its own. The device id is also the quota and accounting key.

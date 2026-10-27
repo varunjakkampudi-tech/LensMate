@@ -25,7 +25,7 @@ import { join } from "node:path";
 jest.setTimeout(120_000);
 
 /**
- * PostgreSQL security tests (BLOCKER-006 items 1, 3 and 4). They run as the application role and the admin role, not
+ * PostgreSQL security tests. They run as the application role and the admin role, not
  * as the owner, so they test what the broker can actually do. Runs only when BROKER_TEST_DATABASE_URL is set. It
  * creates and drops its own database, `broker_security_test`, so it never touches another database.
  */

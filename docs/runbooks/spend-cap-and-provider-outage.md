@@ -20,7 +20,7 @@
 
 1. Set `BROKER_MODE=mock` in `/opt/lensmate/src/.env.production` and run the deploy workflow for `dev` (or the deploy script).
    The broker then makes no provider call.
-2. Record the reason in `docs/product/ROADMAP.md`.
+2. Record the reason in the deployment or incident record.
 
 ## Provider outage
 
@@ -33,4 +33,4 @@
 Live mode needs all of: the owner's approval of the cloud-processing disclosure text; approval of the model list in
 services/broker/src/pricing.ts; approval of the charging rule; `BROKER_PAID_CALLS` set on; `BROKER_OWNER_CAP_CONFIRMATION_PAISE`
 equal to the monthly cap; and the database URL and provider key delivered as server-side secrets. Record each approval in
-`docs/product/ROADMAP.md` with its date.
+the release record with its date.

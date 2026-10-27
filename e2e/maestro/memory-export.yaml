@@ -1,5 +1,5 @@
 # Flow: the memory export button exists (testID memory-export-button).
-# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Authored Maestro flow. Run against the matching local Android development build.
 # Run: maestro test e2e/maestro/memory-export.yaml
 appId: com.viswatra.lensmate
 ---

@@ -7,13 +7,6 @@ import { LANGS, type Lang, type Tone } from "../ui/prefs";
 const TEXT_MODEL = "openai/gpt-4.1-nano";
 const VISION_MODEL = "openai/gpt-4o-mini";
 
-/** Thrown when live web research is requested. No verified research model exists yet, so it is not offered. */
-class ResearchUnavailable extends Error {
-  constructor() {
-    super("Live internet research is not available in this version.");
-    this.name = "ResearchUnavailable";
-  }
-}
 const TIMEOUT_MS = 30_000;
 
 export interface AiAnswer {
@@ -25,7 +18,7 @@ export interface AiAnswer {
 
 export interface LatencyRecord {
   readonly at: number;
-  readonly route: "text" | "vision" | "translate" | "research";
+  readonly route: "text" | "vision";
   readonly latencyMs: number;
   readonly costPaise: number;
   readonly ok: boolean;
@@ -54,13 +47,6 @@ const RULES =
 export const READ_TEXT_REQUEST =
   "Read all the visible text in this image exactly as written, top to bottom and left to right. Keep the original wording, spelling and numbers. If a word is unclear, write [unclear] in its place instead of guessing. If there is no readable text, say that there is none.";
 
-/**
- * Translate visible text (F9). The reply is already written in the user's chosen language, so the model reads the
- * text in whatever language it is, then gives it in that language. The same no-guessing marks apply.
- */
-export const TRANSLATE_TEXT_REQUEST =
-  "Read all the visible text in this image, in whatever language it is written. Then give it in the reply language, sentence by sentence, keeping names and numbers as written. If a word is unclear, write [unclear] in its place instead of guessing. If there is no readable text, say that there is none.";
-
 const TONE_RULE: Record<Tone, string> = {
   warm: "Be warm and encouraging, like a kind friend.",
   brief: "Be very brief: one or two short sentences.",
@@ -72,9 +58,10 @@ export function toneInstruction(tone: Tone): string {
   return TONE_RULE[tone];
 }
 
-export const LANG_NAME = Object.fromEntries(
-  Object.entries(LANGS).map(([k, v]) => [k, v.name]),
-) as Record<Lang, string>;
+const LANG_NAME = Object.fromEntries(Object.entries(LANGS).map(([k, v]) => [k, v.name])) as Record<
+  Lang,
+  string
+>;
 
 /**
  * Thrown when the user cancels a request (Stop). It is not a provider or network failure, so callers must not show it
@@ -211,74 +198,9 @@ export function askVision(
   );
 }
 
-/**
- * Live internet research. Not offered in this version: the only research model was the `:online` variant, whose
- * zero-data-retention compatibility is unverified, so the call is refused here without contacting the broker.
- */
-export function research(
-  _question: string,
-  _lang: Lang,
-  _external?: AbortSignal,
-): Promise<AiAnswer> {
-  return Promise.reject(new ResearchUnavailable());
-}
-
 /** Removes markdown emphasis and headings that some replies still contain. */
-/** Cost line for a reply. A mock reply makes no provider call, so its figure is only an estimate, and it says so. */
-export function costNote(source: "openrouter" | "mock", costPaise: number): string {
-  const rupees = `₹${(costPaise / 100).toFixed(2)}`;
-  return source === "mock" ? `Mock estimate ${rupees}, no provider call` : `Cost ${rupees}`;
-}
-
 export function plain(text: string): string {
   return text.replace(/\*\*|__|^#+\s*/gm, "").replace(/^\s*[-*]\s+/gm, "• ");
-}
-
-export interface Translation {
-  readonly translation: string;
-  readonly uncertain: readonly string[];
-  readonly answer: AiAnswer;
-}
-
-/** Text translation with uncertain-word marking (F20, F21). */
-export async function translate(
-  text: string,
-  from: Lang,
-  to: Lang,
-  external?: AbortSignal,
-): Promise<Translation> {
-  const system =
-    `Translate from ${LANG_NAME[from]} to ${LANG_NAME[to]}. Reply with JSON only: {"translation": string, "uncertain": string[]} ` +
-    "where uncertain lists words of the translation you are not sure about (empty if none). Keep names as they are. No commentary.";
-  const answer = await timed(
-    "translate",
-    (signal) =>
-      callBroker(
-        {
-          model: TEXT_MODEL,
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: text },
-          ],
-          maxOutputTokens: 300,
-        },
-        signal,
-      ),
-    external,
-  );
-  const match = /\{[\s\S]*\}/.exec(answer.text);
-  try {
-    const parsed = JSON.parse(match?.[0] ?? "") as { translation?: unknown; uncertain?: unknown };
-    if (typeof parsed.translation === "string") {
-      const uncertain = Array.isArray(parsed.uncertain)
-        ? parsed.uncertain.filter((w): w is string => typeof w === "string")
-        : [];
-      return { translation: parsed.translation, uncertain, answer };
-    }
-  } catch {
-    // Not JSON: the whole reply is shown and marked uncertain below.
-  }
-  return { translation: answer.text, uncertain: [answer.text], answer };
 }
 
 const BLOCKED: Record<string, string> = {

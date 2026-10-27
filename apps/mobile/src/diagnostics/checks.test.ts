@@ -5,7 +5,6 @@ const BASE: DiagnosticsInputs = {
   cameraAvailable: true,
   speechOutputAvailable: true,
   speechInputEnabled: false,
-  notifications: "undetermined",
   memory: "NOT_ENCRYPTED",
   platform: "ios",
   battery: null,
@@ -27,7 +26,6 @@ describe("diagnostics checks", () => {
       "camera",
       "speech-output",
       "speech-input",
-      "notifications",
       "memory",
     ]);
   });
@@ -61,16 +59,6 @@ describe("diagnostics checks", () => {
     const r = byId(BASE, "speech-input");
     expect(r.status).toBe("off");
     expect(r.detail).toMatch(/no audio leaves the phone/);
-  });
-
-  it("marks notifications as needing a phone check only when they are granted", () => {
-    expect(byId({ ...BASE, notifications: "granted" }, "notifications").status).toBe(
-      "needs_device",
-    );
-    expect(byId({ ...BASE, notifications: "denied" }, "notifications").detail).toMatch(/Settings/);
-    expect(byId({ ...BASE, notifications: "unsupported" }, "notifications").status).toBe(
-      "unavailable",
-    );
   });
 
   it("explains that Expo Go cannot open the encrypted notes store", () => {

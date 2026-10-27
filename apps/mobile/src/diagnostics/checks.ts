@@ -1,17 +1,15 @@
 import type { BrokerConfig } from "../broker-config";
-import type { NotifyPermission } from "../notify/local";
 
 /**
  * Capability checks for the in-app diagnostics screen. Each check reports what this build and phone can do right now,
- * with a reason. Checks never call the AI broker, never start the camera or microphone, and never send a notification.
+ * with a reason. Checks never call the AI broker or start the camera or microphone.
  * The screen supplies the real values; tests supply stand-ins.
  */
 /** configured: the setting is present, but nothing was tested (no call, no camera, no sound). */
 export type CheckStatus = "configured" | "ok" | "low" | "off" | "unavailable" | "needs_device";
 
 export interface CheckResult {
-  readonly id:
-    "broker" | "camera" | "speech-output" | "speech-input" | "notifications" | "memory" | "battery";
+  readonly id: "broker" | "camera" | "speech-output" | "speech-input" | "memory" | "battery";
   readonly label: string;
   readonly status: CheckStatus;
   readonly detail: string;
@@ -22,7 +20,6 @@ export interface DiagnosticsInputs {
   readonly cameraAvailable: boolean;
   readonly speechOutputAvailable: boolean;
   readonly speechInputEnabled: boolean;
-  readonly notifications: NotifyPermission;
   /** "encrypted" when the store opened, or the reason it refused (the fixed code from the memory module). */
   readonly memory: "encrypted" | "web" | "NOT_ENCRYPTED" | "KEY_LOST" | "UNAVAILABLE" | "FAILED";
   readonly platform: "ios" | "android" | "web";
@@ -144,7 +141,6 @@ function memoryResult(memory: DiagnosticsInputs["memory"]): CheckResult {
 
 /** Builds the full list, in the order the screen shows it. */
 export function collectDiagnostics(inputs: DiagnosticsInputs): CheckResult[] {
-  const notify = inputs.notifications;
   return [
     brokerResult(inputs.broker),
     batteryResult(inputs.battery),
@@ -158,8 +154,8 @@ export function collectDiagnostics(inputs: DiagnosticsInputs): CheckResult[] {
         : "unavailable",
       detail: inputs.cameraAvailable
         ? inputs.platform === "web"
-          ? "The browser supports camera access (needs HTTPS or localhost). Permission is asked when you open See."
-          : "Permission is asked when you open See. Check on the phone."
+          ? "The browser supports camera access (needs HTTPS or localhost). Permission is asked when you open Capture."
+          : "Permission is asked when you open Capture. Check on the phone."
         : "This browser has no camera access.",
     },
     {
@@ -177,20 +173,6 @@ export function collectDiagnostics(inputs: DiagnosticsInputs): CheckResult[] {
       detail: inputs.speechInputEnabled
         ? "Enabled. On-device recognition must be verified on the phone."
         : "Off in this build. Voice input needs the development build and on-device checks; no audio leaves the phone.",
-    },
-    {
-      id: "notifications",
-      label: "Notifications",
-      status:
-        notify === "granted" ? "needs_device" : notify === "unsupported" ? "unavailable" : "off",
-      detail:
-        notify === "granted"
-          ? "Allowed. Delivery with the app closed needs a phone check."
-          : notify === "denied"
-            ? "Refused. Turn them on in the phone's Settings."
-            : notify === "unsupported"
-              ? "Not available in the browser."
-              : "Not allowed yet. Use the Notification test on Profile to ask.",
     },
     memoryResult(inputs.memory),
   ];

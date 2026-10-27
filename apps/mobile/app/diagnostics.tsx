@@ -8,11 +8,6 @@ import { readBattery } from "../src/diagnostics/battery";
 import { MemoryStoreError } from "../src/memory/memory-error";
 import { nativeMemory } from "../src/memory/native-store";
 import { NATIVE_LISTENING_ENABLED } from "../src/ai/native-listen";
-import {
-  notificationPermission,
-  requestNotificationPermission,
-  type NotifyPermission,
-} from "../src/notify/local";
 import { Body, Btn, Card, H2, Notice, Page, Row } from "../src/ui/kit";
 import { lastLatencyMs } from "../src/ai/stop-latency";
 import { usePrefs } from "../src/ui/prefs";
@@ -39,10 +34,6 @@ async function readInputs(): Promise<Parameters<typeof collectDiagnostics>[0]> {
       memory = error instanceof MemoryStoreError ? error.failure : "FAILED";
     }
   }
-  let notifications: NotifyPermission = "unsupported";
-  if (!web) {
-    notifications = await notificationPermission();
-  }
   return {
     battery: await readBattery(),
     broker: readBrokerConfig(),
@@ -52,7 +43,6 @@ async function readInputs(): Promise<Parameters<typeof collectDiagnostics>[0]> {
       : true,
     speechOutputAvailable: canSpeak(),
     speechInputEnabled: web ? canListen() : NATIVE_LISTENING_ENABLED,
-    notifications,
     memory,
     platform: Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web",
   };
@@ -84,12 +74,8 @@ export default function DiagnosticsScreen() {
     <Page title="Diagnostics" kicker="WHAT THIS BUILD CAN DO">
       <Body muted size={14}>
         Each line shows what this phone or browser can do right now. Checks do not start the camera
-        or microphone, do not call the AI, and do not send a notification. Results on a phone need a
-        phone check.
+        or microphone, and do not call the AI. Results on a phone need a phone check.
       </Body>
-      {!prefs.features.vision ? (
-        <Notice tone="warn">Vision help is switched off in Profile → Features.</Notice>
-      ) : null}
       {note === null ? null : <Notice tone="error">{note}</Notice>}
       <Card>
         <H2>Checks</H2>
@@ -143,23 +129,15 @@ export default function DiagnosticsScreen() {
           onPress={() => stopSpeaking()}
         />
         <Btn
-          testID="diag-ask-notifications"
-          label="Ask for notification permission"
-          tone="ghost"
-          icon="bell"
-          disabled={Platform.OS === "web"}
-          onPress={() => void requestNotificationPermission().then(() => refresh())}
-        />
-        <Btn
           testID="diag-open-see"
-          label="Open See (camera)"
+          label="Open Capture (camera)"
           tone="ghost"
           icon="camera"
           onPress={() => router.push("/capture")}
         />
         <Btn
           testID="diag-open-profile"
-          label="Open Profile (notification test)"
+          label="Open settings"
           tone="ghost"
           onPress={() => router.push("/profile")}
         />

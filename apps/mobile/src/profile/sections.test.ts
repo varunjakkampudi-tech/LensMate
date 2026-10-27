@@ -1,7 +1,7 @@
 import { DEFAULT_OPEN, PROFILE_SECTIONS, sectionTitle, type ProfileSectionId } from "./sections";
 
 describe("profile sections", () => {
-  it("lists the eleven required sections in the required order", () => {
+  it("lists the product settings sections in the required order", () => {
     expect(PROFILE_SECTIONS.map((s) => s.title)).toEqual([
       "Appearance",
       "Voice and language",
@@ -9,10 +9,8 @@ describe("profile sections", () => {
       "AI connection",
       "Device and enrolment",
       "Memory and backup",
-      "Notifications",
       "Accessibility",
       "Diagnostics",
-      "Advanced features",
       "Legal and privacy",
     ]);
   });

@@ -1,28 +1,27 @@
-# Documentation index
+# Documentation
 
-## Architecture and decisions
+## Product and device
 
-- [Expo SDK version ADR](architecture/adr-0001-expo-sdk-version.md)
+- [Product contract](product/PRODUCT.md): scope, privacy rules, current implementation, and the current engineering objective.
+- [Glasses and phone link](hardware/glasses-spec.md): capture safety, device boundaries, protocol requirements, and validation.
+
+## Architecture and privacy
+
+- [Architecture decisions](architecture/adr-0001-expo-sdk-version.md)
 - [Native speech and storage](decisions/0001-native-speech-and-storage.md)
-- [Backup recovery after revocation](decisions/0002-backup-recovery-after-revocation.md)
-- [iPhone broker HTTPS route](decisions/0003-iphone-broker-https-route.md)
+- [Backup recovery](decisions/0002-backup-recovery-after-revocation.md)
+- [Broker route](decisions/0003-iphone-broker-https-route.md)
 - [Assistant cancellation](decisions/0004-assistant-cancellation.md)
+- [Provider privacy and models](governance/provider-privacy-and-models.md)
+- [Dependency risk exception](governance/RISK_EXCEPTIONS.md): dated acceptance and recheck date for the one audit exclusion.
+- [Branch policy](governance/git-branch-policy.md)
 
-## Product
+## Development and operations
 
-- [Feature register](product/feature-register.md): all 54 specification features and the owner's 30 items, with status, phase and next step.
-- [Engineering runbooks](runbooks/broker-deploy.md): deploy, spend cap and provider outage, and enrolment.
+- [Broker development](../services/broker/README.md)
+- [Broker deployment](deploy/hostinger-vps-runbook.md)
+- [Broker backup and restore](../services/broker/deploy/README.md)
+- [Local development and test commands](../README.md)
 
-## Governance and provider use
-
-- [Git branch policy](governance/git-branch-policy.md): development on `dev`; production promotion to `main` requires owner approval.
-- [Provider privacy and models](governance/provider-privacy-and-models.md): approved data handling, model and cost notes, and unresolved owner conditions.
-
-## Operations and evidence
-
-- [Broker VPS deployment runbook](deploy/hostinger-vps-runbook.md)
-- [Broker deployment and backup instructions](../services/broker/deploy/README.md)
-- [Measurement procedures and evidence template](measurements/README.md)
-- [Measurement traceability](measurements/traceability.md)
-
-Open items and the plan are in [`product/ROADMAP.md`](product/ROADMAP.md). Feature status is in [`product/feature-register.md`](product/feature-register.md).
+Only retain documentation that supports the product contract, security, implementation, or operation. Record device
+validation alongside the specific feature evidence; do not maintain parallel progress or readiness scorecards.

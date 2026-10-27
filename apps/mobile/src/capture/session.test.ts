@@ -1,5 +1,5 @@
 /**
- * SEE → THINK → TALK, automated, in mock mode.
+ * Capture and ask, automated, in mock mode.
  *
  * Real: the session state machine, the image checks, askVision and its broker request path (through the mocked
  * transport), and the speech module's native branch. Stand-in: the broker transport (mocked, so no provider is called),
@@ -11,7 +11,7 @@ import { BrokerError } from "@lensmate/core";
 import { askVision, aiErrorText } from "../ai/assistant";
 import { speak as speakText, stopSpeaking } from "../ai/speech";
 import { callBrokerVision } from "../broker-call";
-import { checkImage, MAX_IMAGE_BYTES, SeeSession, type SeeDeps } from "./session";
+import { CaptureSession, checkImage, MAX_IMAGE_BYTES, type CaptureDeps } from "./session";
 
 jest.mock("expo-speech", () => ({
   speak: jest.fn(),
@@ -43,17 +43,17 @@ function reply(text: string, source: "mock" | "openrouter" = "mock") {
 }
 
 interface Harness {
-  session: SeeSession;
+  session: CaptureSession;
   startCamera: jest.Mock;
   releaseCamera: jest.Mock;
   capture: jest.Mock;
 }
 
-function harness(overrides: Partial<SeeDeps> = {}): Harness {
+function harness(overrides: Partial<CaptureDeps> = {}): Harness {
   const startCamera = jest.fn();
   const releaseCamera = jest.fn();
   const capture = jest.fn(async () => PHOTO as string | null);
-  const deps: SeeDeps = {
+  const deps: CaptureDeps = {
     startCamera,
     capture,
     releaseCamera,
@@ -69,7 +69,7 @@ function harness(overrides: Partial<SeeDeps> = {}): Harness {
     errorText: (error) => aiErrorText(error),
     ...overrides,
   };
-  return { session: new SeeSession(deps), startCamera, releaseCamera, capture };
+  return { session: new CaptureSession(deps), startCamera, releaseCamera, capture };
 }
 
 beforeEach(() => {
@@ -77,7 +77,7 @@ beforeEach(() => {
   visionCall.mockResolvedValue(reply("A red mug on a wooden table."));
 });
 
-describe("SEE → THINK → TALK session (mock broker, mock speech engine)", () => {
+describe("capture and ask session (mock broker, mock speech engine)", () => {
   it("runs the whole session and labels the answer as a mock", async () => {
     const h = harness();
 

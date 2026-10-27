@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { Platform, useColorScheme } from "react-native";
 
-// Neutral, swappable design tokens until the Viswatra identity is approved (see docs/product/ROADMAP.md).
+// Neutral, swappable design tokens until the LensMate visual identity is finalized.
 // Mock-up palette (owner reference image, 2026-10-24): white surfaces, LensMate blue, soft tinted tiles.
 const light = {
   bg: "#F4F7FC",

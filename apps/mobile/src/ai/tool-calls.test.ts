@@ -1,8 +1,8 @@
 import { MAX_CALLS, TOOL_LIMITS, validateCall } from "./tool-calls";
 
 describe("validateCall", () => {
-  it("refuses a tool that is not on the list, including research", () => {
-    expect(validateCall({ tool: "web_research", input: { query: "weather" } })).toBeNull();
+  it("refuses a tool that is not on the list", () => {
+    expect(validateCall({ tool: "unknown_action", input: { query: "weather" } })).toBeNull();
     expect(validateCall({ tool: "delete_everything", input: {} })).toBeNull();
     expect(validateCall({ input: {} })).toBeNull();
     expect(validateCall(null)).toBeNull();
@@ -29,26 +29,6 @@ describe("validateCall", () => {
   it("refuses a field of the wrong type instead of passing it on", () => {
     expect(validateCall({ tool: "save_note", input: { text: 42 } })).toBeNull();
     expect(validateCall({ tool: "recall_memory", input: { query: ["x"] } })).toBeNull();
-  });
-
-  it("bounds reminder minutes to whole numbers from 1 to a week", () => {
-    expect(validateCall({ tool: "set_reminder", input: { title: "t", minutes: 30 } })).toEqual({
-      tool: "set_reminder",
-      input: { title: "t", minutes: 30 },
-    });
-    for (const minutes of [0, -5, 1.5, TOOL_LIMITS.minutes + 1, "30", Number.NaN]) {
-      expect(validateCall({ tool: "set_reminder", input: { title: "t", minutes } })).toBeNull();
-    }
-  });
-
-  it("accepts only known language codes for translation", () => {
-    expect(
-      validateCall({ tool: "translate", input: { text: "hi", from: "en", to: "te" } }),
-    ).toEqual({
-      tool: "translate",
-      input: { text: "hi", from: "en", to: "te" },
-    });
-    expect(validateCall({ tool: "translate", input: { text: "hi", to: "xx" } })).toBeNull();
   });
 
   it("accepts only the listed action kinds, and never an empty target", () => {

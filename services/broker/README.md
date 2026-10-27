@@ -16,4 +16,4 @@ The broker defaults to mock mode; it does not make provider calls without explic
 
 ## Operations
 
-Owner-controlled setup, deployment, credential files, backups, restore, and release prerequisites are documented in [`deploy/README.md`](deploy/README.md) and [`docs/deploy/hostinger-vps-runbook.md`](../../docs/deploy/hostinger-vps-runbook.md). The deployment files are prepared for review; local repository checks do not establish that the service is deployed or production-ready. The owner conditions for release are listed in [`docs/product/ROADMAP.md`](../../docs/product/ROADMAP.md) (section E).
+Owner-controlled setup, deployment, credential files, backups, restore, and release prerequisites are documented in [`deploy/README.md`](deploy/README.md) and [`docs/deploy/hostinger-vps-runbook.md`](../../docs/deploy/hostinger-vps-runbook.md). The deployment files are prepared for review; local repository checks do not establish that the service is deployed or production-ready. See the [product contract](../../docs/product/PRODUCT.md) for scope and privacy rules.

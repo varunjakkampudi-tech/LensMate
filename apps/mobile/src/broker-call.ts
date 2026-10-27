@@ -28,7 +28,7 @@ import {
  */
 export const APPROVED_CLOUD_DISCLOSURE_VERSION: string | null = "2026-10-26.1";
 
-/** Thrown before any network request when a precondition for broker use is missing (BLOCKER-006). */
+/** Thrown before any network request when a precondition for broker use is missing. */
 export class BrokerCallBlocked extends Error {
   constructor(readonly reason: BrokerAccessBlock) {
     super(reason);

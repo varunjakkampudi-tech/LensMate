@@ -1,11 +1,11 @@
 # Flow: Stop command — start speaking on Assistant and check the Diagnostics "Last stop" row (testID stop-latency) exists.
-# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Authored Maestro flow. Run against the matching local Android development build.
 # Run: maestro test e2e/maestro/stop-command-latency.yaml
 appId: com.viswatra.lensmate
 ---
 - launchApp:
     clearState: true
-- tapOn: "Hear & Talk"
+- tapOn: "Ask LensMate"
 - assertVisible: "Assistant"
 - tapOn: "What can you do?"
 - assertVisible:

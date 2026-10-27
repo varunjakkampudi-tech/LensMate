@@ -1,25 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { render, screen } from "@testing-library/react-native";
 import HomeScreen from "../app/index";
-import { STRINGS } from "./strings";
 
 describe("HomeScreen", () => {
-  it("shows the disconnected state and connects to the virtual glasses on press", async () => {
+  it("keeps the product surface focused on capture, questions, and memory", async () => {
     await render(<HomeScreen />);
-    expect(screen.getByText(STRINGS.statusDisconnected)).toBeTruthy();
-
-    fireEvent.press(screen.getByRole("button", { name: STRINGS.connect }));
-
-    expect(await screen.findByText(STRINGS.statusConnected)).toBeTruthy();
-    expect(screen.getByRole("button", { name: STRINGS.disconnect })).toBeTruthy();
-  });
-
-  it("returns to the disconnected state after disconnect", async () => {
-    await render(<HomeScreen />);
-    fireEvent.press(screen.getByRole("button", { name: STRINGS.connect }));
-    await screen.findByText(STRINGS.statusConnected);
-
-    fireEvent.press(screen.getByRole("button", { name: STRINGS.disconnect }));
-
-    expect(await screen.findByText(STRINGS.statusDisconnected)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Capture and ask" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ask LensMate" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Personal memory" })).toBeTruthy();
+    expect(screen.queryByText(/translation|automation|guided demo/i)).toBeNull();
   });
 });

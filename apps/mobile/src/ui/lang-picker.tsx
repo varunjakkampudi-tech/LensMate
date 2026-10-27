@@ -2,7 +2,7 @@ import { ScrollView } from "react-native";
 import { Chip } from "./kit";
 import { LANGS, type Lang } from "./prefs";
 
-/** Horizontal language chips (native names), used by Talk, Translate and Profile. */
+/** Horizontal language chips (native names), used by the assistant and settings. */
 export function LangPicker({
   value,
   onChange,

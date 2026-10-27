@@ -12,14 +12,7 @@ import { DEFAULT_OPEN, PROFILE_SECTIONS, sectionTitle } from "../src/profile/sec
 import { STRINGS } from "../src/strings";
 import { Body, Btn, Chip, Page, Row } from "../src/ui/kit";
 import { LangPicker } from "../src/ui/lang-picker";
-import {
-  FEATURES,
-  TONES,
-  TONE_LABEL,
-  usePrefs,
-  type FeatureKey,
-  type Profile,
-} from "../src/ui/prefs";
+import { TONES, TONE_LABEL, usePrefs, type Profile } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
 const PROFILES: { id: Profile; label: string; line: string }[] = [
@@ -35,28 +28,6 @@ const PROFILES: { id: Profile; label: string; line: string }[] = [
     line: "Large captions, nothing spoken unless you ask.",
   },
   { id: "custom", label: "Custom", line: "Your own mix of the switches below." },
-];
-
-const NOT_BUILT: { name: string; reason: string }[] = [
-  {
-    name: "Computer (PC) control",
-    reason: "Not planned yet. It needs an owner decision and a security review first.",
-  },
-  {
-    name: "AI companion and proactive help",
-    reason:
-      "Needs continuous scene analysis, which is an open owner decision. An always-on camera is not built.",
-  },
-  {
-    name: "Walk alerts, obstacle and vehicle detection",
-    reason: "Safety feature: stays off until it is tested at a proper test facility.",
-  },
-  {
-    name: "Sound alerts and emergency calling",
-    reason: "Safety feature. Not enabled.",
-  },
-  { name: "Personal skills and developer mode", reason: "Planned for a later phase." },
-  { name: "Firmware updates", reason: "Real glasses only; never run by the agent on hardware." },
 ];
 
 function Toggle({
@@ -188,8 +159,8 @@ export default function MoreScreen() {
     permissions: (
       <>
         <Body size={14}>
-          The camera is asked for when you open See or the Simulator. The microphone is asked for
-          when you start a voice question. Nothing is recorded in the background.
+          The camera is asked for when you open Capture or the Simulator. The microphone is asked
+          for when you start a voice question. Nothing is recorded in the background.
         </Body>
         <Body size={14}>
           Speech in: {canListen() ? "available" : "not available"} · Speech out:{" "}
@@ -222,7 +193,7 @@ export default function MoreScreen() {
     memory: (
       <>
         <Body muted size={14}>
-          Notes, saved captures and reminders stay on this phone, encrypted. Backup is optional and
+          Notes, saved captures, and answers stay on this phone, encrypted. Backup is optional and
           set up in Memory.
         </Body>
         <Btn
@@ -230,20 +201,6 @@ export default function MoreScreen() {
           tone="ghost"
           icon="note"
           onPress={() => router.push("/memory")}
-        />
-      </>
-    ),
-    notifications: (
-      <>
-        <Body muted size={14}>
-          Reminders and alerts use phone notifications. Permission is asked for and checked in
-          Diagnostics.
-        </Body>
-        <Btn
-          label="Check notification permission"
-          tone="ghost"
-          icon="gear"
-          onPress={() => router.push("/diagnostics" as "/")}
         />
       </>
     ),
@@ -280,8 +237,8 @@ export default function MoreScreen() {
     diagnostics: (
       <>
         <Body muted size={14}>
-          What this phone or browser can do right now: camera, spoken answers, voice input,
-          notifications, broker address and encrypted notes.
+          What this phone or browser can do right now: camera, spoken answers, voice input, broker
+          connection and encrypted notes.
         </Body>
         <Btn
           testID="open-diagnostics-button"
@@ -303,60 +260,6 @@ export default function MoreScreen() {
           Spend this month: {setup.spentPaise === null ? "–" : rupees(setup.spentPaise)} of{" "}
           {setup.capPaise === null ? "₹500.00" : rupees(setup.capPaise)}
         </Body>
-        <Btn
-          label={STRINGS.openMeasurement}
-          tone="ghost"
-          icon="chart"
-          onPress={() => router.push("/measure")}
-        />
-      </>
-    ),
-    advanced: (
-      <>
-        <Body muted size={13}>
-          Switch whole features on or off. Agents and automations start off.
-        </Body>
-        {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (
-          <Toggle
-            key={k}
-            testID={`feature-${k}`}
-            label={FEATURES[k]}
-            value={prefs.features[k]}
-            onChange={(v) => update({ features: { ...prefs.features, [k]: v } })}
-          />
-        ))}
-        <Body muted size={13}>
-          Multi-agent tasks, live web research and daily automations.
-        </Body>
-        <Btn
-          testID="open-tasks-button"
-          label="Open agents & automations"
-          tone="ghost"
-          icon="agent"
-          disabled={!prefs.features.tasks}
-          onPress={() => router.push("/tasks")}
-        />
-        <Text
-          style={{
-            color: c.text,
-            fontFamily: FONTS.display,
-            fontSize: 15,
-            fontWeight: "700",
-            marginTop: 4,
-          }}
-        >
-          Not built yet
-        </Text>
-        {NOT_BUILT.map((l) => (
-          <View key={l.name} testID="not-built-feature" style={{ gap: 2 }}>
-            <Body>
-              {l.name} · <Text style={{ color: c.accent2 }}>not available yet</Text>
-            </Body>
-            <Body muted size={13}>
-              {l.reason}
-            </Body>
-          </View>
-        ))}
       </>
     ),
     legal: (

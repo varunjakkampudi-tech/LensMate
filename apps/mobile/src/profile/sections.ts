@@ -9,10 +9,8 @@ export const PROFILE_SECTIONS = [
   { id: "ai", title: "AI connection" },
   { id: "device", title: "Device and enrolment" },
   { id: "memory", title: "Memory and backup" },
-  { id: "notifications", title: "Notifications" },
   { id: "accessibility", title: "Accessibility" },
   { id: "diagnostics", title: "Diagnostics" },
-  { id: "advanced", title: "Advanced features" },
   { id: "legal", title: "Legal and privacy" },
 ] as const;
 

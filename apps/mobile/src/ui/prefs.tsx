@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Platform } from "react-native";
 
 export type Profile = "personal" | "blind" | "hearing" | "custom";
-/** Languages offered for speech, answers and translation. Speech quality depends on the device's speech engine. */
+/** Languages offered for speech and answers. Speech quality depends on the device's speech engine. */
 export const LANGS = {
   en: { name: "English", native: "English", locale: "en-IN" },
   te: { name: "Telugu", native: "తెలుగు", locale: "te-IN" },
@@ -40,32 +40,7 @@ export interface Prefs {
   readonly largeCaptions: boolean;
   readonly detailedDescriptions: boolean;
   readonly voiceRate: number;
-  readonly features: Readonly<Record<FeatureKey, boolean>>;
 }
-
-export const FEATURES = {
-  vision: "Vision help",
-  talk: "Voice questions",
-  translate: "Live translation",
-  memory: "Notes and memory",
-  reminders: "Reminders",
-  checks: "Mistake checks",
-  tasks: "Agents and automations",
-} as const;
-export type FeatureKey = keyof typeof FEATURES;
-
-/**
- * The features on by default. Agents and automations are off until the user turns them on in Profile.
- */
-export const ACTIVE_PHASE: Record<FeatureKey, boolean> = {
-  vision: true,
-  talk: true,
-  translate: true,
-  memory: true,
-  reminders: true,
-  checks: true,
-  tasks: false,
-};
 
 const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "profile">> = {
   personal: {
@@ -74,7 +49,6 @@ const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "prof
     largeCaptions: false,
     detailedDescriptions: false,
     voiceRate: 1,
-    features: ACTIVE_PHASE,
   },
   blind: {
     tone: "warm",
@@ -82,7 +56,6 @@ const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "prof
     largeCaptions: false,
     detailedDescriptions: true,
     voiceRate: 1.1,
-    features: ACTIVE_PHASE,
   },
   hearing: {
     tone: "warm",
@@ -90,7 +63,6 @@ const PRESETS: Record<Exclude<Profile, "custom">, Omit<Prefs, "language" | "prof
     largeCaptions: true,
     detailedDescriptions: false,
     voiceRate: 1,
-    features: ACTIVE_PHASE,
   },
 };
 

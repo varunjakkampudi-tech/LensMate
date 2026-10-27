@@ -25,9 +25,9 @@ import { LangPicker } from "../src/ui/lang-picker";
 import { usePrefs, type Lang } from "../src/ui/prefs";
 import { FONTS, useTheme } from "../src/ui/theme";
 
-const SUGGESTIONS = ["What can you do?", "Summarise my notes", "Translate a sentence"];
+const SUGGESTIONS = ["What can you do?", "Summarise my notes", "Remember this for me"];
 
-/** Assistant: speak or type. The multi-agent assistant answers aloud and can research, remember and propose actions. */
+/** Assistant: ask by voice or text, retrieve saved notes, and propose phone actions for owner confirmation. */
 export default function AssistantScreen() {
   const { c } = useTheme();
   const { prefs } = usePrefs();
@@ -45,7 +45,6 @@ export default function AssistantScreen() {
     .reverse()
     .find((m) => m.role === "assistant" && m.failedQuestion === undefined);
   const brokerSet = readBrokerConfig().ok;
-  const voiceOn = prefs.features.talk;
 
   const push = (m: Omit<Message, "id">) => {
     const id = nextId.current++;
@@ -181,7 +180,7 @@ export default function AssistantScreen() {
   stopRef.current = stopAll;
   const listeningNow = mic.listening !== null;
   useEffect(() => {
-    if (!speaking || !voiceOn || busy || listeningNow) {
+    if (!speaking || busy || listeningNow) {
       return;
     }
     const watch = listenForStop(lang, () => {
@@ -196,7 +195,7 @@ export default function AssistantScreen() {
       watch.stop();
       capture.end(token);
     };
-  }, [speaking, voiceOn, busy, listeningNow, lang, capture]);
+  }, [speaking, busy, listeningNow, lang, capture]);
 
   // Leaving the screen cancels any request and stops speech and the microphone. The ref holds the latest microphone
   // session, which is rebuilt on each render, so the cleanup stops the current one.
@@ -309,11 +308,6 @@ export default function AssistantScreen() {
         <LangPicker prefix="talk-lang" value={lang} onChange={setLang} />
       </View>
 
-      {!voiceOn ? (
-        <View style={{ paddingHorizontal: 18 }}>
-          <Notice tone="warn">Voice questions are switched off in Profile → Features.</Notice>
-        </View>
-      ) : null}
       {error === null ? null : (
         <View style={{ paddingHorizontal: 18, paddingBottom: 8 }}>
           <Notice testID="talk-error" tone="error">
@@ -362,7 +356,7 @@ export default function AssistantScreen() {
                   key={s}
                   accessibilityRole="button"
                   accessibilityLabel={`Ask: ${s}`}
-                  disabled={!voiceOn || busy}
+                  disabled={busy}
                   onPress={() => void run(s)}
                   style={{
                     minHeight: 48,
@@ -372,7 +366,7 @@ export default function AssistantScreen() {
                     backgroundColor: c.surface,
                     borderWidth: 1,
                     borderColor: c.border,
-                    opacity: !voiceOn || busy ? 0.5 : 1,
+                    opacity: busy ? 0.5 : 1,
                   }}
                 >
                   <Text style={{ color: c.text, fontFamily: FONTS.body, fontSize: 13 }}>{s}</Text>
@@ -382,24 +376,7 @@ export default function AssistantScreen() {
             <View style={{ flexDirection: "row", justifyContent: "center", gap: 10 }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Open translate"
-                onPress={() => router.push("/translate")}
-                style={{ minHeight: 48, paddingHorizontal: 14, justifyContent: "center" }}
-              >
-                <Text
-                  style={{
-                    color: c.accent,
-                    fontFamily: FONTS.body,
-                    fontSize: 13,
-                    fontWeight: "600",
-                  }}
-                >
-                  Translate
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Open See to take a photo"
+                accessibilityLabel="Open Capture to take a photo"
                 onPress={() => router.push("/capture")}
                 style={{ minHeight: 48, paddingHorizontal: 14, justifyContent: "center" }}
               >
@@ -411,7 +388,7 @@ export default function AssistantScreen() {
                     fontWeight: "600",
                   }}
                 >
-                  See a photo
+                  Ask about a photo
                 </Text>
               </Pressable>
             </View>
@@ -444,9 +421,8 @@ export default function AssistantScreen() {
             accessibilityRole="button"
             accessibilityLabel="Summarise this conversation"
             testID="talk-summarise-button"
-            disabled={!voiceOn}
             onPress={() => void summarise()}
-            style={{ minHeight: 48, justifyContent: "center", opacity: voiceOn ? 1 : 0.5 }}
+            style={{ minHeight: 48, justifyContent: "center" }}
           >
             <Text
               style={{ color: c.accent, fontFamily: FONTS.body, fontSize: 13, fontWeight: "600" }}
@@ -478,9 +454,9 @@ export default function AssistantScreen() {
                 ? "Stop listening, microphone on"
                 : "Start listening, microphone off"
           }
-          accessibilityState={{ disabled: busy || !voiceOn || !mic.available, selected: listening }}
+          accessibilityState={{ disabled: busy || !mic.available, selected: listening }}
           testID="talk-mic-button"
-          disabled={busy || !voiceOn || !mic.available}
+          disabled={busy || !mic.available}
           onPress={() => (listening ? mic.stop() : mic.start(lang, (t) => void run(t)))}
           style={{
             width: 48,
@@ -489,7 +465,7 @@ export default function AssistantScreen() {
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: listening ? c.danger : c.surface2,
-            opacity: busy || !voiceOn || !mic.available ? 0.5 : 1,
+            opacity: busy || !mic.available ? 0.5 : 1,
           }}
         >
           <Icon name="mic" color={listening ? "#fff" : c.accent} size={22} />
@@ -501,7 +477,7 @@ export default function AssistantScreen() {
           onChangeText={setTyped}
           placeholder="Ask a question or give a task"
           placeholderTextColor={c.muted}
-          editable={voiceOn}
+          editable
           multiline
           style={{
             flex: 1,
@@ -559,7 +535,7 @@ export default function AssistantScreen() {
             accessibilityRole="button"
             accessibilityLabel="Send question"
             testID="talk-send-button"
-            disabled={typed.trim() === "" || !voiceOn}
+            disabled={typed.trim() === ""}
             onPress={() => {
               const t = typed.trim();
               setTyped("");
@@ -572,7 +548,7 @@ export default function AssistantScreen() {
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: c.accent,
-              opacity: typed.trim() === "" || !voiceOn ? 0.45 : 1,
+              opacity: typed.trim() === "" ? 0.45 : 1,
             }}
           >
             <Icon name="send" color={c.accentInk} size={20} />

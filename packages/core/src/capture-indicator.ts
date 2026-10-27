@@ -1,8 +1,7 @@
 /**
- * Session types that use the camera or microphone in the current scope.
- * Companion, walk, sound alert and helper call are not built and have no code path.
+ * Session types that use the camera or microphone.
  */
-export type CaptureSessionType = "PUSH_TO_TALK" | "PHOTO_QUESTION" | "TRANSLATION" | "CAPTION";
+export type CaptureSessionType = "PUSH_TO_TALK" | "PHOTO_QUESTION";
 
 export type IndicatorOffResult = { ok: true } | { ok: false; reason: "CAPTURE_ACTIVE" };
 

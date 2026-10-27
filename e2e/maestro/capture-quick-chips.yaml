@@ -1,11 +1,11 @@
-# Flow: Photo & Ask shows the chips (testIDs quick-describe, quick-read, quick-translate) and last-photo-button.
-# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Flow: capture and ask shows the description and text-reading actions plus the last saved photo.
+# Authored Maestro flow. Run against the matching local Android development build.
 # Run: maestro test e2e/maestro/capture-quick-chips.yaml
 appId: com.viswatra.lensmate
 ---
 - launchApp:
     clearState: true
-- tapOn: "See"
+- tapOn: "Capture and ask"
 - assertVisible:
     id: "last-photo-button"
 - scrollUntilVisible:
@@ -16,5 +16,3 @@ appId: com.viswatra.lensmate
     id: "quick-describe"
 - assertVisible:
     id: "quick-read"
-- assertVisible:
-    id: "quick-translate"

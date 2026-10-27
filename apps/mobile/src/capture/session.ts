@@ -1,8 +1,8 @@
 /**
- * One SEE → THINK → TALK session: a photo, questions about it, answers shown and spoken, with interruption,
+ * One capture and ask session: a photo, questions about it, answers shown and spoken, with interruption,
  * cancellation and camera cleanup. The capture screen (app/capture.tsx) is a view over this state machine.
  *
- * Camera, network and speech are injected (SeeDeps), so the same logic runs in the app and in automated tests. Tests
+ * Camera, network and speech are injected (CaptureDeps), so the same logic runs in the app and in automated tests. Tests
  * stand in for the camera and speech engines and say so; they do not exercise a physical camera or speaker.
  */
 
@@ -35,14 +35,14 @@ export function checkImage(dataUrl: string | null): ImageCheck {
   return { ok: true, bytes };
 }
 
-export interface SeeAnswer {
+export interface CaptureAnswer {
   readonly text: string;
   readonly source: "mock" | "openrouter";
   readonly costPaise: number;
   readonly latencyMs: number;
 }
 
-export type SeePhase =
+export type CapturePhase =
   | "idle" // nothing on screen
   | "previewing" // the camera is live
   | "photo_ready" // a photo is held, no request running
@@ -51,51 +51,51 @@ export type SeePhase =
   | "speaking" // an answer is being read aloud
   | "error"; // the last action failed; the photo and any answer are kept
 
-export interface SeeState {
-  readonly phase: SeePhase;
+export interface CaptureState {
+  readonly phase: CapturePhase;
   /** The photo held for questions, as a JPEG or PNG data URL. */
   readonly photo: string | null;
-  readonly answer: SeeAnswer | null;
+  readonly answer: CaptureAnswer | null;
   /** A short, user-facing message for the error phase or a camera notice. */
   readonly message: string | null;
 }
 
 /** Injected dependencies. Each is a real app function in production and a stand-in in tests. */
-export interface SeeDeps {
+export interface CaptureDeps {
   /** Called when the camera is started (the screen starts its capture indicator here). */
   startCamera(): void;
   /** Takes one photo from the live preview. Resolves to a data URL, or null when the camera is not ready. */
   capture(): Promise<string | null>;
   /** Stops the camera and clears its indicator. Called once per start. */
   releaseCamera(): void;
-  ask(image: string, question: string, signal: AbortSignal): Promise<SeeAnswer>;
+  ask(image: string, question: string, signal: AbortSignal): Promise<CaptureAnswer>;
   speak(text: string, onDone: () => void): void;
   stopSpeech(): void;
   errorText(error: unknown): string;
 }
 
-const INITIAL: SeeState = { phase: "idle", photo: null, answer: null, message: null };
+const INITIAL: CaptureState = { phase: "idle", photo: null, answer: null, message: null };
 
-export class SeeSession {
-  private current: SeeState = INITIAL;
+export class CaptureSession {
+  private current: CaptureState = INITIAL;
   private abort: AbortController | null = null;
   private camera = false;
-  private readonly listeners = new Set<(state: SeeState) => void>();
+  private readonly listeners = new Set<(state: CaptureState) => void>();
 
-  constructor(private readonly deps: SeeDeps) {}
+  constructor(private readonly deps: CaptureDeps) {}
 
-  get state(): SeeState {
+  get state(): CaptureState {
     return this.current;
   }
 
-  subscribe(listener: (state: SeeState) => void): () => void {
+  subscribe(listener: (state: CaptureState) => void): () => void {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
     };
   }
 
-  private set(patch: Partial<SeeState> & { phase: SeePhase }): void {
+  private set(patch: Partial<CaptureState> & { phase: CapturePhase }): void {
     this.current = {
       photo: this.current.photo,
       answer: this.current.answer,
@@ -106,7 +106,7 @@ export class SeeSession {
   }
 
   /** Where the session rests when nothing is running: answered, a photo held, or idle. */
-  private restPhase(): SeePhase {
+  private restPhase(): CapturePhase {
     if (this.current.answer !== null) {
       return "answered";
     }

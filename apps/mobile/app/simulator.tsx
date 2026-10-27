@@ -343,9 +343,7 @@ export default function SimulatorScreen() {
                 {overlay.kind === "working" ? "Looking…" : overlay.text}
               </Text>
               <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginTop: 6 }}>
-                {prefs.features.vision
-                  ? "Answer from the phone's AI service"
-                  : "Vision help is off"}
+                "Answer from the phone's AI service"
               </Text>
             </ScrollView>
           </View>
@@ -443,26 +441,6 @@ export default function SimulatorScreen() {
                 backgroundColor: live ? "#EF4444" : "#fff",
               }}
             />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open guided demo"
-            testID="sim-sample"
-            disabled={busy}
-            onPress={() => router.push("/demo")}
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.4)",
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: busy ? 0.4 : 1,
-            }}
-          >
-            <Icon name="spark" color="#fff" size={20} />
           </Pressable>
         </View>
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Image, Platform, View } from "react-native";
+import { Image, View } from "react-native";
 import { aiErrorText, askText } from "../src/ai/assistant";
 import { useMicSession } from "../src/ai/use-voice";
 import { relevantNotes } from "../src/memory/search";
@@ -23,7 +23,6 @@ const FILTERS: { id: MemoryKind | "all"; label: string }[] = [
   { id: "note", label: "Notes" },
   { id: "capture", label: "Captures" },
   { id: "answer", label: "Answers" },
-  { id: "reminder", label: "Reminders" },
   { id: "debrief", label: "Debriefs" },
 ];
 
@@ -35,8 +34,6 @@ export default function MemoryScreen() {
   const [filter, setFilter] = useState<MemoryKind | "all">("all");
   const [search, setSearch] = useState("");
   const [note, setNote] = useState("");
-  const [reminder, setReminder] = useState("");
-  const [minutes, setMinutes] = useState("30");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,29 +51,6 @@ export default function MemoryScreen() {
       (filter === "all" || i.kind === filter) &&
       `${i.title} ${i.text}`.toLowerCase().includes(search.toLowerCase()),
   );
-
-  const addReminder = async () => {
-    const mins = Math.max(1, Number.parseInt(minutes, 10) || 30);
-    if (
-      Platform.OS === "web" &&
-      typeof Notification !== "undefined" &&
-      Notification.permission === "default"
-    ) {
-      await Notification.requestPermission();
-    }
-    try {
-      await saveItem({
-        kind: "reminder",
-        title: reminder.trim(),
-        text: "",
-        dueAt: Date.now() + mins * 60_000,
-      });
-      setReminder("");
-      refresh();
-    } catch (e: unknown) {
-      setMessage(memoryErrorText(e));
-    }
-  };
 
   /** Information retrieval over the user's own notes: only matching note text is sent, after the user asks. */
   const askNotes = async () => {
@@ -116,14 +90,11 @@ export default function MemoryScreen() {
   };
 
   return (
-    <Page title="Memory" kicker="NOTES · CAPTURES · REMINDERS">
+    <Page title="Memory" kicker="PRIVATE NOTES · CAPTURES · ANSWERS">
       <Body muted>
         Kept only on this device, encrypted. Nothing here is uploaded unless you ask a question
         about your notes.
       </Body>
-      {!prefs.features.memory ? (
-        <Notice tone="warn">Notes and memory are switched off in Profile → Features.</Notice>
-      ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
         <Card style={{ flexGrow: 1, flexBasis: 320 }}>
           <H2>New note</H2>
@@ -163,7 +134,7 @@ export default function MemoryScreen() {
             testID="memory-save-note-button"
             label="Save note"
             icon="check"
-            disabled={note.trim() === "" || !prefs.features.memory}
+            disabled={note.trim() === ""}
             onPress={() =>
               void saveItem({
                 kind: "note",
@@ -177,31 +148,6 @@ export default function MemoryScreen() {
                 .catch((e: unknown) => setMessage(memoryErrorText(e)))
             }
           />
-        </Card>
-        <Card style={{ flexGrow: 1, flexBasis: 320 }}>
-          <H2>Reminder</H2>
-          <Field
-            testID="memory-reminder-input"
-            label="Remind me to"
-            value={reminder}
-            onChange={setReminder}
-          />
-          <Field
-            testID="memory-reminder-minutes"
-            label="In how many minutes"
-            value={minutes}
-            onChange={setMinutes}
-          />
-          <Btn
-            testID="memory-add-reminder-button"
-            label="Add reminder"
-            icon="bell"
-            disabled={reminder.trim() === "" || !prefs.features.reminders}
-            onPress={() => void addReminder()}
-          />
-          <Body muted size={12}>
-            Reminders fire while LensMate is open; the browser shows a notification if you allow it.
-          </Body>
         </Card>
       </View>
       <Card>

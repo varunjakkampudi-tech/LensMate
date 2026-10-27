@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs once, on first start of the Postgres container, as the superuser (BLOCKER-006 item 1).
+# Runs once, on first start of the Postgres container, as the superuser.
 # It creates two least-privilege roles: broker_app (the broker at runtime) and broker_admin (the owner's admin CLI,
 # which issues enrolment codes and revokes devices). Neither is a superuser, neither can create roles or databases,
 # and neither owns anything. Table rights are granted later by `node dist/migrate-cli.js`, which runs as the owner role.

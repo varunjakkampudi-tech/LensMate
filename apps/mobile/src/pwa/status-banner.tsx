@@ -49,8 +49,8 @@ export function PwaStatus() {
     <View style={{ gap: 8, paddingHorizontal: 16, paddingTop: 8 }} accessibilityLiveRegion="polite">
       {online ? null : (
         <Notice tone="warn" testID="offline-notice">
-          You are offline. Notes and captures stay on this device. Answers, translation and cloud
-          speech need a connection.
+          You are offline. Notes and captures stay on this device. Cloud answers and speech need a
+          connection.
         </Notice>
       )}
       {updateReady && registration !== undefined ? (

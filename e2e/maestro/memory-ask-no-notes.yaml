@@ -1,5 +1,5 @@
 # Flow: Memory — ask "Where did I park?" with no saved notes and check the answer does not show unrelated note text.
-# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Authored Maestro flow. Run against the matching local Android development build.
 # Run: maestro test e2e/maestro/memory-ask-no-notes.yaml
 appId: com.viswatra.lensmate
 ---

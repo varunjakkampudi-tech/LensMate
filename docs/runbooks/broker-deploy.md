@@ -39,7 +39,7 @@ branch, create a branch at that commit first, then deploy it. Do not edit the se
 
 Live calls stay off until the owner: sets a live-test budget above INR 0, approves the cloud-processing disclosure,
 approves the model list in `services/broker/src/pricing.ts`, and approves the charging rule for failed calls
-(BLOCKER-006 items a to i). Then set `BROKER_MODE=live` on the server and record the change in `docs/product/ROADMAP.md`.
+(all broker security and spend controls are approved). Then set `BROKER_MODE=live` on the server and record the approved change in the release evidence.
 
 ## Known limits
 

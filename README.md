@@ -1,22 +1,20 @@
 # LensMate software
 
-LensMate is a TypeScript monorepo for an Expo companion app, its shared domain and protocol packages, a virtual glasses simulator, and a server-side provider broker. The repository also contains Maestro flow definitions, ESP-IDF project guidance, deployment procedures, product and test matrices, and decision records.
+LensMate is a TypeScript monorepo for personal AI glasses and their phone companion. It contains the Expo mobile app, shared device protocol and domain packages, a virtual glasses simulator, and a server-side AI broker. The current glasses-to-phone media path is not implemented yet.
 
 ## Repository map
 
-| Path                       | Purpose                                                                                 |
-| -------------------------- | --------------------------------------------------------------------------------------- |
-| `apps/mobile`              | Expo app for iOS, Android, and web; app screens, device integrations, and mobile tests  |
-| `packages/core`            | Shared domain logic, provider gateway, measurements, privacy and retention helpers      |
-| `packages/protocol`        | Versioned Protocol Buffers schema and codec                                             |
-| `services/broker`          | Fastify/PostgreSQL provider broker, tests, and owner-operated deployment files          |
-| `tools/simulator`          | Virtual glasses implementation used by the app and tests                                |
-| `tools/measurement-import` | Measurement CSV validation and import CLI                                               |
-| `firmware`                 | ESP-IDF implementation guidance; hardware work remains gated by owner approval          |
-| `e2e/maestro`              | Authored Maestro flows; execution status is tracked separately                          |
-| `docs`                     | Product plan, hardware, architecture, decisions, governance, measurements, and runbooks |
+| Path                | Purpose                                                                    |
+| ------------------- | -------------------------------------------------------------------------- |
+| `apps/mobile`       | Expo phone companion, device integration boundary, and mobile tests        |
+| `packages/core`     | Shared device behavior, provider gateway, privacy, and retention rules     |
+| `packages/protocol` | Versioned glasses-to-phone protocol and codec                              |
+| `services/broker`   | Authenticated AI relay, privacy and spend safeguards                       |
+| `tools/simulator`   | Virtual glasses implementation for deterministic software development      |
+| `firmware`          | Glasses firmware requirements and implementation guidance                  |
+| `docs`              | Product contract, hardware, architecture, security decisions, and runbooks |
 
-Open items and the product plan are in [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md). Product features are in [`docs/product/feature-register.md`](docs/product/feature-register.md).
+The product contract and current engineering objective are in [`docs/product/PRODUCT.md`](docs/product/PRODUCT.md). The glasses and phone link requirements are in [`docs/hardware/glasses-spec.md`](docs/hardware/glasses-spec.md).
 
 ## Requirements and setup
 
@@ -50,5 +48,5 @@ pnpm check:expo
 
 - Do all development on `dev`; production changes to `main` require owner approval. See [`docs/governance/git-branch-policy.md`](docs/governance/git-branch-policy.md).
 - Do not commit secrets, environment files, credentials, recordings, photos, or personal data.
-- Treat owner decisions in [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md) as release controls.
+- Treat the product rules in [`docs/product/PRODUCT.md`](docs/product/PRODUCT.md) as scope controls.
 - Do not infer hardware, provider, emulator, or production readiness from local unit checks.

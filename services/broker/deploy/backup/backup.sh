@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Encrypted dump of the broker ledger (BLOCKER-006). Not scheduled by this repository: the owner installs it after
+# Encrypted dump of the broker ledger. Not scheduled by this repository: the owner installs it after
 # approval. Retention defaults to 14 days.
 #
 # Required environment:

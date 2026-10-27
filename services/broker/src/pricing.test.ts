@@ -35,8 +35,8 @@ describe("model allowlist", () => {
     });
   });
 
-  it("refuses the :online web-research variant until its zero-retention compatibility is verified", () => {
-    expect(findModel("google/gemini-3.1-flash-lite:online")).toBeUndefined();
+  it("refuses model ids that are not on the text or vision allowlist", () => {
+    expect(findModel("openai/gpt-4o")).toBeUndefined();
   });
 });
 

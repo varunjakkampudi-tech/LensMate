@@ -1,5 +1,4 @@
-import { liveStatusText, metaOf, parse } from "./answer-format";
-import type { LiveState } from "../vision/live-session";
+import { metaOf, parse } from "./answer-format";
 
 describe("parse", () => {
   it("reads a structured reply: title, answer and up to three follow-ups", () => {
@@ -41,15 +40,5 @@ describe("metaOf", () => {
     expect(metaOf({ text: "x", latencyMs: 800, costPaise: 3, source: "openrouter" })).toBe(
       "0.8 s · ₹0.03",
     );
-  });
-});
-
-describe("liveStatusText", () => {
-  it("explains each phase in one plain line", () => {
-    expect(liveStatusText({ phase: "idle" } as LiveState)).toMatch(/Not running/);
-    expect(
-      liveStatusText({ phase: "running", framesAnalysed: 3, invalidFrames: 1 } as LiveState),
-    ).toBe("Running. 3 analysed, 1 unusable frames skipped.");
-    expect(liveStatusText({ phase: "timed_out" } as LiveState)).toBe("Stopped.");
   });
 });

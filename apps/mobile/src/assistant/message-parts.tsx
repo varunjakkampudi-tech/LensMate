@@ -21,9 +21,7 @@ const AGENT_ICON: Record<AgentStep["agent"], IconName> = {
   Planner: "agent",
   Researcher: "search",
   "Memory keeper": "brain",
-  Scheduler: "bell",
   "Action agent": "bolt",
-  Translator: "globe",
   Writer: "note",
 };
 

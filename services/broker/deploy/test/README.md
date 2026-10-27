@@ -1,4 +1,4 @@
-# Broker failure-path tests (BLOCKER-006)
+# Broker failure-path tests
 
 `failure-paths.sh` runs the broker stack in Docker in mock mode and checks the failure paths listed below. It is a
 POSIX shell script. Run it from the repository root:

@@ -4,7 +4,7 @@ import type { BrokerConfig } from "./broker-config";
 import type { CredentialState, CredentialStorage } from "./device-credential";
 
 /**
- * Decides whether broker calls may be made at all (BLOCKER-006). Broker usage stays unavailable until all of these
+ * Decides whether broker calls may be made at all. Broker usage stays unavailable until all of these
  * hold: the broker address is configured, this phone holds a well-formed device credential, and the owner-approved
  * cloud-processing disclosure has been accepted.
  */

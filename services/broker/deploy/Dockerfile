@@ -1,5 +1,5 @@
 # Broker image. Build from the repository root:  docker build -f services/broker/deploy/Dockerfile .
-# Not built or deployed by the agent (BLOCKER-006: deployment needs owner approval).
+# Production images are built through the owner-controlled deployment workflow.
 FROM node:22-alpine AS build
 RUN corepack enable
 WORKDIR /repo

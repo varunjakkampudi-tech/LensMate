@@ -1,5 +1,5 @@
 #!/bin/sh
-# BLOCKER-006 failure-path tests for the LensMate broker stack.
+# Failure-path tests for the LensMate broker stack.
 #
 # Mock mode only: the broker runs BROKER_MODE=mock and the script refuses to start if OPENROUTER_API_KEY is set, so no
 # provider call is possible. The committed Dockerfile and compose files are exported with `git archive HEAD` into a

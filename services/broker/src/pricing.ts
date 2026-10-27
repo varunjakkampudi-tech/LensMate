@@ -16,10 +16,8 @@ export interface ModelPrice {
   readonly maxContextTokens: number;
   /** Whether the model accepts image input. Vision routes need an owner-measured image ceiling as well. */
   readonly acceptsImages: boolean;
-  /** Which broker route may use this model: text routes (plain or with web research) or the vision route. */
-  readonly feature: "text" | "research" | "vision";
-  /** Flat worst-case charge per attempt for built-in web search, in micro-USD (research models only). */
-  readonly webSearchMicroUsd?: number;
+  /** Which broker route may use this model. */
+  readonly feature: "text" | "vision";
 }
 
 export const MODEL_ALLOWLIST: readonly ModelPrice[] = [
@@ -49,8 +47,6 @@ export const MODEL_ALLOWLIST: readonly ModelPrice[] = [
     acceptsImages: true,
     feature: "vision",
   },
-  // google/gemini-3.1-flash-lite:online stays refused: its zero-data-retention compatibility is not verified, and
-  // there is no verified web-research model yet. Live research is therefore unavailable in this version.
   {
     id: "google/gemini-3.5-flash-lite",
     inputMicroUsdPerMillion: 540_000,
@@ -82,8 +78,7 @@ export function worstCaseMicroUsd(
   const inputTokens = inputBoundTokens;
   return (
     tokensToMicroUsd(inputTokens, model.inputMicroUsdPerMillion) +
-    tokensToMicroUsd(maxOutputTokens, model.outputMicroUsdPerMillion) +
-    (model.webSearchMicroUsd ?? 0)
+    tokensToMicroUsd(maxOutputTokens, model.outputMicroUsdPerMillion)
   );
 }
 
@@ -95,8 +90,7 @@ export function actualMicroUsd(
 ): number {
   return (
     tokensToMicroUsd(promptTokens, model.inputMicroUsdPerMillion) +
-    tokensToMicroUsd(completionTokens, model.outputMicroUsdPerMillion) +
-    (model.webSearchMicroUsd ?? 0)
+    tokensToMicroUsd(completionTokens, model.outputMicroUsdPerMillion)
   );
 }
 

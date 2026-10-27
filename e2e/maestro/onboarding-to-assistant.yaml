@@ -1,5 +1,5 @@
 # Flow C: first-run setup reaches the Assistant screen.
-# Evidence: NOT RUN (BLOCKER-009: emulator and simulator jobs are blocked).
+# Authored Maestro flow. Run against the matching local Android development build.
 # Run: maestro test e2e/maestro/onboarding-to-assistant.yaml
 appId: com.viswatra.lensmate
 ---
@@ -9,7 +9,7 @@ appId: com.viswatra.lensmate
 - assertVisible: "Set up AI on this phone"
 - tapOn: "I understand and accept"
 - assertVisible: "Cloud notice accepted."
-- tapOn: "Hear & Talk"
+- tapOn: "Ask LensMate"
 - assertVisible: "Assistant"
 - assertVisible: "Ask anything, by voice or text."
 - assertVisible: "Answers: mock, no provider called"

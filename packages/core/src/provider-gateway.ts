@@ -1,7 +1,7 @@
 import { SpendCap } from "./spend-cap.js";
 
 /**
- * App gateway for speech, translation and AI calls.
+ * App gateway for speech, assistant and AI calls.
  *
  * Every paid call passes these checks in order: disclosure accepted for the feature, spend cap
  * circuit breaker, then a bounded number of attempts, each with a timeout. Only the broker
