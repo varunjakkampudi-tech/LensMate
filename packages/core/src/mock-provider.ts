@@ -4,7 +4,7 @@ export type MockAction = "ok" | "fail" | "hang";
 
 /**
  * Mock provider for tests and the simulator. It never calls a real provider and never holds a key
- * (v9 section 14; Goal 9). Each attempt takes the next scripted action; the last action repeats.
+ * Each attempt takes the next scripted action; the last action repeats.
  * "hang" waits until the caller aborts, which models a stalled provider.
  */
 export interface MockProvider<T> {

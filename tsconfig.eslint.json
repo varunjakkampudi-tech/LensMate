@@ -11,6 +11,7 @@
   "include": [
     "packages/*/src/**/*.ts",
     "tools/*/src/**/*.ts",
+    "services/*/src/**/*.ts",
     "apps/mobile/app/**/*.tsx",
     "apps/mobile/src/**/*.ts",
     "apps/mobile/src/**/*.tsx",

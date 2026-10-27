@@ -1,6 +1,6 @@
 /**
- * Retention for temporary captures (v9 G13, G34; Engineering Standards 4).
- * Temporary items (photos, audio, frames, translation text) live on the phone only and expire after
+ * Retention for temporary captures.
+ * Temporary items (photos, audio, frames, assistant text) live on the phone only and expire after
  * 24 hours or at session end, whichever comes first. Saved notes and memories are not handled here:
  * they stay until the user deletes them.
  */
@@ -12,7 +12,14 @@ export interface TemporaryItem {
   readonly sessionEnded: boolean;
 }
 
+/**
+ * Fails closed: an item is expired when the clock or its creation time cannot be read, or when it claims to be
+ * created in the future, so a bad value can never keep it.
+ */
 export function isTemporaryItemExpired(item: TemporaryItem, nowMs: number): boolean {
+  if (!Number.isFinite(nowMs) || !Number.isFinite(item.createdAtMs) || item.createdAtMs > nowMs) {
+    return true;
+  }
   return item.sessionEnded || nowMs - item.createdAtMs >= TEMPORARY_RETENTION_MS;
 }
 

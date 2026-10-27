@@ -1,0 +1,43 @@
+# LensMate development stack. Only LensMate containers belong here. Every port is bound to 127.0.0.1, so nothing
+# is reachable from the network. Copy .env.example to .env and set the password before the first start.
+name: lensmate-dev
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: lensmate-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${LENSMATE_DEV_PG_PASSWORD:?Set LENSMATE_DEV_PG_PASSWORD in infra/dev/.env}
+      POSTGRES_DB: broker_test
+      # Trust auth on the loopback port only, the same as CI. The security suite creates its roles without passwords,
+      # so password auth would block it. Do not expose this port beyond 127.0.0.1.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:${LENSMATE_DEV_PG_PORT:-15432}:5432"
+    volumes:
+      - lensmate-dev-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d broker_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: lensmate-dev-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${LENSMATE_DEV_REDIS_PORT:-16379}:6379"
+    volumes:
+      - lensmate-dev-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  lensmate-dev-pg:
+  lensmate-dev-redis:

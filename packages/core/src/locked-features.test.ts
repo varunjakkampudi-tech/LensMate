@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 /**
- * Locked features (v9 section 20.3) have no code path, no API and no hidden flag. This test searches
+ * Locked features have no code path, no API and no hidden flag. This test searches
  * the source of every workspace package for their names. It fails if one appears in a non-test file.
  * The pattern list covers identification, always-on capture, background recording and covert help.
  */
@@ -20,7 +20,7 @@ const LOCKED_PATTERNS: readonly RegExp[] = [
   /covert[_-]?(interview|answer|help)/i,
 ];
 
-/** Session names outside the P-1 scope must not exist in the protocol either (v9 section 21). */
+/** Session names that are not built must not exist in the protocol either. */
 const OUT_OF_SCOPE_SESSION_PATTERN = /SESSION_TYPE_(COMPANION|WALK|SOUND|HELPER)/;
 
 function sourceFiles(dir: string): string[] {

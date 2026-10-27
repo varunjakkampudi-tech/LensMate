@@ -1,19 +1,30 @@
 import { SpendCap } from "./spend-cap.js";
 
 /**
- * App gateway for speech, translation and AI calls (Engineering Standards 4; v9 G2, G10, G33).
+ * App gateway for speech, assistant and AI calls.
  *
- * Every paid call passes these checks in order: disclosure accepted for the feature (G33), spend cap
- * (G10), circuit breaker, then a bounded number of attempts, each with a timeout. Only the broker
+ * Every paid call passes these checks in order: disclosure accepted for the feature, spend cap
+ * circuit breaker, then a bounded number of attempts, each with a timeout. Only the broker
  * performs the provider call with keys; this gateway only decides, times and accounts.
  */
 export type GatewayErrorCode =
   | "DISCLOSURE_REQUIRED"
   | "CAP_REACHED"
+  | "QUOTA_EXCEEDED"
+  | "UNAUTHORIZED"
   | "INVALID_AMOUNT"
   | "CIRCUIT_OPEN"
   | "TIMEOUT"
   | "PROVIDER_ERROR";
+
+/**
+ * An error a provider run can throw to say how the gateway should treat it. `retryable: false` stops the
+ * attempts at once, and `gatewayCode` is reported to the caller instead of PROVIDER_ERROR.
+ */
+export interface ClassifiedProviderError {
+  readonly gatewayCode: GatewayErrorCode;
+  readonly retryable: boolean;
+}
 
 export type GatewayResult<T> =
   { ok: true; value: T; costMinor: number } | { ok: false; errorCode: GatewayErrorCode };
@@ -47,7 +58,7 @@ export class ProviderGateway {
     private readonly options: GatewayOptions,
   ) {}
 
-  /** Records that the user saw and accepted the cloud disclosure for a feature (G33). */
+  /** Records that the user saw and accepted the cloud disclosure for a feature. */
   acceptDisclosure(feature: string): void {
     this.disclosedFeatures.add(feature);
   }
@@ -74,10 +85,15 @@ export class ProviderGateway {
         this.consecutiveFailures = 0;
         return { ok: true, value, costMinor };
       } catch (error) {
-        const errorCode = error instanceof ProviderTimeout ? "TIMEOUT" : "PROVIDER_ERROR";
-        this.recordFailure();
+        const classified = classify(error);
+        const errorCode = error instanceof ProviderTimeout ? "TIMEOUT" : classified.gatewayCode;
+        // Only transient outcomes open the circuit. A budget, quota or authorization refusal is not an outage.
+        if (errorCode === "TIMEOUT" || classified.retryable) {
+          this.recordFailure();
+        }
         if (
           errorCode === "TIMEOUT" ||
+          !classified.retryable ||
           attempt === this.options.maxAttempts ||
           this.isCircuitOpen()
         ) {
@@ -98,6 +114,20 @@ export class ProviderGateway {
       this.consecutiveFailures = 0;
     }
   }
+}
+
+function classify(error: unknown): ClassifiedProviderError {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "gatewayCode" in error &&
+    "retryable" in error &&
+    typeof error.gatewayCode === "string" &&
+    typeof error.retryable === "boolean"
+  ) {
+    return { gatewayCode: error.gatewayCode as GatewayErrorCode, retryable: error.retryable };
+  }
+  return { gatewayCode: "PROVIDER_ERROR", retryable: true };
 }
 
 function runWithTimeout<T>(

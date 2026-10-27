@@ -1,0 +1,25 @@
+{
+  "name": "@lensmate/broker",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file-if-exists=../../.env.development dist/index.js",
+    "migrate": "node dist/migrate-cli.js",
+    "admin:devices": "node dist/admin-cli.js"
+  },
+  "dependencies": {
+    "@lensmate/core": "workspace:*",
+    "fastify": "5.12.7",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

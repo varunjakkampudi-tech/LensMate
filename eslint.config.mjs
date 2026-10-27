@@ -1,20 +1,24 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+import reactHooks from "eslint-plugin-react-hooks";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
       "**/node_modules/**",
-      "apps/mobile/**",
       "firmware/**",
       "**/coverage/**",
+      ".claude/**",
+      "apps/mobile/.expo/**",
+      "apps/mobile/public/sw.js",
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
-    files: ["**/*.ts"],
+    files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
       parserOptions: { project: "./tsconfig.eslint.json", tsconfigRootDir: import.meta.dirname },
     },
@@ -26,11 +30,37 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.mjs", "**/*.cjs"],
+    files: ["apps/mobile/**/*.{ts,tsx}"],
+    ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    files: ["apps/mobile/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    },
+  },
+  {
+    files: ["apps/mobile/**/*.{ts,tsx}"],
+    plugins: { "react-hooks": reactHooks, "jsx-a11y": jsxA11y },
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "error",
+      ...jsxA11y.configs.recommended.rules,
+    },
+  },
+  {
+    files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       sourceType: "commonjs",
-      globals: { module: "writable", require: "readonly", __dirname: "readonly" },
+      globals: {
+        module: "writable",
+        require: "readonly",
+        __dirname: "readonly",
+        URL: "readonly",
+        fetch: "readonly",
+        AbortSignal: "readonly",
+      },
     },
   },
 );

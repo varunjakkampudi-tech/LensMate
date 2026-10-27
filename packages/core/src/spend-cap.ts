@@ -1,8 +1,8 @@
 /**
- * Monthly spend cap for paid speech and AI calls (v9 G10; Engineering Standards 4).
+ * Monthly spend cap for paid speech and AI calls.
  *
  * Amounts are integer minor units (paise), never floats, so the cap cannot drift by rounding.
- * This is the on-device decision logic. The broker enforces the same cap server-side (Goal 10A.3);
+ * This is the on-device decision logic. The broker enforces the same cap server-side;
  * the app mirrors usage for display only.
  */
 export type SpendDecision =

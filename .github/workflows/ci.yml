@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 
@@ -34,7 +34,40 @@ jobs:
       - run: pnpm build
       - run: pnpm check:schema
       - run: pnpm check:expo
+      - run: pnpm audit:high
       - run: pnpm test
+
+  broker-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: broker_test
+          # Ephemeral CI database only. Trust auth means no password is stored in this workflow.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d broker_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      BROKER_TEST_DATABASE_URL: postgres://postgres@127.0.0.1:5432/broker_test
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Both suites drop and recreate the same tables, so they run one after the other, never in parallel.
+      - run: pnpm exec jest --runInBand services/broker/src/postgres-budget.integration.test.ts services/broker/src/security.integration.test.ts
 
   secret-scan:
     runs-on: ubuntu-24.04

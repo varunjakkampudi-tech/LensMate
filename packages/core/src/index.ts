@@ -1,6 +1,6 @@
 /**
  * Pure domain logic for the smart glasses software track.
- * No React and no native imports (Engineering Standards section 2.1).
+ * No React and no native imports.
  */
 export const CORE_PACKAGE_VERSION = "0.0.0";
 
@@ -12,11 +12,11 @@ export type { SpendDecision } from "./spend-cap.js";
 export {
   IDLE_STATE,
   applyCutoff,
+  captureSessionForEffect,
   isCapturing,
   onGesture,
+  speechEnded,
   speechStarted,
-  startListeningSession,
-  stopListeningSession,
 } from "./glasses-state.js";
 export type {
   Gesture,
@@ -24,7 +24,6 @@ export type {
   GlassesMode,
   GlassesState,
   GlassesTransition,
-  ListeningSessionType,
 } from "./glasses-state.js";
 export { ProviderGateway, ProviderTimeout } from "./provider-gateway.js";
 export type {
@@ -41,3 +40,21 @@ export {
   sweepTemporaryItems,
 } from "./retention.js";
 export type { TemporaryItem } from "./retention.js";
+export {
+  BrokerError,
+  enrolDevice,
+  requestBrokerChat,
+  streamBrokerChat,
+  requestBrokerUsage,
+  requestBrokerVision,
+} from "./broker-client.js";
+export type {
+  BrokerChatMessage,
+  BrokerChatRequest,
+  BrokerClientOptions,
+  BrokerReply,
+  BrokerUsage,
+  BrokerVisionRequest,
+  EnrolledDevice,
+} from "./broker-client.js";
+export type { ClassifiedProviderError } from "./provider-gateway.js";

@@ -1,0 +1,15 @@
+# Flow A: home screen, enrolment screen with no broker address, back to home.
+# Expects a debug build made WITHOUT EXPO_PUBLIC_BROKER_BASE_URL, so the enrolment screen shows the
+# "not configured" message. Texts are copied from apps/mobile/src/strings.ts and the screen files.
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- assertVisible: "LensMate"
+- assertVisible: "Not connected"
+- assertVisible: "Connect virtual glasses"
+- tapOn: "Enrol this phone"
+- assertVisible: "Enrol this phone"
+- assertVisible: "The broker address is not set in this build, so enrolment is unavailable."
+- tapOn: "Back to home"
+- assertVisible: "Connect virtual glasses"

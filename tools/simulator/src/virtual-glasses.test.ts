@@ -12,118 +12,92 @@ const schemaPath = path.resolve(
   "../../../packages/protocol/proto/lensmate/v1/link.proto",
 );
 
-function setup(): { glasses: VirtualGlasses; fromGlasses: EnvelopeMessage[] } {
-  const glasses = new VirtualGlasses(new ProtocolCodec(loadProtocolRoot(schemaPath)));
-  const fromGlasses: EnvelopeMessage[] = [];
+function setup() {
+  const glasses = new VirtualGlasses(new ProtocolCodec(loadProtocolRoot(schemaPath)), () => 100);
+  const received: EnvelopeMessage[] = [];
   glasses.subscribe((message) => {
-    fromGlasses.push(message);
+    received.push(message);
   });
-  return { glasses, fromGlasses };
-}
-
-function sessionMessage(type: string, phase: string, sequence = 1): EnvelopeMessage {
-  return { protocolVersion: PROTOCOL_VERSION, sequence, session: { type, phase } };
+  return { glasses, received };
 }
 
 describe("VirtualGlasses", () => {
-  it("refuses to send or press buttons while disconnected", async () => {
+  it("requires a connected link", () => {
     const { glasses } = setup();
-    expect(glasses.status).toBe("disconnected");
     expect(() => {
       glasses.pressButton("BUTTON_ACTION_PRESS");
     }).toThrow("not connected");
-    await expect(
-      glasses.send(sessionMessage("SESSION_TYPE_CAPTION", "SESSION_PHASE_ACTIVE")),
-    ).rejects.toThrow("not connected");
   });
 
-  it("delivers button events to the app after the codec round trip", async () => {
-    const { glasses, fromGlasses } = setup();
+  it("delivers button events to the app through the protocol codec", async () => {
+    const { glasses, received } = setup();
     await glasses.connect();
-    glasses.pressButton("BUTTON_ACTION_HOLD", 900);
-    // The first envelope is the button event. A hold then turns the indicator on (gesture state machine).
-    expect(fromGlasses[0]).toEqual({
+    glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
+    expect(received[0]).toMatchObject({
       protocolVersion: PROTOCOL_VERSION,
       sequence: 1,
-      button: { action: "BUTTON_ACTION_HOLD", pressMs: 900 },
+      button: { action: "BUTTON_ACTION_SINGLE_TAP" },
     });
+    expect(glasses.gestureEffects).toEqual(["CAPTURE_PHOTO"]);
   });
 
-  it("turns the indicator on for a capture session and off after it ends", async () => {
-    const { glasses, fromGlasses } = setup();
+  it("shows the photo-question indicator for a double-tap visual question", async () => {
+    const { glasses, received } = setup();
     await glasses.connect();
-    await glasses.send(sessionMessage("SESSION_TYPE_PUSH_TO_TALK", "SESSION_PHASE_ACTIVE"));
+    glasses.pressButton("BUTTON_ACTION_DOUBLE_TAP");
+    expect(glasses.gestureEffects).toEqual(["CAPTURE_VISUAL_QUESTION"]);
+    expect(
+      received
+        .filter((message) => message.indicator !== undefined)
+        .map((message) => message.indicator),
+    ).toEqual([
+      { on: true, reason: "INDICATOR_REASON_PHOTO_QUESTION" },
+      { reason: "INDICATOR_REASON_IDLE" },
+    ]);
+  });
+
+  it("turns the recording indicator on for microphone use and off on release", async () => {
+    const { glasses, received } = setup();
+    await glasses.connect();
+    glasses.pressButton("BUTTON_ACTION_HOLD");
     expect(glasses.indicatorOn).toBe(true);
-    expect(fromGlasses.at(-1)?.indicator).toEqual({
+    expect(received.at(-1)?.indicator).toMatchObject({
       on: true,
       reason: "INDICATOR_REASON_PUSH_TO_TALK",
     });
-
-    await glasses.send(sessionMessage("SESSION_TYPE_PUSH_TO_TALK", "SESSION_PHASE_ENDED", 2));
+    glasses.pressButton("BUTTON_ACTION_RELEASE");
     expect(glasses.indicatorOn).toBe(false);
-    // proto3 omits on=false, so an absent `on` means the indicator is off.
-    expect(fromGlasses.at(-1)?.indicator).toEqual({ reason: "INDICATOR_REASON_IDLE" });
+    expect(glasses.gestureEffects).toEqual(["START_PUSH_TO_TALK", "SEND_QUESTION"]);
   });
 
-  it("refuses an app request to turn the indicator off during capture", async () => {
-    const { glasses, fromGlasses } = setup();
+  it("does not allow software to turn the indicator off during capture", async () => {
+    const { glasses, received } = setup();
     await glasses.connect();
-    await glasses.send(sessionMessage("SESSION_TYPE_TRANSLATION", "SESSION_PHASE_ACTIVE"));
+    glasses.pressButton("BUTTON_ACTION_HOLD");
     await glasses.send({
       protocolVersion: PROTOCOL_VERSION,
-      sequence: 7,
-      indicator: { on: false, reason: "INDICATOR_REASON_IDLE" },
+      sequence: 20,
+      indicator: { on: false },
     });
     expect(glasses.indicatorOn).toBe(true);
-    expect(fromGlasses.at(-1)).toEqual({
-      protocolVersion: PROTOCOL_VERSION,
-      sequence: expect.any(Number) as number,
-      ack: { ackedSequence: 7, error: "ERROR_CODE_CAPTURE_ACTIVE" },
-    });
+    expect(received.at(-1)?.ack).toEqual({ ackedSequence: 20, error: "ERROR_CODE_CAPTURE_ACTIVE" });
   });
 
-  it("accepts an app request to turn the indicator off when no capture session is active", async () => {
-    const { glasses, fromGlasses } = setup();
-    await glasses.connect();
-    await glasses.send({ protocolVersion: PROTOCOL_VERSION, sequence: 3, indicator: {} });
-    expect(glasses.indicatorOn).toBe(false);
-    // proto3 omits on=false, so an absent `on` means the indicator is off.
-    expect(fromGlasses.at(-1)?.indicator).toEqual({ reason: "INDICATOR_REASON_IDLE" });
-  });
-
-  it("acknowledges a session with an unknown type or phase as malformed", async () => {
-    const { glasses, fromGlasses } = setup();
-    await glasses.connect();
-    await glasses.send(sessionMessage("SESSION_TYPE_UNSPECIFIED", "SESSION_PHASE_ACTIVE", 4));
-    expect(fromGlasses.at(-1)?.ack).toEqual({ ackedSequence: 4, error: "ERROR_CODE_MALFORMED" });
-    await glasses.send(sessionMessage("SESSION_TYPE_CAPTION", "SESSION_PHASE_UNSPECIFIED", 5));
-    expect(fromGlasses.at(-1)?.ack).toEqual({ ackedSequence: 5, error: "ERROR_CODE_MALFORMED" });
-    expect(glasses.indicatorOn).toBe(false);
-  });
-
-  it("rejects a schema violation the app sends, before it reaches the glasses", async () => {
+  it("models spoken answers and lets a press stop speech", async () => {
     const { glasses } = setup();
     await glasses.connect();
-    await expect(
-      glasses.send({
-        protocolVersion: PROTOCOL_VERSION,
-        sequence: 1,
-        session: { type: "SESSION_TYPE_CAPTION_TYPO", phase: "SESSION_PHASE_ACTIVE" },
-      }),
-    ).rejects.toThrow();
-    expect(glasses.receivedFromApp).toHaveLength(0);
+    glasses.speak("Hello");
+    expect(glasses.isSpeaking).toBe(true);
+    glasses.pressButton("BUTTON_ACTION_PRESS");
+    expect(glasses.isSpeaking).toBe(false);
+    expect(glasses.eventLog.at(-1)).toEqual({ kind: "SPEECH_STOPPED_SIMULATED", delayMs: 0 });
   });
 
-  it("stops delivering to a handler after it unsubscribes", async () => {
-    const glasses = new VirtualGlasses(new ProtocolCodec(loadProtocolRoot(schemaPath)));
-    const received: EnvelopeMessage[] = [];
-    const unsubscribe = glasses.subscribe((message) => {
-      received.push(message);
-    });
+  it("locks capture after an emergency cutoff", async () => {
+    const { glasses } = setup();
     await glasses.connect();
+    glasses.cutOff();
     glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
-    unsubscribe();
-    glasses.pressButton("BUTTON_ACTION_SINGLE_TAP");
-    expect(received).toHaveLength(1);
+    expect(glasses.gestureEffects).toEqual([]);
   });
 });

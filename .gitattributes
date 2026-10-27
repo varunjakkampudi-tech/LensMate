@@ -1,0 +1,3 @@
+# Store and check out text files with LF endings on every platform, so Prettier and
+# line-based checks behave the same on Windows and Linux (CI). Binary files are detected by Git.
+* text=auto eol=lf
