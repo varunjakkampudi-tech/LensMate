@@ -71,6 +71,10 @@ phone-transfer criteria against the selected camera and wireless link before a c
 "high quality." The simulator cannot establish audio quality, recognition accuracy, image quality, latency, radio
 reliability, battery life, or wearer comfort.
 
+Use the separate [online hardware simulation](online-simulation.md) to exercise candidate-board control and indicator
+logic before purchasing parts. It is an exploratory circuit check, not a production-board selection or hardware
+measurement.
+
 ## Link and protocol requirements
 
 - A paired device must authenticate each connection and reject replayed or unauthenticated commands.

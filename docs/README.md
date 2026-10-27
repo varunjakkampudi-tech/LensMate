@@ -4,6 +4,7 @@
 
 - [Product contract](product/PRODUCT.md): scope, privacy rules, current implementation, and the current engineering objective.
 - [Glasses and phone link](hardware/glasses-spec.md): capture safety, device boundaries, protocol requirements, and validation.
+- [Online hardware simulation](hardware/online-simulation.md): Wokwi control-circuit experiment, browser steps, and evidence limits.
 
 ## Architecture and privacy
 
