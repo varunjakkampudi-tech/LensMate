@@ -30,3 +30,36 @@ Dependencies: none beyond `packages/core` (no network, phone, or protocol depend
 | 19  | (security, CR-security) Sensitive authorization is decided by a trusted policy supplied at construction, with default deny. The caller cannot grant it by passing a flag, and the policy receives the command id and source | "asks the trusted policy with the command id…"; "denies sensitive commands by default…" |
 
 Not covered by this item (remain pending, see BLOCKERS.md): running on real glasses firmware, wake-word capture, and the real phone-disconnect path through the glasses link. The router takes no link input, so disconnect is covered by design, not by a hardware test.
+
+## B17 — Local queue and deferred synchronization
+
+Audit (before this item): no durable offline queue exists in `packages/core`. Existing pieces that are reused or referenced:
+
+- `packages/core/src/retention.ts` — temporary-item expiry (24 h) and sweep; reused for the expiry rule.
+- `packages/core/src/provider-gateway.ts` — retryable/non-retryable classification; the queue uses its own bounded backoff (same idea, separate concern).
+- `apps/mobile/src/memory/native-store.ts` — phone-side encrypted SQLite store; not used by `packages/core` (core has no native imports). Its wiring to the queue is a later integration item.
+- `apps/mobile/src/memory/backup.ts` — AES-GCM encryption on the phone; the queue takes an injected cipher with the same shape instead of importing it.
+
+Implementation: `packages/core/src/offline-sync-queue.ts`, tests in `packages/core/src/offline-sync-queue.test.ts`. No network, phone, or cloud import. Time is injected (`nowMs`), so tests are deterministic.
+
+Design summary: the queue persists a whole snapshot through an injected `QueueStorage` (atomic save), serializes operations, and keeps memory unchanged when a save fails.
+
+| #   | Criterion                                                                                                                                                  | Test                                                        |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| 1   | Enqueued entries survive a restart: reopening from the same storage restores pending entries in order                                                      | "restores pending entries after restart"                    |
+| 2   | A repeated idempotency key does not create a second entry                                                                                                  | "duplicate idempotency key"                                 |
+| 3   | Entry-count, character-quota and payload-size limits are enforced and rejected with a reason                                                               | "quota and payload limits"                                  |
+| 4   | Sensitive entries require a cipher (fail closed); stored ciphertext contains no plaintext; ciphertext is bound to the entry id and owner (tampering fails) | "sensitive entries need a cipher", "tampered ciphertext"    |
+| 5   | Delivery is in sequence order; delivered entries are never delivered again within the dedupe window                                                        | "delivers in order and not twice"                           |
+| 6   | Retryable failures back off exponentially with a cap and stop after the attempt limit (then DEAD)                                                          | "bounded exponential backoff"                               |
+| 7   | Permanent failures and thrown errors are handled: permanent → DEAD at once; thrown → retryable                                                             | "permanent failure", "thrown error is retryable"            |
+| 8   | Interrupted sync: IN_FLIGHT entries found after restart return to PENDING and are resent with the same idempotency key                                     | "interrupted sync is resent with the same key"              |
+| 9   | Cancellation during drain stops work, returns the entry to PENDING, and does not count an attempt                                                          | "cancel during drain"                                       |
+| 10  | Cancelling a pending entry erases its payload; cancelling an in-flight entry is refused                                                                    | "cancel pending erases payload", "cancel in-flight refused" |
+| 11  | Permanent deletion removes the record from storage                                                                                                         | "permanent deletion"                                        |
+| 12  | Sweep removes expired entries and delivered entries past the dedupe window                                                                                 | "sweep"                                                     |
+| 13  | Corrupt snapshot or a record for another owner fails closed on open, and storage is not overwritten                                                        | "corrupt snapshot fails closed", "foreign owner record"     |
+| 14  | A failed save leaves the in-memory queue unchanged (no phantom entry)                                                                                      | "failed save leaves queue unchanged"                        |
+| 15  | Concurrent enqueues are serialized: unique, ordered sequence numbers and no lost entries                                                                   | "concurrent enqueues"                                       |
+
+Not covered by this item: real device storage (SQLite/keystore on the phone or on-glasses flash), the production cipher implementation for each platform, real network sync to the broker, and any power-loss test on hardware (BLK-001). Those remain pending. Software tests use an in-memory storage with failure injection and a real AES-256-GCM cipher from Node's crypto module in tests only.

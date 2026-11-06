@@ -28,7 +28,7 @@
 
 - Implementation: IMPLEMENTED 1 (B16), IN_PROGRESS 22, NOT_STARTED 319.
 - Verification: PASS 1 (B16), PARTIAL 22, NOT_TESTED 319.
-- Review: NOT_REQUESTED 342, APPROVED 0, CHANGES_REQUESTED 0.
+- Review: APPROVED 1 (B16), NOT_REQUESTED 341.
 
 So 341 items are not IMPLEMENTED, 341 are not verified PASS, and none has an APPROVED independent review. B16 code commit: 359f3335ba4bd59c85e99f1f382fa31bf6799b6a.
 

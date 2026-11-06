@@ -19,15 +19,15 @@ Checklist items: 342 (sections A–Q)
 
 ## Summary (independent review field)
 
-- NOT_REQUESTED: 342
+- NOT_REQUESTED: 341
 - PENDING: 0
-- APPROVED: 0
+- APPROVED: 1
 - CHANGES_REQUESTED: 0
 
 Meaning of the current numbers:
 
-- 1 item (B16) is implemented and passes its software acceptance criteria (code commit 944f550; criteria 1–19 in ACCEPTANCE.md). Hardware and live-integration criteria remain unverified.
-- 341 items are not IMPLEMENTED. 342 items are not verified PASS. 342 items have no independent review decision.
+- 1 item (B16) is implemented, passes its software acceptance criteria (code commit 944f550; criteria 1–19 in ACCEPTANCE.md), and is APPROVED by independent review (ChatGPT, reviewed HEAD ddd7cf2). Hardware validation remains PENDING.
+- 341 items are not IMPLEMENTED. 341 items are not verified PASS. 341 items have no independent review decision.
 - ChatGPT's review of commit e082d56 was CHANGES_REQUESTED (CR-06, CR-07, CR-08). That review is recorded in OVERNIGHT_REPORT.md and does not count as APPROVED.
 
 ## Existing code
