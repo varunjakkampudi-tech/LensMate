@@ -19,7 +19,8 @@
     "knip": "knip",
     "check:schema": "pnpm -F @lensmate/protocol check:schema",
     "check:expo": "pnpm -F @lensmate/mobile exec expo config --type public",
-    "audit:high": "pnpm audit --audit-level=high --ignore GHSA-86w9-cpqp-85rv"
+    "audit:high": "pnpm audit --audit-level=high --ignore GHSA-86w9-cpqp-85rv",
+    "check:tracking": "node scripts/lensmate/validate-tracking.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

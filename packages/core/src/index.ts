@@ -58,3 +58,12 @@ export type {
   EnrolledDevice,
 } from "./broker-client.js";
 export type { ClassifiedProviderError } from "./provider-gateway.js";
+export { OfflineCommandRouter, normalizeUtterance } from "./offline-command-router.js";
+export type {
+  CommandHandler,
+  CommandSensitivity,
+  ExecutionResult,
+  LocalCommand,
+  RouteContext,
+  RouteDecision,
+} from "./offline-command-router.js";

@@ -1,25 +1,27 @@
 # LensMate Implementation Status
 
-Last updated: 2026-11-06 (branch `dev`).
+Last updated: 2026-11-06 (branch `dev`). Counts are checked by `pnpm check:tracking` (scripts/lensmate/validate-tracking.mjs), which fails if they drift from MASTER_CHECKLIST.md.
 
-## Summary
-- Checklist items: 342 (sections A–Q, see MASTER_CHECKLIST.md)
-- VERIFIED: 0
-- IMPLEMENTED: 0
-- IN_PROGRESS: 0
-- BLOCKED: 0
-- INDEPENDENT_REVIEW_PENDING: 0
-- NOT_STARTED: 342
+Checklist items: 342 (sections A–Q)
 
-No checklist item has been implemented or verified in this file yet. Counts are updated only when an item changes status.
+## Summary (implementation field)
 
-## Audit of existing code (not yet mapped to checklist IDs)
-The repository already contains:
-- `apps/mobile` — Expo/React Native companion app with AI assistant, capture, memory, diagnostics, and simulator screens
-- `services/broker` — backend broker service with deploy scripts and tests
-- `packages/core`, `packages/protocol` — shared core and protocol packages
-- `firmware/simulation/wokwi` — firmware simulation
-- `tools/simulator` — simulator tooling
-- `docs/` — product, hardware, architecture, and governance documents
+- NOT_STARTED: 319
+- IN_PROGRESS: 22
+- IMPLEMENTED: 1
 
-Mapping existing code to checklist IDs is the first audit task. Until that mapping is recorded, existing code is not credited toward any checklist item.
+## Summary (verification field)
+
+- NOT_TESTED: 319
+- PARTIAL: 22
+- PASS: 1
+
+## Summary (independent review field)
+
+- NOT_REQUESTED: 342
+
+No item is APPROVED by independent review. ChatGPT's review of commit 7c0c2fd was CHANGES_REQUESTED; the response to it is B16 plus CR-01 to CR-05.
+
+## Existing code
+
+See CODE_AUDIT.md for the module-to-checklist mapping. IN_PROGRESS rows are mapped to existing modules, but their acceptance criteria are not yet verified item by item. Phone-based mobile features do not count toward standalone-glasses requirements.
