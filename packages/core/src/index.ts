@@ -69,3 +69,22 @@ export type {
   RouterOptions,
   RouteDecision,
 } from "./offline-command-router.js";
+export { OfflineSyncQueue, QueueError } from "./offline-sync-queue.js";
+export type {
+  CancelResult,
+  DeleteResult,
+  DeliveredEntry,
+  DrainSummary,
+  EnqueueInput,
+  EnqueueResult,
+  EntryState,
+  PayloadCipher,
+  QueueErrorCode,
+  QueueLimits,
+  QueueOptions,
+  QueueStorage,
+  RetryPolicy,
+  SendResult,
+  Sender,
+  StoredRecord,
+} from "./offline-sync-queue.js";

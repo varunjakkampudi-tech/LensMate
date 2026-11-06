@@ -20,6 +20,7 @@ Rule: a row is IN_PROGRESS when code exists but the requirement's acceptance cri
 | Retention sweep for temporary items        | packages/core/src/retention.ts + test                     | G21, D18                     | IN_PROGRESS                               |
 | Glasses link interface                     | packages/core/src/glasses-link.ts                         | B01 interface only           | IN_PROGRESS                               |
 | **Offline command router**                 | packages/core/src/offline-command-router.ts + test        | **B16**                      | **IMPLEMENTED (this change)**             |
+| **Offline sync queue (B17)**               | packages/core/src/offline-sync-queue.ts + test            | **B17**                      | **IMPLEMENTED (this change)**             |
 | Protocol codec and bundled schema          | packages/protocol/src/codec.ts, bundled-schema.ts + tests | B10 link messages (software) | IN_PROGRESS                               |
 
 ## Services

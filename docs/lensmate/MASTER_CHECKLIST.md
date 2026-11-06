@@ -69,7 +69,7 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 | B14 | Background task and lifecycle manager                          | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B15 | On-device AI runtime                                           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B16 | Offline command router                                         | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
-| B17 | Local queue and deferred synchronization                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B17 | Local queue and deferred synchronization                       | IMPLEMENTED    | PARTIAL      | NOT_REQUESTED | NONE    | PENDING             |
 | B18 | Power-saving sleep and wake states                             | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B19 | Network loss recovery and automatic reconnection               | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B20 | Local clock and timestamp continuity                           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
