@@ -11,7 +11,7 @@ LensMate is a TypeScript monorepo for personal AI glasses and their phone compan
 | `packages/protocol` | Versioned glasses-to-phone protocol and codec                              |
 | `services/broker`   | Authenticated AI relay, privacy and spend safeguards                       |
 | `tools/simulator`   | Virtual glasses implementation for deterministic app and protocol checks   |
-| `firmware`          | Firmware guidance and a separate Wokwi control-circuit experiment           |
+| `firmware`          | Firmware guidance and a separate Wokwi control-circuit experiment          |
 | `docs`              | Product contract, hardware, architecture, security decisions, and runbooks |
 
 The product contract and current engineering objective are in [`docs/product/PRODUCT.md`](docs/product/PRODUCT.md). The glasses and phone link requirements are in [`docs/hardware/glasses-spec.md`](docs/hardware/glasses-spec.md).
