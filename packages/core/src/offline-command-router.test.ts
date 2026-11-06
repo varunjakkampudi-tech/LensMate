@@ -191,6 +191,7 @@ describe("OfflineCommandRouter.execute", () => {
     expect(router.cancel("CLOCK")).toBe(true);
     expect(observed?.aborted).toBe(true);
     expect(await pending).toEqual({ status: "CANCELLED", commandId: "CLOCK" });
+    await flush();
     expect(router.runningCount).toBe(0);
   });
 
@@ -210,7 +211,138 @@ describe("OfflineCommandRouter.execute", () => {
     const pending = router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: waitForAbort }));
     router.cancelAll();
     expect(await pending).toEqual({ status: "CANCELLED", commandId: "CLOCK" });
+    await flush();
+    expect(router.runningCount).toBe(0);
     const next = await router.execute("time", NOT_AUTHORIZED, handlersFor());
     expect(next).toEqual({ status: "COMPLETED", commandId: "CLOCK" });
+  });
+});
+
+/** A handler that ignores its abort signal and only settles when the test releases it. */
+function stubbornHandler(): { handler: CommandHandler; release: () => void; calls: () => number } {
+  let calls = 0;
+  let release: () => void = () => undefined;
+  const handler: CommandHandler = () => {
+    calls += 1;
+    return new Promise<void>((resolve) => {
+      release = resolve;
+    });
+  };
+  return {
+    handler,
+    release: () => {
+      release();
+    },
+    calls: () => calls,
+  };
+}
+
+async function flush(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+describe("OfflineCommandRouter cancellation lifecycle (CR-06)", () => {
+  it("keeps a non-concurrent command occupied while a cancelled handler ignores the abort", async () => {
+    const router = new OfflineCommandRouter(COMMANDS);
+    const stubborn = stubbornHandler();
+    const first = router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: stubborn.handler }));
+    expect(router.cancel("CLOCK")).toBe(true);
+    expect(await first).toEqual({ status: "CANCELLED", commandId: "CLOCK" });
+
+    // The old handler is still running, so a restart must be refused.
+    expect(router.runningCount).toBe(1);
+    const restart = await router.execute(
+      "time",
+      NOT_AUTHORIZED,
+      handlersFor({ CLOCK: stubborn.handler }),
+    );
+    expect(restart).toEqual({ status: "SKIPPED_DUPLICATE", commandId: "CLOCK" });
+    expect(stubborn.calls()).toBe(1);
+
+    stubborn.release();
+    await flush();
+    expect(router.runningCount).toBe(0);
+    const after = await router.execute("time", NOT_AUTHORIZED, handlersFor());
+    expect(after).toEqual({ status: "COMPLETED", commandId: "CLOCK" });
+  });
+
+  it("cancelAll with an ignored abort keeps the slot until the handler settles", async () => {
+    const router = new OfflineCommandRouter(COMMANDS);
+    const stubborn = stubbornHandler();
+    const first = router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: stubborn.handler }));
+    router.cancelAll();
+    expect(await first).toEqual({ status: "CANCELLED", commandId: "CLOCK" });
+    expect(router.runningCount).toBe(1);
+    expect(await router.execute("time", NOT_AUTHORIZED, handlersFor())).toEqual({
+      status: "SKIPPED_DUPLICATE",
+      commandId: "CLOCK",
+    });
+    stubborn.release();
+    await flush();
+    expect(router.runningCount).toBe(0);
+  });
+
+  it("cancel-and-restart race: a restart issued right after cancel is refused", async () => {
+    const router = new OfflineCommandRouter(COMMANDS);
+    const stubborn = stubbornHandler();
+    const first = router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: stubborn.handler }));
+    router.cancel("CLOCK");
+    const racing = router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: stubborn.handler }));
+    expect(await racing).toEqual({ status: "SKIPPED_DUPLICATE", commandId: "CLOCK" });
+    expect(stubborn.calls()).toBe(1);
+    expect(await first).toEqual({ status: "CANCELLED", commandId: "CLOCK" });
+    stubborn.release();
+    await flush();
+    expect(router.runningCount).toBe(0);
+  });
+
+  it("delayed cancellation: a handler that finishes after the abort reports CANCELLED, then frees the slot", async () => {
+    const router = new OfflineCommandRouter(COMMANDS);
+    const delayed: CommandHandler = (signal) =>
+      new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(signal.aborted).toBe(true);
+          resolve();
+        }, 5);
+      });
+    const first = router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: delayed }));
+    router.cancel("CLOCK");
+    expect(await first).toEqual({ status: "CANCELLED", commandId: "CLOCK" });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 20);
+    });
+    expect(router.runningCount).toBe(0);
+  });
+
+  it("cleans up after a failure so the next run is not refused", async () => {
+    const router = new OfflineCommandRouter(COMMANDS);
+    const failing: CommandHandler = () => Promise.reject(new Error("boom"));
+    expect(await router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: failing }))).toEqual({
+      status: "FAILED",
+      commandId: "CLOCK",
+      reason: "HANDLER_ERROR",
+    });
+    await flush();
+    expect(router.runningCount).toBe(0);
+    expect(await router.execute("time", NOT_AUTHORIZED, handlersFor())).toEqual({
+      status: "COMPLETED",
+      commandId: "CLOCK",
+    });
+  });
+
+  it("a stubborn handler on one command does not block a different command", async () => {
+    const router = new OfflineCommandRouter(COMMANDS);
+    const stubborn = stubbornHandler();
+    const first = router.execute("time", NOT_AUTHORIZED, handlersFor({ CLOCK: stubborn.handler }));
+    router.cancel("CLOCK");
+    await first;
+    expect(await router.execute("battery level", NOT_AUTHORIZED, handlersFor())).toEqual({
+      status: "COMPLETED",
+      commandId: "BATTERY",
+    });
+    stubborn.release();
+    await flush();
   });
 });

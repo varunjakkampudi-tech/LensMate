@@ -135,26 +135,60 @@ export class OfflineCommandRouter {
     const controller = new AbortController();
     running.add(controller);
     this.inFlight.set(command.id, running);
-    try {
-      await handler(controller.signal);
-      if (controller.signal.aborted) {
-        return { status: "CANCELLED", commandId: command.id };
-      }
-      return { status: "COMPLETED", commandId: command.id };
-    } catch {
-      if (controller.signal.aborted) {
-        return { status: "CANCELLED", commandId: command.id };
-      }
-      return { status: "FAILED", commandId: command.id, reason: "HANDLER_ERROR" };
-    } finally {
+
+    // The slot is released only when the handler actually settles, even after
+    // cancellation. A handler that ignores its abort signal keeps the command
+    // in flight, so a non-concurrent command can never overlap with itself.
+    const release = (): void => {
       running.delete(controller);
-      if (running.size === 0) {
+      if (running.size === 0 && this.inFlight.get(command.id) === running) {
         this.inFlight.delete(command.id);
       }
+    };
+    // The handler is invoked synchronously so that its run is registered before execute returns.
+    let invocation: Promise<void>;
+    try {
+      invocation = Promise.resolve(handler(controller.signal));
+    } catch (error: unknown) {
+      invocation = Promise.reject(error instanceof Error ? error : new Error("handler threw"));
     }
+    const settled = invocation
+      .then(
+        () => "OK" as const,
+        () => "ERROR" as const,
+      )
+      .finally(release);
+
+    // The caller gets CANCELLED promptly on abort, without waiting for the handler.
+    const aborted = new Promise<"ABORTED">((resolve) => {
+      if (controller.signal.aborted) {
+        resolve("ABORTED");
+      } else {
+        controller.signal.addEventListener(
+          "abort",
+          () => {
+            resolve("ABORTED");
+          },
+          { once: true },
+        );
+      }
+    });
+
+    const outcome = await Promise.race([settled, aborted]);
+    if (outcome === "ABORTED" || controller.signal.aborted) {
+      return { status: "CANCELLED", commandId: command.id };
+    }
+    if (outcome === "ERROR") {
+      return { status: "FAILED", commandId: command.id, reason: "HANDLER_ERROR" };
+    }
+    return { status: "COMPLETED", commandId: command.id };
   }
 
-  /** Aborts all running runs of a command. Returns false when none are running. */
+  /**
+   * Requests cancellation of every run of a command. The slot stays occupied until each
+   * handler settles, so a cancelled command cannot be restarted while its old handler runs.
+   * Returns false when nothing is running for that id.
+   */
   cancel(commandId: string): boolean {
     const running = this.inFlight.get(commandId);
     if (!running || running.size === 0) {
@@ -163,21 +197,22 @@ export class OfflineCommandRouter {
     for (const controller of running) {
       controller.abort();
     }
-    this.inFlight.delete(commandId);
     return true;
   }
 
-  /** Aborts every running command, for example on shutdown, cutoff, or restart. */
+  /** Requests cancellation of every running command, for example on shutdown, cutoff, or restart. */
   cancelAll(): void {
     for (const running of this.inFlight.values()) {
       for (const controller of running) {
         controller.abort();
       }
     }
-    this.inFlight.clear();
   }
 
-  /** Number of command runs currently in progress. */
+  /**
+   * Command runs whose handlers have not settled yet, including runs that were cancelled
+   * but are still executing. Zero means no handler is still running.
+   */
   get runningCount(): number {
     let count = 0;
     for (const running of this.inFlight.values()) {

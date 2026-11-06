@@ -2,43 +2,43 @@
 
 ## Session 1 — 2026-11-06
 
-### Commits
+### Commits (branch dev, pushed to origin)
 
-- `7c0c2fd` — docs(lensmate): add master checklist and tracking files (pushed to origin/dev).
-- B16 and ChatGPT CR-01 to CR-05 changes: the commit containing this report. Its SHA is recorded in the next commit's message and in the reply to ChatGPT, because a commit cannot contain its own SHA.
+- `7c0c2fd` — docs(lensmate): add master checklist and tracking files.
+- `e082d56` — feat(core): offline command router (B16) and tracking fixes CR-01..CR-05. ChatGPT review: CHANGES REQUESTED.
+- B16 cancellation fix (CR-06), validator and evidence structure (CR-07), and report corrections (CR-08): the commit(s) following `e082d56`. Exact SHAs are recorded in VERIFICATION_EVIDENCE.md and in the reply to ChatGPT. A commit cannot record its own SHA, so the final SHA is given in the reply and in `git log`.
+
+### Independent review history
+
+1. 7c0c2fd — CHANGES REQUESTED: CR-01 status model, CR-02 existing-code audit, CR-03 blocker scope, CR-04 acceptance criteria and validator, CR-05 report consistency. All addressed in e082d56 (CR-02 at module level).
+2. e082d56 — CHANGES REQUESTED: CR-06 cancellation race in B16 (a cancelled handler that ignores its abort signal could be overlapped by a restart), CR-07 stronger validator and structured evidence, CR-08 report counts wording. CR-06 and CR-07 are addressed in the following commit; CR-08 is addressed by this report.
+3. Revision after CR-06/07/08 — pending. Not yet submitted at the time this report was written.
 
 ### Done
 
-1. Confirmed the ChatGPT review session is reachable and logged in.
-2. Created `docs/lensmate/` tracking files (commit 7c0c2fd).
-3. Got ChatGPT's independent review of 7c0c2fd: CHANGES REQUESTED.
-4. CR-01: status model split into Implementation / Verification / Review / Blocker / Hardware validation columns (MASTER_CHECKLIST.md).
-5. CR-02: existing-code audit added (CODE_AUDIT.md). Core and protocol tests were run: 13 suites, 96 tests passing.
-6. CR-03: blockers rewritten to name exact blocked fields (BLOCKERS.md).
-7. CR-04: acceptance criteria for B16 (ACCEPTANCE.md). Validator added (`scripts/lensmate/validate-tracking.mjs`, `pnpm check:tracking`), wired into CI after `check:schema`.
-8. CR-05: this report and IMPLEMENTATION_STATUS.md are checked by the validator for count consistency.
-9. B16 implemented: `packages/core/src/offline-command-router.ts` with 16 tests (`offline-command-router.test.ts`), exported from `packages/core/src/index.ts`. The router has no network, phone, or link dependency.
+- Confirmed the ChatGPT review session is reachable and logged in.
+- Created `docs/lensmate/` tracking files with all 342 checklist items.
+- Audited existing code at module level (CODE_AUDIT.md). Core and protocol suites run: 13 suites passing.
+- Implemented B16 offline command router (`packages/core/src/offline-command-router.ts`) and exported it from `packages/core/src/index.ts`.
+- CR-06: a command slot stays occupied until its handler actually settles, even after cancellation. The handler is invoked synchronously. Regression tests cover ignored abort signals, cancelAll with a stubborn handler, cancel-and-restart races, delayed cancellation, failure cleanup, and independence between commands.
+- CR-07: the validator now checks, for every PASS or APPROVED row, a structured evidence section with a commit SHA, matching verification and review values, and a tests line. It also checks summary counts for all three dimensions, including zero counts.
+- CR-08: counts are stated precisely (see below).
 
-### Tests and checks run
+### Current counts (checked by `pnpm check:tracking`)
 
-- `npx jest packages/core packages/protocol` → 13 suites, 96 tests passed.
-- `npx tsc` for core and protocol → no errors.
+- Implementation: IMPLEMENTED 1 (B16), IN_PROGRESS 22, NOT_STARTED 319.
+- Verification: PARTIAL 23, NOT_TESTED 319, PASS 0.
+- Review: NOT_REQUESTED 342, APPROVED 0, CHANGES_REQUESTED 0.
+
+So 341 items are not IMPLEMENTED, 342 are not verified PASS, and none has an APPROVED independent review.
+
+### Tests and checks run for the CR-06/07/08 revision
+
+- `npx jest packages/core packages/protocol` → 13 suites, 102 tests passed (22 router tests).
+- `npx tsc -p packages/core/tsconfig.json --noEmit` and the protocol equivalent → no errors.
 - `npx eslint packages/core scripts/lensmate` → no errors.
-- `npx prettier --check` on changed files → formatted.
-- `npx knip` → no findings after `check:tracking` script was added.
-- `node scripts/lensmate/validate-tracking.mjs` → passes after this change set.
-- Not run in this session: full `pnpm test` (includes mobile and broker suites) and the broker integration job (needs Postgres). These are unverified for this change set.
-
-### Remaining work
-
-- 341 checklist items are not implemented or verified.
-- 22 IN_PROGRESS items are partially covered by existing modules (see CODE_AUDIT.md) and need item-by-item acceptance tests.
-- Next independent software candidate, pending ChatGPT's reply: the next eligible item in the review's suggestion list. Do not select a hardware item (BLK-001).
-
-### Independent review
-
-- Commit 7c0c2fd: CHANGES_REQUESTED (received).
-- B16 and CR fixes: NOT_REQUESTED. Will be submitted to ChatGPT with the commit SHA and the test evidence above.
+- `node scripts/lensmate/validate-tracking.mjs` → see the final run recorded in the reply.
+- Not run in this session: full `pnpm test` (includes mobile and broker suites) and the broker integration job (needs Postgres). These are unverified for this revision.
 
 ### Hardware-dependent items
 
@@ -48,8 +48,14 @@ A01–A28 (hardware validation), B10–B12 (on-device), Q03, Q07, Q10 — blocke
 
 See BLOCKERS.md (BLK-001 to BLK-005).
 
+### Remaining work
+
+- 341 checklist items are not implemented.
+- 22 IN_PROGRESS items need item-by-item acceptance tests.
+- Next software candidate after B16 is approved: to be chosen from ChatGPT's next suggestion. No hardware item is selected.
+
 ### Resumption instructions
 
-1. Read `docs/lensmate/MASTER_CHECKLIST.md`, `ACCEPTANCE.md`, and `BLOCKERS.md`.
+1. Read `docs/lensmate/MASTER_CHECKLIST.md`, `ACCEPTANCE.md`, `VERIFICATION_EVIDENCE.md`, and `BLOCKERS.md`.
 2. Run `pnpm check:tracking` and `npx jest packages/core packages/protocol`.
 3. Do not touch the owner's uncommitted edits to README.md, docs/README.md, docs/hardware/glasses-spec.md, docs/product/PRODUCT.md, or the untracked `.playwright-cli/` folder.
