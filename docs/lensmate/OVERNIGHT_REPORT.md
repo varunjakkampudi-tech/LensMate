@@ -6,7 +6,7 @@
 
 - `7c0c2fd` — docs(lensmate): add master checklist and tracking files.
 - `e082d56` — feat(core): offline command router (B16) and tracking fixes CR-01..CR-05. ChatGPT review: CHANGES REQUESTED.
-- B16 cancellation fix (CR-06), validator and evidence structure (CR-07), and report corrections (CR-08): the commit(s) following `e082d56`. Exact SHAs are recorded in VERIFICATION_EVIDENCE.md and in the reply to ChatGPT. A commit cannot record its own SHA, so the final SHA is given in the reply and in `git log`.
+- `359f333` — fix(core): hold B16 command slot until handler settles (CR-06); validator (CR-07); report corrections (CR-08). Evidence commit that records PASS: the commit following 359f333 (see git log).
 
 ### Independent review history
 
@@ -27,10 +27,10 @@
 ### Current counts (checked by `pnpm check:tracking`)
 
 - Implementation: IMPLEMENTED 1 (B16), IN_PROGRESS 22, NOT_STARTED 319.
-- Verification: PARTIAL 23, NOT_TESTED 319, PASS 0.
+- Verification: PASS 1 (B16), PARTIAL 22, NOT_TESTED 319.
 - Review: NOT_REQUESTED 342, APPROVED 0, CHANGES_REQUESTED 0.
 
-So 341 items are not IMPLEMENTED, 342 are not verified PASS, and none has an APPROVED independent review.
+So 341 items are not IMPLEMENTED, 341 are not verified PASS, and none has an APPROVED independent review. B16 code commit: 359f3335ba4bd59c85e99f1f382fa31bf6799b6a.
 
 ### Tests and checks run for the CR-06/07/08 revision
 
