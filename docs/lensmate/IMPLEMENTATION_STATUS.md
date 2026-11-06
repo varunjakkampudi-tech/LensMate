@@ -13,8 +13,8 @@ Checklist items: 342 (sections A–Q)
 ## Summary (verification field)
 
 - NOT_TESTED: 319
-- PARTIAL: 22
-- PASS: 1
+- PARTIAL: 23
+- PASS: 0
 - FAIL: 0
 
 ## Summary (independent review field)

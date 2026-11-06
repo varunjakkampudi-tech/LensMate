@@ -64,6 +64,8 @@ export type {
   CommandSensitivity,
   ExecutionResult,
   LocalCommand,
-  RouteContext,
+  AuthorizationPolicy,
+  CommandSource,
+  RouterOptions,
   RouteDecision,
 } from "./offline-command-router.js";

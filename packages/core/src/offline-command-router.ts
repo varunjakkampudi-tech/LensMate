@@ -23,9 +23,21 @@ export interface LocalCommand {
   readonly allowConcurrent?: boolean;
 }
 
-export interface RouteContext {
-  /** True only when the owner has explicitly authorized this specific sensitive command. */
-  readonly authorized: boolean;
+/**
+ * Where an utterance came from. Assigned by the trusted wiring code (for example, the on-glasses
+ * voice pipeline that verified the speaker), never by the utterance itself.
+ */
+export type CommandSource = "OWNER" | "EXTERNAL";
+
+/**
+ * Trusted policy supplied by the wiring code. It decides whether a source may run a
+ * sensitive command. Callers cannot grant authorization by passing a flag to execute/route.
+ */
+export type AuthorizationPolicy = (commandId: string, source: CommandSource) => boolean;
+
+export interface RouterOptions {
+  /** Defaults to deny-all, so sensitive commands never run unless a policy allows them. */
+  readonly authorize?: AuthorizationPolicy;
 }
 
 export type RouteDecision =
@@ -68,8 +80,10 @@ export class OfflineCommandRouter {
   private readonly byPhrase = new Map<string, LocalCommand>();
   private readonly byId = new Map<string, LocalCommand>();
   private readonly inFlight = new Map<string, Set<AbortController>>();
+  private readonly authorize: AuthorizationPolicy;
 
-  constructor(commands: readonly LocalCommand[]) {
+  constructor(commands: readonly LocalCommand[], options: RouterOptions = {}) {
+    this.authorize = options.authorize ?? (() => false);
     for (const command of commands) {
       if (this.byId.has(command.id)) {
         throw new Error(`duplicate command id: ${command.id}`);
@@ -89,7 +103,7 @@ export class OfflineCommandRouter {
   }
 
   /** Pure routing decision. Does not execute anything. */
-  route(utterance: string, context: RouteContext): RouteDecision {
+  route(utterance: string, source: CommandSource): RouteDecision {
     const key = normalizeUtterance(utterance);
     if (key === "") {
       return { kind: "UNKNOWN", reason: "EMPTY_INPUT" };
@@ -98,7 +112,7 @@ export class OfflineCommandRouter {
     if (!command) {
       return { kind: "UNKNOWN", reason: "NO_MATCH" };
     }
-    if (command.sensitivity === "SENSITIVE" && !context.authorized) {
+    if (command.sensitivity === "SENSITIVE" && !this.authorize(command.id, source)) {
       return { kind: "NEEDS_AUTHORIZATION", commandId: command.id };
     }
     return { kind: "EXECUTE", commandId: command.id };
@@ -110,10 +124,10 @@ export class OfflineCommandRouter {
    */
   async execute(
     utterance: string,
-    context: RouteContext,
+    source: CommandSource,
     handlers: Readonly<Record<string, CommandHandler>>,
   ): Promise<ExecutionResult> {
-    const decision = this.route(utterance, context);
+    const decision = this.route(utterance, source);
     if (decision.kind === "UNKNOWN") {
       return { status: "UNKNOWN", reason: decision.reason };
     }

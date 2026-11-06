@@ -12,13 +12,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B16 — Offline command router
 
-- commit: 359f3335ba4bd59c85e99f1f382fa31bf6799b6a
-- verification: PASS
+- commit: pending-next-commit
+- verification: PARTIAL
 - review: NOT_REQUESTED
 - implementation: `packages/core/src/offline-command-router.ts`
-- tests: `packages/core/src/offline-command-router.test.ts` (22 tests, including cancellation-lifecycle regressions for CR-06)
+- tests: `packages/core/src/offline-command-router.test.ts` (25 tests: cancellation-lifecycle regressions for CR-06 and trusted-policy authorization regressions)
 - acceptance criteria: `docs/lensmate/ACCEPTANCE.md` (12 criteria, plus lifecycle criteria added for CR-06)
-- commands run (repo root): `npx jest packages/core packages/protocol` → 13 suites, 102 tests passed; `npx tsc -p packages/core/tsconfig.json --noEmit` and the protocol equivalent → no errors; `npx eslint packages/core scripts/lensmate` → no errors.
+- commands run (repo root): `npx jest packages/core packages/protocol` → 13 suites, 105 tests passed; `npx tsc -p packages/core/tsconfig.json --noEmit` and the protocol equivalent → no errors; `npx eslint packages/core scripts/lensmate` → no errors.
 - unverified: running on real glasses firmware or the Bluetooth link (BLK-001); wake-word capture and speech recognition feeding the router; a real phone-disconnect path (the router has no link input, so this is by design only); production command tables (only test fixtures exist).
 
 ## Earlier entries

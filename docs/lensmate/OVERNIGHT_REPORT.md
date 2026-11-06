@@ -34,7 +34,7 @@ So 341 items are not IMPLEMENTED, 341 are not verified PASS, and none has an APP
 
 ### Tests and checks run for the CR-06/07/08 revision
 
-- `npx jest packages/core packages/protocol` → 13 suites, 102 tests passed (22 router tests).
+- `npx jest packages/core packages/protocol` → 13 suites, 105 tests passed (25 router tests).
 - `npx tsc -p packages/core/tsconfig.json --noEmit` and the protocol equivalent → no errors.
 - `npx eslint packages/core scripts/lensmate` → no errors.
 - `node scripts/lensmate/validate-tracking.mjs` → see the final run recorded in the reply.

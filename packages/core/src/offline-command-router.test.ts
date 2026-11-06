@@ -1,4 +1,5 @@
 import { OfflineCommandRouter, normalizeUtterance } from "./offline-command-router.js";
+import type { CommandSource } from "./offline-command-router.js";
 import type { CommandHandler, LocalCommand } from "./offline-command-router.js";
 
 const COMMANDS: LocalCommand[] = [
@@ -13,8 +14,8 @@ const COMMANDS: LocalCommand[] = [
   },
 ];
 
-const NOT_AUTHORIZED = { authorized: false } as const;
-const AUTHORIZED = { authorized: true } as const;
+const NOT_AUTHORIZED: CommandSource = "EXTERNAL";
+const AUTHORIZED: CommandSource = "OWNER";
 
 function handlersFor(
   overrides: Record<string, CommandHandler> = {},
@@ -65,10 +66,49 @@ describe("OfflineCommandRouter.route", () => {
       kind: "NEEDS_AUTHORIZATION",
       commandId: "LOCK_DEVICE",
     });
-    expect(router.route("lock the glasses", AUTHORIZED)).toEqual({
+    const ownerOnly = new OfflineCommandRouter(COMMANDS, {
+      authorize: (_commandId, source) => source === "OWNER",
+    });
+    expect(ownerOnly.route("lock the glasses", AUTHORIZED)).toEqual({
       kind: "EXECUTE",
       commandId: "LOCK_DEVICE",
     });
+    expect(ownerOnly.route("lock the glasses", NOT_AUTHORIZED)).toEqual({
+      kind: "NEEDS_AUTHORIZATION",
+      commandId: "LOCK_DEVICE",
+    });
+  });
+
+  it("denies sensitive commands by default when no policy is supplied", () => {
+    expect(router.route("lock the glasses", AUTHORIZED)).toEqual({
+      kind: "NEEDS_AUTHORIZATION",
+      commandId: "LOCK_DEVICE",
+    });
+  });
+
+  it("asks the trusted policy with the command id and source, so a caller cannot grant itself access", () => {
+    const seen: Array<[string, CommandSource]> = [];
+    const policy = new OfflineCommandRouter(COMMANDS, {
+      authorize: (commandId, source) => {
+        seen.push([commandId, source]);
+        return false;
+      },
+    });
+    expect(policy.route("lock the glasses", "OWNER")).toEqual({
+      kind: "NEEDS_AUTHORIZATION",
+      commandId: "LOCK_DEVICE",
+    });
+    expect(seen).toEqual([["LOCK_DEVICE", "OWNER"]]);
+  });
+
+  it("does not consult the policy for SAFE commands", () => {
+    const policy = jest.fn<boolean, [string, CommandSource]>(() => false);
+    const safeRouter = new OfflineCommandRouter(COMMANDS, { authorize: policy });
+    expect(safeRouter.route("time", NOT_AUTHORIZED)).toEqual({
+      kind: "EXECUTE",
+      commandId: "CLOCK",
+    });
+    expect(policy).not.toHaveBeenCalled();
   });
 
   it("rejects construction with a phrase claimed by two commands", () => {
