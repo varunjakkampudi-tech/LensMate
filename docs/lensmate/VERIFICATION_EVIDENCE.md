@@ -26,3 +26,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 - Commit 7c0c2fd (tracking docs only). No checklist item verified. ChatGPT review: CHANGES REQUESTED (CR-01 to CR-05).
 - Commit e082d56 (B16 first version, tracking CR-01 to CR-05). ChatGPT review: CHANGES REQUESTED (CR-06 cancellation race; CR-07 stronger validator/evidence; CR-08 report wording).
+
+## B17 — Local queue and deferred synchronization
+
+- commit: c6e9fb1dc106265b2f30fe1de7d5a952713f588b
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/offline-sync-queue.ts`
+- tests: `packages/core/src/offline-sync-queue.test.ts` (15 tests covering acceptance criteria 1–15 in ACCEPTANCE.md; real AES-256-GCM in tests only)
+- commands run in a clean checkout of c6e9fb1 (`pnpm install --frozen-lockfile`): build, typecheck, lint, format:check, knip, check:schema, check:tracking, check:expo, audit:high all exit 0; `pnpm test` → 40 suites / 261 tests passed (core/protocol 14 suites / 120 tests in the working tree before this commit).
+- unverified: real device storage (phone SQLite/keystore or on-glasses flash), production cipher per platform, real network sync to the broker, power-loss behaviour on hardware (BLK-001), and the hosted CI run for the evidence commit (recorded in the reply, not in this file).
