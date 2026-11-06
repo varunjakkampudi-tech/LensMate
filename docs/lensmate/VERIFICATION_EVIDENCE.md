@@ -12,8 +12,8 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B16 — Offline command router
 
-- commit: pending-next-commit
-- verification: PARTIAL
+- commit: 944f550d53fe85025dee57b19d5336a44122d994
+- verification: PASS
 - review: NOT_REQUESTED
 - implementation: `packages/core/src/offline-command-router.ts`
 - tests: `packages/core/src/offline-command-router.test.ts` (25 tests: cancellation-lifecycle regressions for CR-06 and trusted-policy authorization regressions)
