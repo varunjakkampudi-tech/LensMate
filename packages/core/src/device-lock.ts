@@ -3,16 +3,26 @@
  *
  * The owner can lock a device (reversible) or revoke it (terminal). The lock state is kept on the
  * device, so it is enforced while offline. Every command must be authenticated by the platform
- * adapter and carries its own expiry. Replayed and stale commands are refused, and every applied
- * transition is recorded.
+ * adapter, must carry a strictly increasing issue time, and carries its own expiry. Replayed and
+ * stale commands are refused, and every applied transition is recorded.
  *
  * Pure logic: no network, phone, or native code. The caller verifies the command's signature and
  * sets `authenticated` only after that check. This module checks the flag at runtime, because a
  * TypeScript literal type is not a runtime check.
+ *
+ * Clock trust: the device's wall clock is not authenticated. Commands dated in the future beyond a
+ * skew allowance are refused. When the caller reports that the clock is UNCERTAIN or STALE (B20
+ * provenance), an UNLOCK is refused, because unlocking is the direction that needs a trusted clock.
+ * LOCK and REVOKE stay allowed, because they only make the device more restricted.
+ *
+ * Enrolment: `firstEnrollment` is the only way to create an ACTIVE state, and it must be used only
+ * for a device that has never been enrolled. A failed restore must never fall back to it. A revoked
+ * device stays revoked; re-enrolment means a new device identity, handled by the broker.
  */
 
 export type LockStatus = "ACTIVE" | "LOCKED" | "REVOKED";
 export type LockAction = "LOCK" | "UNLOCK" | "REVOKE";
+export type ClockProvenance = "SYNCED" | "DEVICE_UNSYNCED" | "STALE" | "UNCERTAIN";
 
 export interface LockCommand {
   readonly commandId: string;
@@ -31,6 +41,8 @@ export type RefusalReason =
   | "BAD_VALUE"
   | "REPLAY"
   | "STALE"
+  | "FUTURE_COMMAND"
+  | "CLOCK_UNTRUSTED"
   | "REVOKED_TERMINAL"
   | "NOT_ALLOWED";
 
@@ -72,10 +84,13 @@ export interface DeviceLockOptions {
   readonly maxSeenCommands?: number;
   /** Most recent audit entries kept. */
   readonly maxAuditEntries?: number;
+  /** How far in the future a command's issue time may be before it is refused. */
+  readonly clockSkewMs?: number;
 }
 
 const DEFAULT_MAX_SEEN = 1024;
 const DEFAULT_MAX_AUDIT = 256;
+const DEFAULT_CLOCK_SKEW_MS = 60_000;
 const STATUSES: readonly LockStatus[] = ["ACTIVE", "LOCKED", "REVOKED"];
 const ACTIONS: readonly LockAction[] = ["LOCK", "UNLOCK", "REVOKE"];
 
@@ -114,19 +129,38 @@ function validState(value: unknown): value is LockState {
   });
 }
 
+/** Deep copy, so callers can never reach the internal arrays or audit entries. */
+function copyState(state: LockState): LockState {
+  return {
+    deviceId: state.deviceId,
+    status: state.status,
+    lastIssuedAtMs: state.lastIssuedAtMs,
+    seenCommandIds: [...state.seenCommandIds],
+    audit: state.audit.map((entry) => ({ ...entry })),
+  };
+}
+
 export class DeviceLock {
   private state: LockState;
   private readonly maxSeen: number;
   private readonly maxAudit: number;
+  private readonly clockSkewMs: number;
 
   private constructor(state: LockState, options: DeviceLockOptions) {
-    this.state = state;
+    this.state = copyState(state);
     this.maxSeen = options.maxSeenCommands ?? DEFAULT_MAX_SEEN;
     this.maxAudit = options.maxAuditEntries ?? DEFAULT_MAX_AUDIT;
+    this.clockSkewMs = options.clockSkewMs ?? DEFAULT_CLOCK_SKEW_MS;
   }
 
-  /** A device that has never been locked. Starts ACTIVE. */
-  static fresh(deviceId: string, options: DeviceLockOptions = {}): DeviceLock {
+  /**
+   * First enrolment of a device that has never been enrolled. Starts ACTIVE. Do not call this after
+   * a failed restore: a missing or corrupt saved state must stop the device, not reset it.
+   */
+  static firstEnrollment(deviceId: string, options: DeviceLockOptions = {}): DeviceLock {
+    if (deviceId === "") {
+      throw new LockError("LOCK_CORRUPT", "device id must not be empty");
+    }
     return new DeviceLock(
       { deviceId, status: "ACTIVE", lastIssuedAtMs: 0, seenCommandIds: [], audit: [] },
       options,
@@ -138,28 +172,35 @@ export class DeviceLock {
     if (!validState(saved)) {
       throw new LockError("LOCK_CORRUPT", "saved device lock state is invalid");
     }
-    return new DeviceLock({ ...saved }, options);
+    return new DeviceLock(saved, options);
   }
 
+  /** A deep copy. Changing it does not change the lock. */
   snapshot(): LockState {
-    return { ...this.state };
+    return copyState(this.state);
   }
 
   /**
-   * The operation gate. Denies unless the device is ACTIVE. A corrupt or unknown state is never
-   * reached, because restore fails closed first. This check needs no network.
+   * The operation gate. Allows only ACTIVE. It needs no network, and a corrupt state never reaches
+   * it, because restore fails closed first.
    */
   check(): { readonly allowed: boolean; readonly status: LockStatus } {
     return { allowed: this.state.status === "ACTIVE", status: this.state.status };
   }
 
-  /** Applies one owner command at local time `nowMs`. Refused commands change nothing. */
-  apply(command: LockCommand, nowMs: number): LockResult {
+  /**
+   * Applies one owner command at local time `nowMs`. `provenance` is the B20 status of the local
+   * clock. Refused commands change nothing.
+   */
+  apply(command: LockCommand, nowMs: number, provenance: ClockProvenance = "SYNCED"): LockResult {
     const flag: unknown = command.authenticated;
     if (flag !== true) return refuse("NOT_AUTHENTICATED");
+    const action: unknown = command.action;
     if (
       typeof command.commandId !== "string" ||
       command.commandId === "" ||
+      typeof action !== "string" ||
+      !(ACTIONS as readonly string[]).includes(action) ||
       !isFiniteNumber(command.issuedAtMs) ||
       !isFiniteNumber(command.expiresAtMs) ||
       !isFiniteNumber(nowMs) ||
@@ -168,22 +209,29 @@ export class DeviceLock {
       return refuse("BAD_VALUE");
     }
     if (command.deviceId !== this.state.deviceId) return refuse("WRONG_DEVICE");
+    if (command.issuedAtMs > nowMs + this.clockSkewMs) return refuse("FUTURE_COMMAND");
     if (nowMs > command.expiresAtMs) return refuse("EXPIRED");
     if (this.state.seenCommandIds.includes(command.commandId)) return refuse("REPLAY");
-    if (command.issuedAtMs < this.state.lastIssuedAtMs) return refuse("STALE");
+    // Strictly increasing issue times: equal times are ambiguous, so they are refused.
+    if (command.issuedAtMs <= this.state.lastIssuedAtMs) return refuse("STALE");
 
     const from = this.state.status;
     if (from === "REVOKED") return refuse("REVOKED_TERMINAL");
 
+    // Re-read the action as a plain string: a malformed value must never reach the revoke branch.
+    const kind: string = action;
     let to: LockStatus;
-    if (command.action === "LOCK") {
+    if (kind === "LOCK") {
       if (from !== "ACTIVE") return refuse("NOT_ALLOWED");
       to = "LOCKED";
-    } else if (command.action === "UNLOCK") {
+    } else if (kind === "UNLOCK") {
       if (from !== "LOCKED") return refuse("NOT_ALLOWED");
+      if (provenance === "UNCERTAIN" || provenance === "STALE") return refuse("CLOCK_UNTRUSTED");
       to = "ACTIVE";
-    } else {
+    } else if (kind === "REVOKE") {
       to = "REVOKED";
+    } else {
+      return refuse("BAD_VALUE");
     }
 
     const audit = [
@@ -192,7 +240,7 @@ export class DeviceLock {
     ].slice(-this.maxAudit);
     const seen = [...this.state.seenCommandIds, command.commandId].slice(-this.maxSeen);
     this.state = {
-      ...this.state,
+      deviceId: this.state.deviceId,
       status: to,
       lastIssuedAtMs: command.issuedAtMs,
       seenCommandIds: seen,
