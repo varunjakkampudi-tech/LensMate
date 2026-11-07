@@ -78,7 +78,9 @@ function hasControlCharacter(text: string): boolean {
 }
 
 /** Parses the provider's text against the recognition contract. Returns null when it does not match. */
-export function parseRecognition(raw: string): RecognitionItem[] | null {
+export function parseRecognition(raw: unknown): RecognitionItem[] | null {
+  // Provider output is untrusted at runtime: anything that is not a string is a malformed response.
+  if (typeof raw !== "string") return null;
   if (raw.length > MAX_RESPONSE_CHARS) return null;
   let parsed: unknown;
   try {
@@ -170,9 +172,21 @@ export class ObjectRecognizer {
         return this.refuse(this.cancelPending() ? "CANCELLED" : "STAGE_FAILED");
       }
       if (this.cancelPending()) return this.refuse("CANCELLED");
-      if (result.status === "REFUSED") return this.refuse(result.reason);
+      // The envelope is untrusted at runtime: anything that is not a recognised OK or REFUSED envelope is malformed.
+      const envelope: unknown = result;
+      if (typeof envelope !== "object" || envelope === null)
+        return this.refuse("MALFORMED_RESPONSE");
+      const record = envelope as { status?: unknown; reason?: unknown; value?: unknown };
+      if (record.status === "REFUSED") {
+        return this.refuse(
+          typeof record.reason === "string"
+            ? (record.reason as FrameAnalysisRefusal)
+            : "MALFORMED_RESPONSE",
+        );
+      }
+      if (record.status !== "OK") return this.refuse("MALFORMED_RESPONSE");
 
-      const items = parseRecognition(result.value);
+      const items = parseRecognition(record.value);
       if (items === null) return this.refuse("MALFORMED_RESPONSE");
       return {
         status: "OK",

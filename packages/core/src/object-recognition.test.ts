@@ -205,3 +205,60 @@ describe("object and environment recognition (C04)", () => {
     ).toThrow(ObjectRecognizerError);
   });
 });
+
+describe("untrusted provider values (C04 CR-48)", () => {
+  const malformedValues: unknown[] = [null, undefined, 7, true, [], [1, 2], { label: "x" }];
+  const malformedEnvelopes: unknown[] = [
+    null,
+    undefined,
+    42,
+    "OK",
+    {},
+    { status: "MAYBE", value: VALID },
+  ];
+
+  it("C04 CR-48: non-string provider values are refused as MALFORMED_RESPONSE without throwing", async () => {
+    for (const value of malformedValues) {
+      const f = factory(() =>
+        Promise.resolve({ status: "OK", value, analyzedAtMs: T0 } as unknown as AnalysisResult),
+      );
+      const r = new ObjectRecognizer({ createAnalysis: f.createAnalysis });
+      expect(await r.recognize(FRAME, T0)).toEqual({
+        status: "REFUSED",
+        reason: "MALFORMED_RESPONSE",
+      });
+    }
+  });
+
+  it("C04 CR-48: malformed success envelopes are refused as MALFORMED_RESPONSE without throwing", async () => {
+    for (const envelope of malformedEnvelopes) {
+      const f = factory(() => Promise.resolve(envelope as AnalysisResult));
+      const r = new ObjectRecognizer({ createAnalysis: f.createAnalysis });
+      expect(await r.recognize(FRAME, T0)).toEqual({
+        status: "REFUSED",
+        reason: "MALFORMED_RESPONSE",
+      });
+    }
+  });
+
+  it("C04 CR-48: the recognizer stays usable after malformed output", async () => {
+    let bad = true;
+    const f = factory(() =>
+      bad
+        ? Promise.resolve({
+            status: "OK",
+            value: null,
+            analyzedAtMs: T0,
+          } as unknown as AnalysisResult)
+        : Promise.resolve(okValue(VALID)),
+    );
+    const r = new ObjectRecognizer({ createAnalysis: f.createAnalysis });
+    expect(await r.recognize(FRAME, T0)).toEqual({
+      status: "REFUSED",
+      reason: "MALFORMED_RESPONSE",
+    });
+    expect(r.recognizing).toBe(false);
+    bad = false;
+    expect((await r.recognize(FRAME, T0 + 1)).status).toBe("OK");
+  });
+});
