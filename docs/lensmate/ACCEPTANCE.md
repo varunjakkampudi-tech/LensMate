@@ -184,3 +184,22 @@ Audit (before this item): `packages/core/src/log-redaction.ts` already provides 
 | 15  | CR-31: a verified exit applies only if no crash occurred after verification began; a stale verification is refused with STALE_VERIFICATION, keeps safe mode, preserves the new crash history and appends no exit event; a fresh verification can then succeed | "CR-31: a crash during pending verification", "CR-31: a fresh verification after a crash"                                           |
 
 Not covered by this item: real crash dumps and native crash handlers on device, OS watchdog integration, remote upload of diagnostics, and hardware-specific failure modes (BLK-001). Those remain pending.
+
+## B25 — Optional phone, PC and accessory pairing
+
+Audit (before this item): `packages/core/src/glasses-link.ts` defines only the transport interface (connect, disconnect, send, subscribe). `services/broker/src/devices.ts` enrols phone credentials for the broker (B21 audit). `apps/mobile/src/ai/connection.ts` manages the phone's broker connection. No module pairs an optional peer (phone, PC or accessory) to the glasses, confirms pairing with the owner, limits what a paired peer may do, or removes a pairing. The new module is `packages/core/src/pairing.ts`. It is pure: the platform supplies the time, the confirmation code and the transport, so tests are deterministic. The glasses work standalone with no peer.
+
+| #   | Criterion                                                                                                                                 | Test                                                    |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 1   | With zero peers the glasses remain fully usable: standaloneAllowed is always true and no peer is required for any standalone action       | "standalone operation needs no peer"                    |
+| 2   | Pairing starts with a confirmation code that expires after its ttl; a wrong code is refused and counts as an attempt                      | "wrong code counts; expired code refused"               |
+| 3   | After maxAttempts wrong codes the pairing attempt is locked; no further confirmation is accepted until the owner issues a new code        | "attempt lockout until a new code"                      |
+| 4   | Confirmation with an exact-true owner flag and the matching unexpired code makes the peer PAIRED with only the capabilities listed for it | "valid confirmation pairs with granted capabilities"    |
+| 5   | A peer id cannot be paired twice; a second pairing of a paired peer is refused with ALREADY_PAIRED                                        | "duplicate pairing refused"                             |
+| 6   | canUse is true only for a PAIRED peer holding that capability; unknown, unpaired, revoked peers and ungranted capabilities are denied     | "capability check denies by default"                    |
+| 7   | Unpairing removes all capabilities at once; re-pairing requires a fresh code and a fresh owner confirmation                               | "unpair removes capabilities; re-pair needs new code"   |
+| 8   | Pairing state survives restart; corrupt saved state fails closed: no peer is restored as PAIRED                                           | "restart keeps pairings; corrupt state pairs nothing"   |
+| 9   | An expired or locked pending pairing cannot be confirmed, even with the correct code                                                      | "expired or locked pending pairing cannot be confirmed" |
+| 10  | Each applied pairing change is recorded in a bounded audit list; refused requests are not recorded as performed                           | "audit records applied changes only"                    |
+
+Not covered by this item: the Bluetooth or Wi-Fi pairing transport, real code display and entry on glasses, cryptographic peer key exchange, PC and accessory protocols, and any on-device behaviour (BLK-001). Peer authentication must come from the platform adapter before a peer id is passed in. B24 (cellular provisioning) is hardware-gated and is not addressed here.

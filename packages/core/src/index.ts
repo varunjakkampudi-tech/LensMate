@@ -142,3 +142,14 @@ export type {
   Mode,
   SafeModeReason,
 } from "./diagnostics-recovery.js";
+
+export { Pairing, PairingError } from "./pairing.js";
+export type {
+  Capability,
+  PairingAuditEntry,
+  PairingOptions,
+  PairingResult,
+  PairingState,
+  PeerKind,
+  PeerRecord,
+} from "./pairing.js";
