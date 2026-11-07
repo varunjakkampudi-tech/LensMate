@@ -258,3 +258,23 @@ export type {
   PackagingResult,
   PrintedIngredient,
 } from "./product-packaging.js";
+export {
+  ProductSearcher,
+  ProductSearchError,
+  classify,
+  parseCandidates,
+  parseObservation,
+} from "./product-search.js";
+export type {
+  Availability,
+  CandidateMatch,
+  ExternalCandidate,
+  IdentifyAnalysis,
+  MatchState,
+  ObservedProduct,
+  ProductSearch,
+  ProductSearchOptions,
+  SearchRefusal,
+  SearchResult,
+  SearchState,
+} from "./product-search.js";
