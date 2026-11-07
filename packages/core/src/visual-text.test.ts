@@ -318,3 +318,58 @@ describe("reading signs, books, receipts and labels (C06)", () => {
     ).toThrow(TextReaderError);
   });
 });
+
+describe("partial and empty readings (C06 CR-50)", () => {
+  const readWith = async (raw: unknown) => {
+    const f = factory(() => Promise.resolve(okValue(raw)));
+    return new TextReader({ createAnalysis: f.createAnalysis }).read(FRAME, T0);
+  };
+
+  it("C06 CR-50: an empty partial reading is PARTIAL, not EMPTY, and reports partial", async () => {
+    expect(
+      await readWith(JSON.stringify({ category: "RECEIPT", partial: true, regions: [] })),
+    ).toMatchObject({
+      status: "OK",
+      state: "PARTIAL",
+      partial: true,
+      regions: [],
+    });
+  });
+
+  it("C06 CR-50: an empty complete reading is EMPTY and reports not partial", async () => {
+    expect(
+      await readWith(JSON.stringify({ category: "RECEIPT", partial: false, regions: [] })),
+    ).toMatchObject({
+      status: "OK",
+      state: "EMPTY",
+      partial: false,
+    });
+  });
+
+  it("C06 CR-50: low-confidence regions with partial=true are PARTIAL, never COMPLETE or AMBIGUOUS", async () => {
+    const raw = JSON.stringify({
+      category: "SIGN",
+      partial: true,
+      regions: [{ order: 0, text: "?", basis: "EXTRACTED", confidence: 0.2 }],
+    });
+    expect(await readWith(raw)).toMatchObject({ status: "OK", state: "PARTIAL", partial: true });
+  });
+
+  it("C06 CR-50: populated regions with partial=true are PARTIAL; a complete populated reading is COMPLETE", async () => {
+    const partial = JSON.stringify({
+      category: "BOOK",
+      partial: true,
+      regions: [{ order: 0, text: "Chapter 1", basis: "EXTRACTED", confidence: 0.9 }],
+    });
+    expect(await readWith(partial)).toMatchObject({
+      status: "OK",
+      state: "PARTIAL",
+      partial: true,
+    });
+    expect(await readWith(VALID)).toMatchObject({
+      status: "OK",
+      state: "COMPLETE",
+      partial: false,
+    });
+  });
+});

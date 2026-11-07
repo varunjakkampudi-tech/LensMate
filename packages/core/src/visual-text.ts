@@ -47,6 +47,8 @@ export type ReadResult =
   | {
       readonly status: "OK";
       readonly state: ReadingState;
+      /** The provider's completeness flag, kept separate from the state. */
+      readonly partial: boolean;
       readonly category: DocumentCategory;
       readonly regions: readonly TextRegion[];
       readonly readAtMs: number;
@@ -175,9 +177,13 @@ export function parseReading(
   return { category, regions, partial };
 }
 
+/**
+ * A partial reading is always PARTIAL, even when it has no regions, so it can never read as complete or as a
+ * genuinely empty document. Only a complete reading with no regions is EMPTY.
+ */
 function stateOf(regions: readonly TextRegion[], partial: boolean): ReadingState {
-  if (regions.length === 0) return "EMPTY";
   if (partial) return "PARTIAL";
+  if (regions.length === 0) return "EMPTY";
   if (regions.every((region) => region.certainty === "LOW")) return "AMBIGUOUS";
   return "COMPLETE";
 }
@@ -251,6 +257,7 @@ export class TextReader {
       return {
         status: "OK",
         state: stateOf(reading.regions, reading.partial),
+        partial: reading.partial,
         category: reading.category,
         regions: reading.regions,
         readAtMs: atMs,
