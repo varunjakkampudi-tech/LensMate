@@ -166,10 +166,11 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## C04 — Recognize everyday objects and environmental features
 
-- commit: a7539fc
+- commit: 2da954c
+- previous code commit: a7539fc (CR-48 found on ChatGPT review at HEAD f461054)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/object-recognition.ts` (exported from `packages/core/src/index.ts`); reuses the C02 analysis session per recognition through an injected factory; validates structured provider output.
-- tests: `packages/core/src/object-recognition.test.ts` (10 tests covering acceptance criteria 1–9 in ACCEPTANCE.md); `jest packages/core` → 309 tests passed; eslint, tsc, knip and prettier clean.
+- tests: `packages/core/src/object-recognition.test.ts` (13 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; CR-48 untrusted-value tests); `jest packages/core` → 312 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: real-world recognition accuracy, the choice of vision model, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
