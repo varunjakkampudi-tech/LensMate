@@ -199,3 +199,18 @@ export type {
   RecognitionResult,
   RecognitionState,
 } from "./object-recognition.js";
+export {
+  SceneDescriber,
+  SceneDescriberError,
+  parseRelations,
+  RELATION_KINDS,
+} from "./scene-layout.js";
+export type {
+  RelationKind,
+  SceneAnalysis,
+  SceneDescriberOptions,
+  SceneRefusal,
+  SceneRelation,
+  SceneResult,
+  SceneState,
+} from "./scene-layout.js";
