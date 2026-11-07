@@ -123,7 +123,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: 43c23000f878251849aba972b57b7f0b62441204
 - previous code commits: ca7bcb15d6e7ea8429678993ab2cdab487af5f75 (CR-35, CR-36, CR-37); bb3cf6a7badffc3bba9fd43e391cbb9cd1c42b37 (CR-38, CR-39 on re-review HEAD 421875b)
 - verification: PASS
-- review: CHANGES_REQUESTED (awaiting re-review of 43c2300)
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/account-binding.ts` (exported from `packages/core/src/index.ts`)
 - tests: `packages/core/src/account-binding.test.ts` (21 tests covering acceptance criteria 1–15 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub; CR-38 and CR-39 recovery-invariant and epoch-scoping tests)
 - local checks: `jest packages/core` → 248 tests passed; eslint, tsc and knip exit 0; prettier clean.
