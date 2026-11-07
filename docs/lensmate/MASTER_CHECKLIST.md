@@ -93,7 +93,7 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 | C07 | Read and explain documents, graphs and diagrams                   | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | C08 | Understand product packaging and ingredients                      | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | C09 | Visual product search and comparison                              | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
-| C10 | Detect visual scene changes                                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C10 | Detect visual scene changes                                       | IMPLEMENTED    | PASS         | NOT_REQUESTED | NONE    | PENDING             |
 | C11 | Track selected objects across frames                              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | C12 | Identify apparent obstacles and hazards without safety guarantees | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | C13 | Describe surrounding environment in natural language              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |

@@ -228,3 +228,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - independent review limits (non-blocking): LIKELY is a case-insensitive substring heuristic, not a verified product-identity match; the injected search's own authentication, network restrictions, request budgets and in-flight cancellation are not established by C09's C02 safeguards; real retailer data, price freshness, availability, counterfeit identification and product authenticity remain unverified.
 - unverified: real product identification accuracy, live prices, live availability, product authenticity, counterfeit detection, retailer terms, the search and vision provider choice, physical glasses-camera capture, and hardware validation (BLK-001).
+
+## C10 — Detect visual scene changes
+
+- commit: e828575
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/scene-change.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per frame through an injected factory; only the last scene summary kept; out-of-order frames refused before analysis.
+- tests: `packages/core/src/scene-change.test.ts` (11 tests covering acceptance criteria 1–10 in ACCEPTANCE.md); `jest packages/core` → 399 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: real motion or scene-change detection accuracy, frame-rate and latency behaviour, physical glasses-camera streams, and hardware validation (BLK-001). No background processing is started by this module.
