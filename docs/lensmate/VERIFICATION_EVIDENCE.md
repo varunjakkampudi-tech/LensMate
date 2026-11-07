@@ -184,3 +184,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/scene-layout.test.ts` (12 tests covering acceptance criteria 1–11 in ACCEPTANCE.md); `jest packages/core` → 326 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: real-world spatial accuracy, metric distances, depth or geometry, vision-model choice, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
+
+## C06 — Read signs, books, receipts and labels
+
+- commit: 4ca01cc
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/visual-text.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per read through an injected factory; reading order and extracted/interpreted basis preserved; provider output validated at runtime.
+- tests: `packages/core/src/visual-text.test.ts` (14 tests covering acceptance criteria 1–11 in ACCEPTANCE.md); `jest packages/core` → 340 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: real OCR accuracy, handwriting, multilingual reading, font and lighting robustness, document-authenticity checks, vision-model choice, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
