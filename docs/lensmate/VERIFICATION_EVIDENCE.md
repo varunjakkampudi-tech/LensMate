@@ -158,7 +158,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: dd36eed
 - previous code commit: a893cde (CR-46 and CR-47 found on ChatGPT review at HEAD eae5e31)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/voice-question.ts` (exported from `packages/core/src/index.ts`); reuses C01 `camera-capture.ts` and C02 `frame-analysis.ts` through structural interfaces, with one analysis session per question.
 - tests: `packages/core/src/voice-question.test.ts` (15 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; CR-46 routing and CR-47 STAGE_FAILED tests); `jest packages/core` → 299 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
