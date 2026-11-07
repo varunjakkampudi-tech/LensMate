@@ -222,8 +222,9 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 - commit: 2d98dbc
 - verification: PASS
-- review: NOT_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/product-search.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per identification through an injected factory; external search results validated as untrusted; observed and external data kept apart; conflicts only between two stated, differing brands.
 - tests: `packages/core/src/product-search.test.ts` (12 tests covering acceptance criteria 1–10 in ACCEPTANCE.md); `jest packages/core` → 388 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- independent review limits (non-blocking): LIKELY is a case-insensitive substring heuristic, not a verified product-identity match; the injected search's own authentication, network restrictions, request budgets and in-flight cancellation are not established by C09's C02 safeguards; real retailer data, price freshness, availability, counterfeit identification and product authenticity remain unverified.
 - unverified: real product identification accuracy, live prices, live availability, product authenticity, counterfeit detection, retailer terms, the search and vision provider choice, physical glasses-camera capture, and hardware validation (BLK-001).
