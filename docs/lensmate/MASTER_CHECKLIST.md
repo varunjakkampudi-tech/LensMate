@@ -51,34 +51,34 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 
 ## B. Standalone OS, Firmware and Connectivity
 
-| ID  | Requirement                                                    | Implementation | Verification | Review            | Blocker | Hardware validation |
-| --- | -------------------------------------------------------------- | -------------- | ------------ | ----------------- | ------- | ------------------- |
-| B01 | Boot, configure and operate glasses without a smartphone       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B02 | Direct Wi-Fi connection and reconnect management               | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B03 | First-time setup without a mandatory phone app                 | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B04 | Wi-Fi credential onboarding without insecure provisioning      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B05 | Device-to-cloud encrypted authentication                       | IN_PROGRESS    | PARTIAL      | NOT_REQUESTED     | NONE    | PENDING             |
-| B06 | Device enrollment and owner binding                            | IN_PROGRESS    | PARTIAL      | NOT_REQUESTED     | NONE    | PENDING             |
-| B07 | Secure firmware and OS updates                                 | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B08 | Signed over-the-air update packages                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B09 | Rollback after failed firmware updates                         | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B10 | Camera, microphone and speaker hardware drivers                | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B11 | Audio routing and echo cancellation                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B12 | Camera capture and sensor pipelines                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B13 | Wake-word and low-power listening service                      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B14 | Background task and lifecycle manager                          | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B15 | On-device AI runtime                                           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B16 | Offline command router                                         | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B17 | Local queue and deferred synchronization                       | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B18 | Power-saving sleep and wake states                             | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B19 | Network loss recovery and automatic reconnection               | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B20 | Local clock and timestamp continuity                           | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B21 | Remote device lock and credential revocation                   | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B22 | Factory reset and secure data erasure                          | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B23 | Diagnostics and crash recovery                                 | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B24 | Optional eSIM provisioning and cellular data service           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| B25 | Optional phone, PC and accessory pairing                       | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| B26 | Direct pairing with the cloud account independently of a phone | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
+| ID  | Requirement                                                    | Implementation | Verification | Review        | Blocker | Hardware validation |
+| --- | -------------------------------------------------------------- | -------------- | ------------ | ------------- | ------- | ------------------- |
+| B01 | Boot, configure and operate glasses without a smartphone       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B02 | Direct Wi-Fi connection and reconnect management               | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B03 | First-time setup without a mandatory phone app                 | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B04 | Wi-Fi credential onboarding without insecure provisioning      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B05 | Device-to-cloud encrypted authentication                       | IN_PROGRESS    | PARTIAL      | NOT_REQUESTED | NONE    | PENDING             |
+| B06 | Device enrollment and owner binding                            | IN_PROGRESS    | PARTIAL      | NOT_REQUESTED | NONE    | PENDING             |
+| B07 | Secure firmware and OS updates                                 | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B08 | Signed over-the-air update packages                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B09 | Rollback after failed firmware updates                         | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B10 | Camera, microphone and speaker hardware drivers                | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B11 | Audio routing and echo cancellation                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B12 | Camera capture and sensor pipelines                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B13 | Wake-word and low-power listening service                      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B14 | Background task and lifecycle manager                          | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B15 | On-device AI runtime                                           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B16 | Offline command router                                         | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B17 | Local queue and deferred synchronization                       | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B18 | Power-saving sleep and wake states                             | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B19 | Network loss recovery and automatic reconnection               | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B20 | Local clock and timestamp continuity                           | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B21 | Remote device lock and credential revocation                   | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B22 | Factory reset and secure data erasure                          | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B23 | Diagnostics and crash recovery                                 | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B24 | Optional eSIM provisioning and cellular data service           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B25 | Optional phone, PC and accessory pairing                       | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| B26 | Direct pairing with the cloud account independently of a phone | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 
 ## C. Vision and Real-World Perception
 
