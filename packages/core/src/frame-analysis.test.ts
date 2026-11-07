@@ -240,3 +240,88 @@ describe("live frame analysis (C02)", () => {
 });
 
 type FrameProviderResultLike = { value: string; costMinor: number };
+
+describe("live frame analysis retries and configuration (C02 CR-44, CR-45)", () => {
+  it("C02 CR-44: cancel during an in-flight attempt stops retries; the provider is called once", async () => {
+    let rejectFirst!: (reason: unknown) => void;
+    const firstAttempt = new Promise<FrameProviderResultLike>((_resolve, reject) => {
+      rejectFirst = reject;
+    });
+    let attempts = 0;
+    const { session: s, calls } = session({
+      gateway: gateway(new SpendCap(500), 2),
+      provider: () => {
+        attempts += 1;
+        return attempts === 1 ? firstAttempt : Promise.resolve({ value: "late", costMinor: 10 });
+      },
+    });
+    const running = s.analyze(FRAME, 0);
+    await flush();
+    s.cancel();
+    // The first attempt fails with a retryable error after cancellation.
+    rejectFirst(new Error("transient fault after cancel"));
+    expect(await running).toEqual({ status: "REFUSED", reason: "CANCELLED" });
+    expect(calls.provider).toBe(1);
+    expect(attempts).toBe(1);
+  });
+
+  it("C02 CR-44: a cancelled session never returns a successful analysis", async () => {
+    const pending = deferred<FrameProviderResultLike>();
+    const { session: s } = session({
+      gateway: gateway(new SpendCap(500), 2),
+      provider: () => pending.promise,
+    });
+    const running = s.analyze(FRAME, 0);
+    await flush();
+    s.cancel();
+    pending.resolve({ value: "late", costMinor: 10 });
+    expect((await running).status).toBe("REFUSED");
+  });
+
+  it("C02 CR-44: normal retries still work when the session is not cancelled", async () => {
+    let attempts = 0;
+    const { session: s, calls } = session({
+      gateway: gateway(new SpendCap(500), 2),
+      provider: () => {
+        attempts += 1;
+        return attempts === 1
+          ? Promise.reject(new Error("transient fault"))
+          : Promise.resolve({ value: "recovered", costMinor: 10 });
+      },
+    });
+    expect(await s.analyze(FRAME, 0)).toEqual({
+      status: "OK",
+      value: "recovered",
+      analyzedAtMs: 0,
+    });
+    expect(calls.provider).toBe(2);
+  });
+
+  it("C02 CR-45: malformed injected dependencies are rejected with INVALID_CONFIG", () => {
+    const good = {
+      gateway: gateway(),
+      feature: FEATURE,
+      estimatedCostMinor: 10,
+      authorize: yes,
+      provider: ok,
+      maxFrameBytes: 1024,
+      minIntervalMs: 0,
+      maxAnalyses: 10,
+    };
+    const malformed: Array<Record<string, unknown>> = [
+      { gateway: undefined },
+      { gateway: null },
+      { gateway: {} },
+      { authorize: "yes" },
+      { authorize: undefined },
+      { provider: "provider" },
+      { provider: undefined },
+      { feature: "" },
+      { feature: "   " },
+      { feature: 7 },
+    ];
+    for (const override of malformed) {
+      expect(() => new FrameAnalysisSession({ ...good, ...override })).toThrow(FrameAnalysisError);
+    }
+  });
+});

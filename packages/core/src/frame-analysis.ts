@@ -68,6 +68,14 @@ export class FrameAnalysisError extends Error {
   }
 }
 
+/** Stops the gateway's retry loop: a cancelled attempt is not retryable. */
+function cancelledAttempt(): Error {
+  return Object.assign(new Error("analysis cancelled"), {
+    gatewayCode: "PROVIDER_ERROR",
+    retryable: false,
+  });
+}
+
 function isValidTime(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
@@ -94,6 +102,26 @@ export class FrameAnalysisSession {
   private controller: AbortController | null = null;
 
   constructor(options: FrameAnalysisOptions) {
+    const gatewayValue: unknown = options.gateway;
+    if (
+      typeof gatewayValue !== "object" ||
+      gatewayValue === null ||
+      typeof (gatewayValue as { call?: unknown }).call !== "function"
+    ) {
+      throw new FrameAnalysisError("INVALID_CONFIG", "gateway must be a provider gateway");
+    }
+    const authorizeValue: unknown = options.authorize;
+    if (typeof authorizeValue !== "function") {
+      throw new FrameAnalysisError("INVALID_CONFIG", "authorize must be a function");
+    }
+    const providerValue: unknown = options.provider;
+    if (typeof providerValue !== "function") {
+      throw new FrameAnalysisError("INVALID_CONFIG", "provider must be a function");
+    }
+    const featureValue: unknown = options.feature;
+    if (typeof featureValue !== "string" || featureValue.trim() === "") {
+      throw new FrameAnalysisError("INVALID_CONFIG", "feature must be a non-empty string");
+    }
     if (!isNonNegativeInteger(options.estimatedCostMinor)) {
       throw new FrameAnalysisError(
         "INVALID_CONFIG",
@@ -175,11 +203,13 @@ export class FrameAnalysisSession {
       const result = await this.options.gateway.call(
         this.options.feature,
         this.options.estimatedCostMinor,
-        (gatewaySignal) => {
+        async (gatewaySignal) => {
           // The gateway's timeout and this session's cancel both stop the provider call.
           gatewaySignal.addEventListener("abort", () => {
             own.abort();
           });
+          // A cancelled session starts no further provider attempt. The non-retryable marker stops the gateway's retries.
+          if (own.signal.aborted) throw cancelledAttempt();
           return this.options.provider(frame, own.signal);
         },
       );
