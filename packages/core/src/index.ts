@@ -108,3 +108,15 @@ export type {
   SyncResult,
   TrustedSync,
 } from "./local-clock.js";
+
+export { DeviceLock, LockError } from "./device-lock.js";
+export type {
+  AuditEntry,
+  DeviceLockOptions,
+  LockAction,
+  LockCommand,
+  LockResult,
+  LockState,
+  LockStatus,
+  RefusalReason,
+} from "./device-lock.js";
