@@ -6,9 +6,12 @@
  * only as a platform-supplied commitment. Binding also needs explicit ownership confirmation. An
  * existing binding is never transferred silently. Revocation is immediate. Re-enrolment after
  * revocation needs two separate approvals: the previous owner's release, and the target account's
- * binding. Single use is permanent: consumed challenges are never evicted, and when the history is
- * full, new enrolment is refused. Corrupt saved state does not become a fresh device. It enters a
- * recovery-required state that denies everything until trusted recovery.
+ * binding. Single use holds per epoch: consumed challenges are never evicted within an epoch, and when
+ * the history is full, new enrolment is refused. Recovery rotates the epoch, so a value consumed under
+ * an old epoch has a different commitment afterwards; that is a separate challenge, not a replay. Epochs
+ * are never reused: recovery refuses any epoch in the retained history, and the RECOVER policy must
+ * prove freshness because corrupt state loses that history. Corrupt saved state does not become a fresh
+ * device. It enters a recovery-required state that denies everything until trusted recovery.
  *
  * Pure logic: time, authorization and commitments come from the platform. The cloud account system and
  * the broker enrolment endpoint live outside this module.
@@ -73,6 +76,12 @@ export interface AccountState {
   readonly challenge: PendingChallenge | null;
   readonly recoveryRequired: boolean;
   readonly usedChallenges: readonly string[];
+  /**
+   * Every epoch this device has used, kept without eviction. A recovery epoch must be absent from this
+   * list. Corrupt saved state loses the list, so after corrupt-state recovery the platform's RECOVER
+   * policy must prove the new epoch is fresh against its own authoritative registry.
+   */
+  readonly usedEpochs: readonly string[];
   readonly audit: readonly AccountAuditEntry[];
 }
 
@@ -215,6 +224,10 @@ function validState(value: unknown, resolved: Resolved, deviceId: string): value
   const used = s["usedChallenges"] as unknown[];
   if (used.length > resolved.used) return false;
   if (!used.every((c) => typeof c === "string" && c !== "")) return false;
+  const usedEpochs = s["usedEpochs"];
+  if (!Array.isArray(usedEpochs) || usedEpochs.length > resolved.used) return false;
+  if (!usedEpochs.every((e) => typeof e === "string" && e.length >= 16)) return false;
+  if (typeof epoch === "string" && !usedEpochs.includes(epoch)) return false;
   const auditOk = (s["audit"] as unknown[]).every((a) => {
     if (typeof a !== "object" || a === null) return false;
     const e = a as Record<string, unknown>;
@@ -266,6 +279,7 @@ function copyState(state: AccountState): AccountState {
     challenge: state.challenge === null ? null : { ...state.challenge },
     recoveryRequired: state.recoveryRequired,
     usedChallenges: [...state.usedChallenges],
+    usedEpochs: [...state.usedEpochs],
     audit: state.audit.map((a) => ({ ...a })),
   };
 }
@@ -278,6 +292,7 @@ function recoveryState(deviceId: string): AccountState {
     challenge: null,
     recoveryRequired: true,
     usedChallenges: [],
+    usedEpochs: [],
     audit: [],
   };
 }
@@ -308,6 +323,7 @@ export class AccountBinding {
         challenge: null,
         recoveryRequired: false,
         usedChallenges: [],
+        usedEpochs: [options.epoch],
         audit: [],
       },
       options,
@@ -486,6 +502,7 @@ export class AccountBinding {
         challenge: null,
         recoveryRequired: false,
         usedChallenges: [...this.state.usedChallenges, commitment],
+        usedEpochs: [...this.state.usedEpochs],
         audit: this.appendAudit("BOUND", accountId, atMs),
       };
       return { status: "OK" };
@@ -537,7 +554,15 @@ export class AccountBinding {
       if (typeof epoch !== "string" || epoch.length < 16 || epoch === this.state.epoch) {
         return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
       }
-      if (!(await this.isAuthorized("RECOVER", "", proof))) {
+      // A stale or reused epoch is refused before the platform is asked. Corrupt state carries no
+      // history, so the RECOVER policy must also prove freshness for the new epoch.
+      if (this.state.usedEpochs.includes(epoch)) {
+        return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
+      }
+      if (this.state.usedEpochs.length >= this.resolved.used) {
+        return { status: "REFUSED", reason: "HISTORY_FULL" };
+      }
+      if (!(await this.isAuthorized("RECOVER", "", { proof, epoch }))) {
         return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
       }
       // Recovery never restores a binding. Rotating the epoch makes every earlier commitment unreachable.
@@ -548,6 +573,7 @@ export class AccountBinding {
         challenge: null,
         recoveryRequired: false,
         usedChallenges: [...this.state.usedChallenges],
+        usedEpochs: [...this.state.usedEpochs, epoch],
         audit: this.appendAudit("RECOVERED", "", atMs),
       };
       return { status: "OK" };

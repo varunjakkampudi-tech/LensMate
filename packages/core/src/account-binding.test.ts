@@ -21,10 +21,11 @@ const scopeOf = (epoch: string): string => `${DEVICE}#${epoch}`;
 
 /** Authorizer: accepts the owner proof for CHALLENGE, BIND, REVOKE and RECOVER. */
 const ownerOnly: AccountAuthorizer = (action, _account, authorization) => {
-  const token =
-    action === "RECOVER"
-      ? (authorization as { token?: unknown } | null)?.token
-      : (authorization as { token?: unknown } | null)?.token;
+  if (action === "RECOVER") {
+    const proof = (authorization as { proof?: { token?: unknown } } | null)?.proof;
+    return Promise.resolve(proof?.token === OWNER.token);
+  }
+  const token = (authorization as { token?: unknown } | null)?.token;
   return Promise.resolve(token === OWNER.token);
 };
 
@@ -330,7 +331,7 @@ describe("AccountBinding", () => {
     expect(restored.status()).toBe("UNBOUND");
   });
 
-  it("CR-39: after recovery the epoch rotates; a challenge consumed under the old epoch is refused as REPLAY even with an empty history", async () => {
+  it("CR-40: single use is per epoch; after rotation the old commitment is not in the new history", async () => {
     const b = AccountBinding.fresh(options());
     await bindDevice(b);
     const oldHistory = b.snapshot().usedChallenges;
@@ -346,7 +347,7 @@ describe("AccountBinding", () => {
     expect(corrupt.snapshot().usedChallenges.every((c) => oldHistory.indexOf(c) === -1)).toBe(true);
   });
 
-  it("CR-39: a challenge consumed before recovery cannot be reissued and bound after the epoch rotates", async () => {
+  it("CR-40: after rotation the same value gets a new commitment, never the old one", async () => {
     const b = AccountBinding.fresh(options());
     await bindDevice(b);
     await b.revoke({ confirmed: true, authorization: OWNER }, T0 + 2);
@@ -377,6 +378,44 @@ describe("AccountBinding", () => {
     expect(recovering.snapshot().challenge?.commitment).not.toBe(
       commit(CHALLENGE, scopeOf(EPOCH), ACCOUNT),
     );
+  });
+
+  it("CR-41: recovery refuses an epoch already in the history, including a rollback to an older epoch", async () => {
+    const b = AccountBinding.fresh(options());
+    await bindDevice(b);
+    const snap = json(b.snapshot()) as Record<string, unknown>;
+    expect(snap["usedEpochs"]).toEqual([EPOCH]);
+    const recovering = AccountBinding.restore(
+      { ...snap, recoveryRequired: true, binding: null, challenge: null },
+      options(),
+    );
+    expect(recovering.status()).toBe("RECOVERY_REQUIRED");
+    expect(
+      await recovering.recover(
+        { confirmed: true, authorization: { proof: OWNER, epoch: EPOCH } },
+        T0 + 1,
+      ),
+    ).toEqual({ status: "REFUSED", reason: "NOT_AUTHORIZED" });
+    expect(
+      await recovering.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 2),
+    ).toEqual({ status: "OK" });
+    expect(recovering.snapshot().usedEpochs).toEqual([EPOCH, NEW_EPOCH]);
+  });
+
+  it("CR-41: a RECOVER policy that refuses a stale epoch leaves the device recovery-required", async () => {
+    const stalePolicy: AccountAuthorizer = (action, account, authorization) => {
+      if (action === "RECOVER") {
+        const epoch = (authorization as { epoch?: unknown } | null)?.epoch;
+        if (epoch === NEW_EPOCH) return Promise.resolve(false);
+      }
+      return twoApprovals(action, account, authorization);
+    };
+    const corrupt = AccountBinding.restore("garbage", options({ authorize: stalePolicy }));
+    expect(await corrupt.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 1)).toEqual(
+      { status: "REFUSED", reason: "NOT_AUTHORIZED" },
+    );
+    expect(corrupt.status()).toBe("RECOVERY_REQUIRED");
+    expect(corrupt.snapshot().usedEpochs).toEqual([]);
   });
 
   it("CR-37: consumed challenges are never evicted; when the history is full, new enrolment is refused", async () => {
