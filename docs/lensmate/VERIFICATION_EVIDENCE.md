@@ -190,7 +190,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: 1e8ba27
 - previous code commit: 4ca01cc (CR-50 found on ChatGPT review at HEAD ce3b063)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/visual-text.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per read through an injected factory; reading order and extracted/interpreted basis preserved; provider output validated at runtime.
 - tests: `packages/core/src/visual-text.test.ts` (18 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; CR-50 partial-reading tests); `jest packages/core` → 344 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
