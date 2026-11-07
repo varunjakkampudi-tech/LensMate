@@ -309,3 +309,61 @@ describe("product packaging and ingredients (C08)", () => {
     ).toThrow(PackagingReaderError);
   });
 });
+
+describe("interpreted ingredients are preserved, never printed (C08 CR-52)", () => {
+  it("C08 CR-52: mixed printed and interpreted ingredients keep each in its own list", () => {
+    const parsed = parsePackaging(
+      JSON.stringify({
+        ingredientsState: "PARTIAL",
+        partial: true,
+        ingredients: [
+          { text: "rolled oats", basis: "PRINTED", confidence: 0.95 },
+          { text: "possibly sunflower oil", basis: "INTERPRETED", confidence: 0.6 },
+        ],
+        claims: [],
+      }),
+    );
+    expect(parsed?.printed.map((i) => i.text)).toEqual(["rolled oats"]);
+    expect(parsed?.interpretations).toEqual([
+      { text: "possibly sunflower oil", topic: "INGREDIENT", confidence: 0.6, verified: false },
+    ]);
+  });
+
+  it("C08 CR-52: interpreted-only ingredients are kept as interpretations and nothing is printed", () => {
+    const parsed = parsePackaging(
+      JSON.stringify({
+        ingredientsState: "UNREADABLE",
+        partial: false,
+        ingredients: [{ text: "maybe vanilla", basis: "INTERPRETED", confidence: 0.3 }],
+        claims: [],
+      }),
+    );
+    expect(parsed?.printed).toEqual([]);
+    expect(parsed?.interpretations).toEqual([
+      { text: "maybe vanilla", topic: "INGREDIENT", confidence: 0.3, verified: false },
+    ]);
+  });
+
+  it("C08 CR-52: the provider's confidence is preserved on interpreted ingredients", async () => {
+    const f = factory(() =>
+      Promise.resolve(
+        okValue(
+          JSON.stringify({
+            ingredientsState: "PARTIAL",
+            partial: true,
+            ingredients: [{ text: "faded salt", basis: "INTERPRETED", confidence: 0.42 }],
+            claims: [],
+          }),
+        ),
+      ),
+    );
+    const result = await new PackagingReader({ createAnalysis: f.createAnalysis }).read(FRAME, T0);
+    expect(result).toMatchObject({
+      status: "OK",
+      printedIngredients: [],
+      interpretations: [
+        { text: "faded salt", topic: "INGREDIENT", confidence: 0.42, verified: false },
+      ],
+    });
+  });
+});

@@ -20,7 +20,7 @@ export interface PrintedIngredient {
 
 export interface Interpretation {
   readonly text: string;
-  readonly topic: "ALLERGEN" | "SAFETY" | "HEALTH" | "OTHER";
+  readonly topic: "ALLERGEN" | "SAFETY" | "HEALTH" | "INGREDIENT" | "OTHER";
   readonly confidence: number;
   /** Always false: no interpretation is presented as verified. */
   readonly verified: false;
@@ -65,7 +65,7 @@ const MAX_NAME_CHARS = 120;
 const MAX_INGREDIENT_CHARS = 80;
 const MAX_TEXT_CHARS = 300;
 const LOW_CONFIDENCE = 0.5;
-const TOPICS = ["ALLERGEN", "SAFETY", "HEALTH", "OTHER"] as const;
+const TOPICS = ["ALLERGEN", "SAFETY", "HEALTH", "INGREDIENT", "OTHER"] as const;
 
 /** Every refusal code the C02 analysis session can return. Checked at runtime. */
 const FRAME_ANALYSIS_REFUSALS: readonly FrameAnalysisRefusal[] = [
@@ -166,6 +166,7 @@ export function parsePackaging(raw: unknown): {
   if (!Array.isArray(claims) || claims.length > MAX_INTERPRETATIONS) return null;
 
   const printed: PrintedIngredient[] = [];
+  const interpretations: Interpretation[] = [];
   for (const entry of ingredients) {
     if (typeof entry !== "object" || entry === null) return null;
     const record = entry as Record<string, unknown>;
@@ -177,13 +178,14 @@ export function parsePackaging(raw: unknown): {
     if (hasControlCharacter(text)) return null;
     if (basis !== "PRINTED" && basis !== "INTERPRETED") return null;
     if (!isConfidence(confidence)) return null;
-    // Only printed ingredients enter the printed list. An interpreted ingredient is never presented as printed.
     if (basis === "PRINTED") {
       printed.push({ text, confidence, certainty: confidence < LOW_CONFIDENCE ? "LOW" : "HIGH" });
+    } else {
+      // An interpreted ingredient is kept as an unverified interpretation, never reported as printed.
+      interpretations.push({ text, topic: "INGREDIENT", confidence, verified: false });
     }
   }
 
-  const interpretations: Interpretation[] = [];
   for (const entry of claims) {
     if (typeof entry !== "object" || entry === null) return null;
     const record = entry as Record<string, unknown>;
