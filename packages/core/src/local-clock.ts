@@ -92,13 +92,13 @@ function validState(value: unknown): value is ClockState {
     typeof s["bootId"] === "string" &&
     s["bootId"] !== "" &&
     isFiniteNumber(s["lastMonotonicMs"]) &&
-    (s["lastMonotonicMs"]) >= 0 &&
+    s["lastMonotonicMs"] >= 0 &&
     isFiniteNumber(s["lastWallMs"]) &&
     Number.isInteger(s["seq"]) &&
     (s["seq"] as number) >= 0 &&
     (s["syncBootId"] === null || typeof s["syncBootId"] === "string") &&
     (s["syncMonotonicMs"] === null ||
-      (isFiniteNumber(s["syncMonotonicMs"]) && (s["syncMonotonicMs"]) >= 0)) &&
+      (isFiniteNumber(s["syncMonotonicMs"]) && s["syncMonotonicMs"] >= 0)) &&
     (s["syncBootId"] === null) === (s["syncMonotonicMs"] === null) &&
     isFiniteNumber(s["syncOffsetMs"]) &&
     typeof s["uncertain"] === "boolean" &&
