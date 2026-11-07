@@ -147,7 +147,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: 67144e8
 - previous code commit: 630c646 (CR-44 and CR-45 found on ChatGPT review at HEAD 465e57e)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/frame-analysis.ts` (exported from `packages/core/src/index.ts`); every provider call goes through the existing `provider-gateway.ts`.
 - tests: `packages/core/src/frame-analysis.test.ts` (12 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; 16 frame-analysis tests incl. CR-44 and CR-45); `jest packages/core` → 284 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary, not the full requirement text; confirm against the full text before review.
