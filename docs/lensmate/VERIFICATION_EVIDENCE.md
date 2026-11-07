@@ -67,12 +67,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B21 — Remote device lock and credential revocation
 
-- commit: a4b9fe41c38a04d699fadaa590f69ecc8c961b9e
+- commit: a1202e4786ec19d6c0c5a8bf939e1d489ac13812
+- previous code commit: a4b9fe41c38a04d699fadaa590f69ecc8c961b9e (ChatGPT review: CHANGES_REQUIRED, CR-19, CR-20, CR-21, CR-22)
 - follow-up test fix: 8410e54 (assertion count only)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/device-lock.ts` (exported from `packages/core/src/index.ts`)
-- tests: `packages/core/src/device-lock.test.ts` (10 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; no network)
-- local checks: `jest packages/core` → 13 suites / 164 tests passed; eslint and tsc clean; prettier clean on changed files.
+- tests: `packages/core/src/device-lock.test.ts` (17 tests covering acceptance criteria 1–14 in ACCEPTANCE.md; no network)
+- local checks after the fix: `jest packages/core` → 13 suites / 171 tests passed; eslint and tsc clean; prettier clean on changed files.
 - audit: broker per-device credentials, revocation and enrolment exist in services/broker/src/devices.ts; the device lock and audit of lock events were absent (see ACCEPTANCE.md).
 - unverified: owner command signature scheme and key distribution (platform adapter), delivery of commands to glasses or phone, wiping secrets after REVOKE, server-side revocation audit storage (follow-up), and physical lock behaviour (BLK-001).
