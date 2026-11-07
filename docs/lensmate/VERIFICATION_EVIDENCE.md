@@ -108,11 +108,12 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B25 — Optional phone, PC and accessory pairing
 
-- commit: 1f0671ded459b5f46ca6fe3208bdcd8f5207117b
+- commit: 6f0aafd80d2b88b305ca74d63bb007e497c2d9df
+- previous code commit: 1f0671ded459b5f46ca6fe3208bdcd8f5207117b (ChatGPT review: CHANGES_REQUIRED, CR-32, CR-33, CR-34)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/pairing.ts` (exported from `packages/core/src/index.ts`)
-- tests: `packages/core/src/pairing.test.ts` (11 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; injected time and codes)
-- local checks: `jest packages/core` → 13 suites / 220 tests passed; eslint and tsc clean on changed files; prettier clean.
+- tests: `packages/core/src/pairing.test.ts` (18 tests covering acceptance criteria 1–13 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub)
+- local checks: `jest packages/core` → 13 suites / 227 tests passed; eslint and tsc clean on changed files; prettier clean.
 - audit: glasses-link.ts is transport only; broker and phone enrolment cover the broker, not peer pairing (see ACCEPTANCE.md).
 - unverified: Bluetooth or Wi-Fi pairing transport, code display and entry on glasses, cryptographic peer key exchange, PC and accessory protocols, and on-device behaviour (BLK-001). Peer authentication is the platform adapter responsibility.
