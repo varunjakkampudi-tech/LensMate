@@ -111,7 +111,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: 6f0aafd80d2b88b305ca74d63bb007e497c2d9df
 - previous code commit: 1f0671ded459b5f46ca6fe3208bdcd8f5207117b (ChatGPT review: CHANGES_REQUIRED, CR-32, CR-33, CR-34)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/pairing.ts` (exported from `packages/core/src/index.ts`)
 - tests: `packages/core/src/pairing.test.ts` (18 tests covering acceptance criteria 1–13 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub)
 - local checks: `jest packages/core` → 13 suites / 227 tests passed; eslint and tsc clean on changed files; prettier clean.

@@ -21,8 +21,8 @@ Checklist items: 342 (sections A–Q)
 
 - NOT_REQUESTED: 334
 - PENDING: 0
-- APPROVED: 7
-- CHANGES_REQUESTED: 1
+- APPROVED: 8
+- CHANGES_REQUESTED: 0
 
 Meaning of the current numbers:
 
