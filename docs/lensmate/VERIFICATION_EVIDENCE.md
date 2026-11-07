@@ -217,3 +217,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/product-packaging.test.ts` (16 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; CR-52 interpreted-ingredient tests); `jest packages/core` → 376 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: ingredient-recognition accuracy, multilingual labels, allergen detection, dietary or medical advice, nutritional analysis, product authenticity, physical glasses-camera capture, and hardware validation (BLK-001).
+
+## C09 — Visual product search and comparison
+
+- commit: 2d98dbc
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/product-search.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per identification through an injected factory; external search results validated as untrusted; observed and external data kept apart; conflicts only between two stated, differing brands.
+- tests: `packages/core/src/product-search.test.ts` (12 tests covering acceptance criteria 1–10 in ACCEPTANCE.md); `jest packages/core` → 388 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: real product identification accuracy, live prices, live availability, product authenticity, counterfeit detection, retailer terms, the search and vision provider choice, physical glasses-camera capture, and hardware validation (BLK-001).
