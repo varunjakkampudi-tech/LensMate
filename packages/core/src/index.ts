@@ -225,3 +225,21 @@ export type {
   TextRefusal,
   TextRegion,
 } from "./visual-text.js";
+export {
+  DocumentExplainer,
+  DocumentExplainerError,
+  parseExplanation,
+  SUBJECT_KINDS,
+} from "./document-explainer.js";
+export type {
+  ElementBasis,
+  ExplainAnalysis,
+  ExplainRefusal,
+  ExplainResult,
+  ExplainState,
+  Explanation,
+  ExplanationSupport,
+  DocumentExplainerOptions,
+  ReadElement,
+  SubjectKind,
+} from "./document-explainer.js";
