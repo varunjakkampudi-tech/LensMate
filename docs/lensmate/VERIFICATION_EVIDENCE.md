@@ -212,7 +212,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: 1a1c351
 - previous code commit: c9b7b4e (CR-52 found on ChatGPT review at HEAD f90cd1d)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/product-packaging.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per read through an injected factory; printed and interpreted content separated; interpretations never verified; allergy, safety and health statements never printed.
 - tests: `packages/core/src/product-packaging.test.ts` (16 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; CR-52 interpreted-ingredient tests); `jest packages/core` → 376 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
