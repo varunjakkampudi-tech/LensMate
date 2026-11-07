@@ -141,3 +141,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/camera-capture.test.ts` (23 tests covering acceptance criteria 1–12 in ACCEPTANCE.md); `packages/core/src/capture-indicator.test.ts`; `jest packages/core` → 268 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary, not the full requirement text, which the ChatGPT review checked against the repository's glasses hardware specification (CR-42).
 - unverified: the physical glasses camera, its driver, real wearer-intent sources, real OS or phone permission grants, real recording-indicator confirmation, capture quality on device (BLK-001).
+
+## C02 — Analyze live camera frames
+
+- commit: 630c646
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/frame-analysis.ts` (exported from `packages/core/src/index.ts`); every provider call goes through the existing `provider-gateway.ts`.
+- tests: `packages/core/src/frame-analysis.test.ts` (12 tests covering acceptance criteria 1–10 in ACCEPTANCE.md); `jest packages/core` → 280 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary, not the full requirement text; confirm against the full text before review.
+- unverified: real live camera streams from the glasses, real vision providers, on-device latency and performance, network transport, and hardware validation (BLK-001).
