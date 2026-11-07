@@ -278,3 +278,19 @@ export type {
   SearchResult,
   SearchState,
 } from "./product-search.js";
+export {
+  SceneChangeDetector,
+  SceneChangeError,
+  compareLabels,
+  parseLabels,
+} from "./scene-change.js";
+export type {
+  ChangeState,
+  DetectResult,
+  SceneChange,
+  SceneChangeAnalysis,
+  SceneChangeDetectorOptions,
+  SceneChangeRefusal,
+  SceneLabel,
+  SceneSummary,
+} from "./scene-change.js";
