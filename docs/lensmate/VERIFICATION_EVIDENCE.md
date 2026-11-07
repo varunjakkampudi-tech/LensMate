@@ -163,3 +163,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/voice-question.test.ts` (15 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; CR-46 routing and CR-47 STAGE_FAILED tests); `jest packages/core` → 299 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: the microphone, speech recognition, answer speech output, glasses wake word, real vision providers, on-device latency, and hardware validation (BLK-001).
+
+## C04 — Recognize everyday objects and environmental features
+
+- commit: a7539fc
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/object-recognition.ts` (exported from `packages/core/src/index.ts`); reuses the C02 analysis session per recognition through an injected factory; validates structured provider output.
+- tests: `packages/core/src/object-recognition.test.ts` (10 tests covering acceptance criteria 1–9 in ACCEPTANCE.md); `jest packages/core` → 309 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: real-world recognition accuracy, the choice of vision model, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
