@@ -129,3 +129,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - local checks: `jest packages/core` → 250 tests passed; eslint, tsc, knip and prettier clean; `check:tracking` OK.
 - audit: broker devices.ts enrolment (single-use, expiring, hashed codes) and B25 pairing exist; no device-to-account binding state existed in core (see ACCEPTANCE.md).
 - unverified: the cloud account system and credentials, real network enrolment, the broker enrolment endpoint, the RECOVER policy epoch-freshness registry (platform), account recovery by email or support, physical connectivity and hardware integration (BLK-001).
+
+## C01 — Take images directly with glasses camera
+
+- commit: 3828f6a
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/camera-capture.ts` (exported from `packages/core/src/index.ts`); uses the existing `capture-indicator.ts`.
+- tests: `packages/core/src/camera-capture.test.ts` (12 tests covering acceptance criteria 1–9 in ACCEPTANCE.md); `jest packages/core` → 262 tests passed; eslint, tsc, knip clean.
+- scope note: criteria were written from the one-line checklist summary, not the full requirement text; confirm against the full text before review.
+- unverified: the physical glasses camera, its driver, real OS or phone permission grants, capture quality on device (BLK-001).

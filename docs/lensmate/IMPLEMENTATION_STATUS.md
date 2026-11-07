@@ -7,14 +7,14 @@ Checklist items: 342 (sections A–Q)
 ## Summary (implementation field)
 
 - NOT_STARTED: 312
-- IN_PROGRESS: 21
-- IMPLEMENTED: 9
+- IN_PROGRESS: 20
+- IMPLEMENTED: 10
 
 ## Summary (verification field)
 
 - NOT_TESTED: 312
-- PARTIAL: 21
-- PASS: 9
+- PARTIAL: 20
+- PASS: 10
 - FAIL: 0
 
 ## Summary (independent review field)
