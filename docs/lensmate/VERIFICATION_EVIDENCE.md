@@ -73,7 +73,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - previous code commit: a4b9fe41c38a04d699fadaa590f69ecc8c961b9e (ChatGPT review: CHANGES_REQUIRED, CR-19, CR-20, CR-21, CR-22)
 - follow-up test fix: 8410e54 (assertion count only)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/device-lock.ts` (exported from `packages/core/src/index.ts`)
 - tests: `packages/core/src/device-lock.test.ts` (19 tests covering acceptance criteria 1–15 in ACCEPTANCE.md; no network)
 - local checks after the CR-23 fix: `jest packages/core` → 13 suites / 173 tests passed; eslint and tsc clean; prettier clean on changed files.
