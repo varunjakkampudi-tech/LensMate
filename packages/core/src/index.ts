@@ -88,3 +88,12 @@ export type {
   Sender,
   StoredRecord,
 } from "./offline-sync-queue.js";
+
+export { NetworkRecovery } from "./network-recovery.js";
+export type {
+  NetworkRecoveryOptions,
+  RecoverySnapshot,
+  RecoveryState,
+  ReconnectPolicy,
+  Scheduler,
+} from "./network-recovery.js";
