@@ -168,6 +168,7 @@ export { CameraCapture, CameraCaptureError } from "./camera-capture.js";
 export type {
   CameraAdapter,
   CameraCaptureOptions,
-  CapturePermissionPolicy,
+  CaptureRefusal,
   CaptureResult,
+  PlatformCheck,
 } from "./camera-capture.js";
