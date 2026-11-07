@@ -19,9 +19,9 @@ Checklist items: 342 (sections A–Q)
 
 ## Summary (independent review field)
 
-- NOT_REQUESTED: 329
+- NOT_REQUESTED: 328
 - PENDING: 0
-- APPROVED: 13
+- APPROVED: 14
 - CHANGES_REQUESTED: 0
 
 Meaning of the current numbers:
