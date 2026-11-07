@@ -243,3 +243,18 @@ export type {
   ReadElement,
   SubjectKind,
 } from "./document-explainer.js";
+export {
+  PackagingReader,
+  PackagingReaderError,
+  parsePackaging,
+  INGREDIENT_STATES,
+} from "./product-packaging.js";
+export type {
+  Interpretation,
+  IngredientState,
+  PackagingAnalysis,
+  PackagingRefusal,
+  PackagingReaderOptions,
+  PackagingResult,
+  PrintedIngredient,
+} from "./product-packaging.js";
