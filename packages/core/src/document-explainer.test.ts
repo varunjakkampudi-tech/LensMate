@@ -131,7 +131,7 @@ describe("reading and explaining documents, graphs and diagrams (C07)", () => {
     expect(parseExplanation(raw)).toBeNull();
   });
 
-  it("C07: an explanation without evidence is marked UNSUPPORTED", () => {
+  it("C07: an explanation without citations is marked UNCITED", () => {
     const raw = JSON.stringify({
       subject: "GRAPH",
       partial: false,
@@ -139,9 +139,9 @@ describe("reading and explaining documents, graphs and diagrams (C07)", () => {
       explanations: [{ text: "This probably means growth.", citations: [], confidence: 0.6 }],
     });
     const parsed = parseExplanation(raw);
-    expect(parsed?.kind === "OK" ? parsed.explanations[0]?.support : null).toBe("UNSUPPORTED");
+    expect(parsed?.kind === "OK" ? parsed.explanations[0]?.support : null).toBe("UNCITED");
     const supported = parseExplanation(VALID);
-    expect(supported?.kind === "OK" ? supported.explanations[0]?.support : null).toBe("SUPPORTED");
+    expect(supported?.kind === "OK" ? supported.explanations[0]?.support : null).toBe("CITED");
   });
 
   it("C07: elements and explanations stay separate", () => {
@@ -324,5 +324,34 @@ describe("reading and explaining documents, graphs and diagrams (C07)", () => {
       () =>
         new DocumentExplainer({ createAnalysis: "analysis" as unknown as () => ExplainAnalysis }),
     ).toThrow(DocumentExplainerError);
+  });
+});
+
+describe("citation is not semantic verification (C07 CR-51)", () => {
+  it("C07 CR-51: an explanation citing an existing but unrelated element is CITED, never semantically verified", () => {
+    const raw = JSON.stringify({
+      subject: "GRAPH",
+      partial: false,
+      elements: [{ id: "axis-x", text: "Time (s)", basis: "EXTRACTED", confidence: 0.95 }],
+      explanations: [
+        {
+          text: "The graph proves the treatment is effective.",
+          citations: ["axis-x"],
+          confidence: 0.9,
+        },
+      ],
+    });
+    const parsed = parseExplanation(raw);
+    expect(parsed?.kind === "OK" ? parsed.explanations[0] : null).toMatchObject({
+      support: "CITED",
+      semanticallyVerified: false,
+    });
+  });
+
+  it("C07 CR-51: a valid citation is reported as CITED and an uncited explanation as UNCITED", () => {
+    const parsed = parseExplanation(VALID);
+    expect(parsed?.kind === "OK" ? parsed.explanations.map((e) => e.support) : []).toEqual([
+      "CITED",
+    ]);
   });
 });

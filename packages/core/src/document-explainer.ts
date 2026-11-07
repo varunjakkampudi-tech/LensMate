@@ -5,7 +5,8 @@
  * spend limits, sampling and cancellation are the C02 guarantees. The provider's output is untrusted at runtime.
  * Observed elements and explanations are kept in separate lists. Every explanation must cite the element ids
  * it rests on; a citation to an unknown element is refused, and an explanation with no citation is kept but
- * marked UNSUPPORTED. Nothing is retained after an explanation settles.
+ * marked UNCITED. A citation shows only that the element exists, never that it substantiates the explanation, so
+ * no explanation is reported as semantically verified. Nothing is retained after an explanation settles.
  */
 
 import type { FrameAnalysisRefusal } from "./frame-analysis.js";
@@ -13,7 +14,7 @@ import type { FrameAnalysisRefusal } from "./frame-analysis.js";
 export const SUBJECT_KINDS = ["DOCUMENT", "GRAPH", "DIAGRAM"] as const;
 export type SubjectKind = (typeof SUBJECT_KINDS)[number];
 export type ElementBasis = "EXTRACTED" | "OBSERVED";
-export type ExplanationSupport = "SUPPORTED" | "UNSUPPORTED";
+export type ExplanationSupport = "CITED" | "UNCITED";
 export type ExplainState = "COMPLETE" | "PARTIAL" | "AMBIGUOUS" | "EMPTY";
 
 export interface ReadElement {
@@ -28,6 +29,8 @@ export interface Explanation {
   readonly text: string;
   readonly citations: readonly string[];
   readonly support: ExplanationSupport;
+  /** Always false: structural citation checks do not verify that evidence substantiates the claim. */
+  readonly semanticallyVerified: false;
   readonly confidence: number;
   readonly certainty: "HIGH" | "LOW";
 }
@@ -218,11 +221,12 @@ export function parseExplanation(raw: unknown):
     const cited: string[] = citations.filter(isId);
     if (!cited.every((citation) => ids.has(citation))) return { kind: "UNSUPPORTED_REFERENCE" };
     // An explanation is supported only when it cites at least one observed or extracted element.
-    const support: ExplanationSupport = cited.length > 0 ? "SUPPORTED" : "UNSUPPORTED";
+    const support: ExplanationSupport = cited.length > 0 ? "CITED" : "UNCITED";
     explanations.push({
       text,
       citations: cited,
       support,
+      semanticallyVerified: false,
       confidence,
       certainty: confidence < LOW_CONFIDENCE ? "LOW" : "HIGH",
     });
