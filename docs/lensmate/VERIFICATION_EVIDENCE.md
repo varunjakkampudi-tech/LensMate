@@ -195,3 +195,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/visual-text.test.ts` (18 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; CR-50 partial-reading tests); `jest packages/core` → 344 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: real OCR accuracy, handwriting, multilingual reading, font and lighting robustness, document-authenticity checks, vision-model choice, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
+
+## C07 — Read and explain documents, graphs and diagrams
+
+- commit: 827bdd7
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/document-explainer.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per explanation through an injected factory; citations validated against reported element ids; unsupported explanations marked.
+- tests: `packages/core/src/document-explainer.test.ts` (14 tests covering acceptance criteria 1–11 in ACCEPTANCE.md); `jest packages/core` → 358 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: real document, graph or diagram interpretation accuracy, mathematical or scientific correctness, vision-model choice, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
