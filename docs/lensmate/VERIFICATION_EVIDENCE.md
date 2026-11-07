@@ -31,7 +31,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 - commit: c6e9fb1dc106265b2f30fe1de7d5a952713f588b
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - fix commit: 95ed6f3 (CR-10, CR-11, CR-12 from ChatGPT review of c6e9fb1; criteria 16–18 in ACCEPTANCE.md)
 - implementation: `packages/core/src/offline-sync-queue.ts`
 - tests: `packages/core/src/offline-sync-queue.test.ts` (19 tests covering acceptance criteria 1–18 in ACCEPTANCE.md; real AES-256-GCM in tests only)

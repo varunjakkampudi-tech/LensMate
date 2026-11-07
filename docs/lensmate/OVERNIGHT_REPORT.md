@@ -68,3 +68,9 @@ See BLOCKERS.md (BLK-001 to BLK-005).
 - Counts after this change: implementation IMPLEMENTED 2 (B16, B17), IN_PROGRESS 22, NOT_STARTED 318; verification PASS 2, PARTIAL 22, NOT_TESTED 318; review APPROVED 1 (B16), CHANGES_REQUESTED 1 (B17), NOT_REQUESTED 340.
 - B17 is not independently approved. Hardware validation stays PENDING (BLK-001).
 - ChatGPT names B19 — Network Loss Recovery and Automatic Reconnection as the next software item after B17 approval. It must start with an audit of existing connectivity code.
+
+## B17 — independent approval
+
+- ChatGPT re-review of fix commit 95ed6f3 (reviewed HEAD d6e3be9): APPROVED for the software component. Hosted CI for d6e3be9 passed: push run 42325283392, PR run 42325285839.
+- Counts: implementation IMPLEMENTED 2 (B16, B17); review APPROVED 2; NOT_REQUESTED 340; hardware validation PENDING (BLK-001).
+- ChatGPT's next software item is B19 (network loss recovery and automatic reconnection). It has not been started.

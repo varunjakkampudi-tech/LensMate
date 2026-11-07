@@ -21,13 +21,13 @@ Checklist items: 342 (sections A–Q)
 
 - NOT_REQUESTED: 340
 - PENDING: 0
-- APPROVED: 1
-- CHANGES_REQUESTED: 1
+- APPROVED: 2
+- CHANGES_REQUESTED: 0
 
 Meaning of the current numbers:
 
-- 2 items (B16, B17) are implemented; B16 passes its software acceptance criteria (code commit 944f550; criteria 1–19 in ACCEPTANCE.md), and is APPROVED by independent review (ChatGPT, reviewed HEAD ddd7cf2). Hardware validation remains PENDING.
-- 340 items are not IMPLEMENTED. 340 items are not verified PASS. 340 items have no independent review decision. B17 has CHANGES_REQUESTED (ChatGPT review of c6e9fb1: CR-10, CR-11, CR-12), fixed in 95ed6f3 and awaiting re-review.
+- 2 items (B16, B17) are implemented and both are APPROVED by independent review; B16 passes its software acceptance criteria (code commit 944f550; criteria 1–19 in ACCEPTANCE.md), and is APPROVED by independent review (ChatGPT, reviewed HEAD ddd7cf2). Hardware validation remains PENDING.
+- 340 items are not IMPLEMENTED. 340 items are not verified PASS. 340 items have no independent review decision. B17 was CHANGES_REQUESTED on c6e9fb1 (CR-10, CR-11, CR-12), fixed in 95ed6f3, and APPROVED by ChatGPT on reviewed HEAD d6e3be9 for the software component. Hardware validation remains PENDING.
 - ChatGPT's review of commit e082d56 was CHANGES_REQUESTED (CR-06, CR-07, CR-08). That review is recorded in OVERNIGHT_REPORT.md and does not count as APPROVED.
 
 ## Existing code
