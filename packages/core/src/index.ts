@@ -214,3 +214,14 @@ export type {
   SceneResult,
   SceneState,
 } from "./scene-layout.js";
+export { TextReader, TextReaderError, parseReading, DOCUMENT_CATEGORIES } from "./visual-text.js";
+export type {
+  Basis,
+  DocumentCategory,
+  ReadingState,
+  ReadResult,
+  TextAnalysis,
+  TextReaderOptions,
+  TextRefusal,
+  TextRegion,
+} from "./visual-text.js";
