@@ -91,3 +91,14 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - local checks after the fix: `jest packages/core` → 13 suites / 189 tests passed; eslint, tsc and prettier clean.
 - audit: mobile vault deleteAll, native-store "delete everything" with secure_delete, backup deleteBackup, and broker device revocation exist; none is ordered, persisted, resumable or verified (see ACCEPTANCE.md).
 - unverified: physical erasure on flash or secure element, key destruction in hardware, forensic recovery resistance, broker revocation endpoint, and on-device behaviour (BLK-001).
+
+## B23 — Diagnostics and crash recovery
+
+- commit: 4b344ce7d7379618a34ab7e76fa53081bc236854
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/diagnostics-recovery.ts` (exported from `packages/core/src/index.ts`)
+- tests: `packages/core/src/diagnostics-recovery.test.ts` (10 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; injected time, existing log allowlist)
+- local checks: `jest packages/core` → 13 suites / 199 tests passed; eslint and tsc clean on changed files; prettier clean.
+- audit: log-redaction.ts (allowlist and redaction) and mobile diagnostics checks exist; crash classification, crash-loop safe mode, bounded diagnostic retention and recovery verification were absent (see ACCEPTANCE.md).
+- unverified: native crash dumps and handlers on device, OS watchdog integration, remote diagnostics upload, and hardware-specific failure modes (BLK-001).
