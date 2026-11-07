@@ -201,7 +201,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: bec871a
 - previous code commit: 827bdd7 (CR-51 found on ChatGPT review at HEAD 23853de)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/document-explainer.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per explanation through an injected factory; citations validated against reported element ids; unsupported explanations marked.
 - tests: `packages/core/src/document-explainer.test.ts` (16 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; CR-51 citation-versus-verification tests); `jest packages/core` → 360 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
