@@ -59,3 +59,12 @@ See BLOCKERS.md (BLK-001 to BLK-005).
 1. Read `docs/lensmate/MASTER_CHECKLIST.md`, `ACCEPTANCE.md`, `VERIFICATION_EVIDENCE.md`, and `BLOCKERS.md`.
 2. Run `pnpm check:tracking` and `npx jest packages/core packages/protocol`.
 3. Do not touch the owner's uncommitted edits to README.md, docs/README.md, docs/hardware/glasses-spec.md, docs/product/PRODUCT.md, or the untracked `.playwright-cli/` folder.
+
+## B17 — ChatGPT review and fixes
+
+- Code commit c6e9fb1 (B17 offline sync queue) and evidence commit a8e5f9f were pushed to dev. Hosted CI for a8e5f9f passed (push run 42258475252, PR run 42258485161).
+- ChatGPT review of c6e9fb1: CHANGES REQUIRED. Findings: CR-10 (duplicate record ids accepted), CR-11 (canceled idempotency keys reusable, so the snapshot could fail to reopen), CR-12 (cancellation during decryption could still reach the sender).
+- Fix commit 95ed6f3 adds acceptance criteria 16–18 and regression tests for each finding. It also documents that the drainer guard covers one queue instance only.
+- Counts after this change: implementation IMPLEMENTED 2 (B16, B17), IN_PROGRESS 22, NOT_STARTED 318; verification PASS 2, PARTIAL 22, NOT_TESTED 318; review APPROVED 1 (B16), CHANGES_REQUESTED 1 (B17), NOT_REQUESTED 340.
+- B17 is not independently approved. Hardware validation stays PENDING (BLK-001).
+- ChatGPT names B19 — Network Loss Recovery and Automatic Reconnection as the next software item after B17 approval. It must start with an audit of existing connectivity code.
