@@ -99,7 +99,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - previous code commit: 4b344ce7d7379618a34ab7e76fa53081bc236854 (ChatGPT review: CHANGES_REQUIRED, CR-27, CR-28, CR-29)
 - test-source commit: edc8a17 (runtime-built redaction sample)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/diagnostics-recovery.ts` (exported from `packages/core/src/index.ts`)
 - tests: `packages/core/src/diagnostics-recovery.test.ts` (20 tests covering acceptance criteria 1–15 in ACCEPTANCE.md; injected time, existing log allowlist, trusted verifier stub)
 - local checks after the CR-30/CR-31 fix: `jest packages/core` → 13 suites / 209 tests passed; eslint and tsc clean on changed files; prettier clean.
