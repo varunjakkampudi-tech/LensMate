@@ -28,8 +28,15 @@ export interface ReconnectPolicy {
 export interface NetworkRecoveryOptions {
   /** Makes one connection attempt. Must reject on failure and stop when the signal aborts. */
   readonly connect: (signal: AbortSignal) => Promise<void>;
-  /** Called after each successful connect. Use it to start synchronization. */
+  /**
+   * Called synchronously after each successful connect. Use it to start synchronization. It must
+   * not return a promise: asynchronous work is the caller's responsibility, and its errors must be
+   * handled there. A synchronous throw is caught and passed to `onCallbackError`; the connection
+   * stays CONNECTED, because a failed sync is not a failed network connection.
+   */
   readonly onConnected: () => void;
+  /** Receives exceptions thrown by `onConnected`. Defaults to ignoring them. */
+  readonly onCallbackError?: (error: unknown) => void;
   readonly scheduler: Scheduler;
   /** Returns a number in [0, 1). Defaults to Math.random. Injected for tests. */
   readonly random?: () => number;
@@ -65,6 +72,8 @@ export class NetworkRecovery {
   private inFlight: AbortController | null = null;
   /** True from the start of a connect until its promise settles. */
   private busy = false;
+  /** True only after the stability window has elapsed with the network up. Gates every attempt. */
+  private stableReady = false;
   private cancelBackoff: (() => void) | null = null;
   private cancelStability: (() => void) | null = null;
   private readonly policy: ReconnectPolicy;
@@ -84,6 +93,11 @@ export class NetworkRecovery {
   /** Starts with the current network state. Online begins the stability window, offline waits. */
   start(initiallyOnline: boolean): void {
     if (this.state !== "IDLE" && this.state !== "STOPPED") return;
+    // Forget the previous session's network view, so a restart is not mistaken for a repeat
+    // report. A connect from the previous session that is still unsettled keeps `busy` set.
+    this.online = false;
+    this.failures = 0;
+    this.stableReady = false;
     this.state = "OFFLINE";
     this.reportNetwork(initiallyOnline);
   }
@@ -93,6 +107,7 @@ export class NetworkRecovery {
     if (this.state === "STOPPED" || online === this.online) return;
     this.online = online;
     if (!online) {
+      this.stableReady = false;
       this.cancelPending();
       this.abortInFlight();
       if (this.state !== "GAVE_UP") this.state = "OFFLINE";
@@ -103,7 +118,9 @@ export class NetworkRecovery {
     this.cancelStability = this.options.scheduler.setTimer(() => {
       this.cancelStability = null;
       if (this.online && this.state !== "STOPPED") {
-        // The network returned: reset backoff and retry at once.
+        // The stability window has passed with the network up. Only now may an attempt start,
+        // and a connect that is still unsettled will start it when it settles (see `settle`).
+        this.stableReady = true;
         this.cancelPending();
         this.failures = 0;
         this.attempt();
@@ -111,9 +128,9 @@ export class NetworkRecovery {
     }, this.stableOnlineMs);
   }
 
-  /** Clears GAVE_UP and tries again now, if the network is up. */
+  /** Clears GAVE_UP and tries again now, if the network is up and stable. */
   retryNow(): void {
-    if (this.state !== "GAVE_UP" || !this.online) return;
+    if (this.state !== "GAVE_UP" || !this.online || !this.stableReady) return;
     this.failures = 0;
     this.state = "OFFLINE";
     this.attempt();
@@ -122,6 +139,7 @@ export class NetworkRecovery {
   /** Stops everything: timers cancelled, in-flight attempt aborted, late results ignored. */
   stop(): void {
     this.state = "STOPPED";
+    this.stableReady = false;
     this.generation += 1;
     this.cancelPending();
     this.abortInFlight();
@@ -130,7 +148,7 @@ export class NetworkRecovery {
   private attempt(): void {
     // `busy` stays set until the connect promise itself settles, even after an abort, so two
     // connects never overlap. A connect that ignores its signal keeps the slot occupied.
-    if (this.state === "STOPPED" || !this.online || this.busy) return;
+    if (this.state === "STOPPED" || !this.online || !this.stableReady || this.busy) return;
     this.state = "RECONNECTING";
     this.generation += 1;
     const gen = this.generation;
@@ -147,24 +165,27 @@ export class NetworkRecovery {
     const settle = (ok: boolean): void => {
       this.busy = false;
       if (gen !== this.generation) {
-        // Stale result from an attempt that was interrupted or stopped.
-        if (this.state !== "STOPPED" && this.online && this.state !== "CONNECTED") {
-          this.attempt();
-        }
+        // Stale result from an attempt that was interrupted or stopped. The slot is free now, so
+        // a retry that was waiting for it runs, but only once the stability window has passed.
+        this.resumeIfWaiting();
         return;
       }
       this.inFlight = null;
       if (this.state === "STOPPED") return;
       if (controller.signal.aborted || !this.online) {
-        // Interrupted by the network going away: not a failed attempt, not connected. If the
-        // network came back while this connect was still pending, retry now that the slot is free.
-        if (this.online) this.attempt();
+        // Interrupted by the network going away: not a failed attempt, not connected.
+        this.resumeIfWaiting();
         return;
       }
       if (ok) {
         this.failures = 0;
         this.state = "CONNECTED";
-        this.options.onConnected();
+        try {
+          this.options.onConnected();
+        } catch (error: unknown) {
+          // A failed sync is reported, but the network connection itself remains CONNECTED.
+          this.options.onCallbackError?.(error);
+        }
         return;
       }
       this.failures += 1;
@@ -183,6 +204,13 @@ export class NetworkRecovery {
         settle(false);
       },
     );
+  }
+
+  /** After the connect slot frees up: if the network is up, stable, and not connected, attempt. */
+  private resumeIfWaiting(): void {
+    if (this.state !== "STOPPED" && this.online && this.stableReady && this.state !== "CONNECTED") {
+      this.attempt();
+    }
   }
 
   private scheduleBackoff(): void {

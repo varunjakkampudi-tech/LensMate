@@ -336,4 +336,181 @@ describe("NetworkRecovery", () => {
     await sched.advance(100_000);
     expect(script.attempts).toHaveLength(1);
   });
+  it("CR-13: restart after stop starts a fresh session after a completed connection", async () => {
+    await flush();
+    const sched = new FakeScheduler();
+    const script = scriptedConnect();
+    let connected = 0;
+    const recovery = new NetworkRecovery({
+      connect: script.connect,
+      onConnected: () => {
+        connected += 1;
+      },
+      scheduler: sched,
+      stableOnlineMs: 100,
+    });
+    recovery.start(true);
+    await sched.advance(100);
+    script.attempts[0]?.resolve();
+    await flush();
+    expect(recovery.snapshot.state).toBe("CONNECTED");
+    recovery.stop();
+    recovery.start(true);
+    await sched.advance(100);
+    expect(script.attempts).toHaveLength(2);
+    script.attempts[1]?.resolve();
+    await flush();
+    expect(connected).toBe(2);
+    expect(recovery.snapshot.state).toBe("CONNECTED");
+  });
+
+  it("CR-13: restart while the previous connect ignores abort keeps one slot and retries once it settles", async () => {
+    await flush();
+    const sched = new FakeScheduler();
+    const script = scriptedConnect();
+    const recovery = new NetworkRecovery({
+      connect: script.connect,
+      onConnected: () => undefined,
+      scheduler: sched,
+      stableOnlineMs: 100,
+    });
+    recovery.start(true);
+    await sched.advance(100);
+    expect(script.attempts).toHaveLength(1);
+    recovery.stop();
+    recovery.start(true);
+    await sched.advance(500);
+    // The old connect ignores its abort signal and is still pending: no second connect yet.
+    expect(script.attempts).toHaveLength(1);
+    script.attempts[0]?.reject();
+    await flush();
+    expect(script.attempts).toHaveLength(2);
+    script.attempts[1]?.resolve();
+    await flush();
+    expect(recovery.snapshot.state).toBe("CONNECTED");
+  });
+
+  it("CR-13: offline restart followed by online recovery attempts once", async () => {
+    await flush();
+    const sched = new FakeScheduler();
+    const script = scriptedConnect();
+    const recovery = new NetworkRecovery({
+      connect: script.connect,
+      onConnected: () => undefined,
+      scheduler: sched,
+      stableOnlineMs: 50,
+    });
+    recovery.start(true);
+    await sched.advance(50);
+    script.attempts[0]?.resolve();
+    await flush();
+    recovery.stop();
+    recovery.start(false);
+    await sched.advance(1000);
+    expect(script.attempts).toHaveLength(1);
+    recovery.reportNetwork(true);
+    await sched.advance(50);
+    expect(script.attempts).toHaveLength(2);
+  });
+
+  it("CR-14: a late settle before the stability window does not bypass it", async () => {
+    await flush();
+    const sched = new FakeScheduler();
+    const script = scriptedConnect();
+    const recovery = new NetworkRecovery({
+      connect: script.connect,
+      onConnected: () => undefined,
+      scheduler: sched,
+      stableOnlineMs: 500,
+    });
+    recovery.start(true);
+    await sched.advance(500);
+    expect(script.attempts).toHaveLength(1);
+    recovery.reportNetwork(false);
+    recovery.reportNetwork(true);
+    // Old connect settles (aborted) before the new stability window has passed.
+    script.attempts[0]?.reject();
+    await flush();
+    expect(script.attempts).toHaveLength(1);
+    await sched.advance(499);
+    expect(script.attempts).toHaveLength(1);
+    await sched.advance(1);
+    expect(script.attempts).toHaveLength(2);
+    script.attempts[1]?.resolve();
+    await flush();
+    expect(recovery.snapshot.state).toBe("CONNECTED");
+  });
+
+  it("CR-14: a late settle after the stability window retries exactly once", async () => {
+    await flush();
+    const sched = new FakeScheduler();
+    const script = scriptedConnect();
+    const recovery = new NetworkRecovery({
+      connect: script.connect,
+      onConnected: () => undefined,
+      scheduler: sched,
+      stableOnlineMs: 100,
+    });
+    recovery.start(true);
+    await sched.advance(100);
+    recovery.reportNetwork(false);
+    recovery.reportNetwork(true);
+    await sched.advance(100);
+    // Stability passed while the old connect was still pending: nothing new yet.
+    expect(script.attempts).toHaveLength(1);
+    script.attempts[0]?.reject();
+    await flush();
+    expect(script.attempts).toHaveLength(2);
+    await sched.advance(10_000);
+    expect(script.attempts).toHaveLength(2);
+  });
+
+  it("CR-14: stop prevents a late retry from an old connect", async () => {
+    await flush();
+    const sched = new FakeScheduler();
+    const script = scriptedConnect();
+    const recovery = new NetworkRecovery({
+      connect: script.connect,
+      onConnected: () => undefined,
+      scheduler: sched,
+      stableOnlineMs: 100,
+    });
+    recovery.start(true);
+    await sched.advance(100);
+    recovery.reportNetwork(false);
+    recovery.reportNetwork(true);
+    await sched.advance(100);
+    recovery.stop();
+    script.attempts[0]?.reject();
+    await flush();
+    await sched.advance(10_000);
+    expect(script.attempts).toHaveLength(1);
+  });
+
+  it("CR-15: an exception thrown by onConnected is reported and leaves the connection CONNECTED", async () => {
+    await flush();
+    const sched = new FakeScheduler();
+    const script = scriptedConnect();
+    const errors: unknown[] = [];
+    const boom = new Error("sync failed");
+    const recovery = new NetworkRecovery({
+      connect: script.connect,
+      onConnected: () => {
+        throw boom;
+      },
+      onCallbackError: (error) => {
+        errors.push(error);
+      },
+      scheduler: sched,
+      stableOnlineMs: 0,
+    });
+    recovery.start(true);
+    await sched.advance(0);
+    script.attempts[0]?.resolve();
+    await flush();
+    expect(errors).toEqual([boom]);
+    expect(recovery.snapshot).toMatchObject({ state: "CONNECTED", failures: 0 });
+    await sched.advance(100_000);
+    expect(script.attempts).toHaveLength(1);
+  });
 });
