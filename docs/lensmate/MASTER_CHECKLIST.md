@@ -71,7 +71,7 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 | B16 | Offline command router                                         | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | B17 | Local queue and deferred synchronization                       | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | B18 | Power-saving sleep and wake states                             | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
-| B19 | Network loss recovery and automatic reconnection               | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B19 | Network loss recovery and automatic reconnection               | IMPLEMENTED    | PASS         | NOT_REQUESTED | NONE    | PENDING             |
 | B20 | Local clock and timestamp continuity                           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B21 | Remote device lock and credential revocation                   | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B22 | Factory reset and secure data erasure                          | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |

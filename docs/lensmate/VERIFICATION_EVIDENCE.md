@@ -38,3 +38,14 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - local checks after the fix (95ed6f3): `jest packages/core` → 11 suites / 115 tests passed; eslint, prettier and tsc clean on the changed files; `pnpm check:tracking` OK. Hosted CI for 95ed6f3 is recorded in the review request, not here.
 - commands run in a clean checkout of c6e9fb1 (`pnpm install --frozen-lockfile`): build, typecheck, lint, format:check, knip, check:schema, check:tracking, check:expo, audit:high all exit 0; `pnpm test` → 40 suites / 261 tests passed (core/protocol 14 suites / 120 tests in the working tree before this commit).
 - unverified: real device storage (phone SQLite/keystore or on-glasses flash), production cipher per platform, real network sync to the broker, power-loss behaviour on hardware (BLK-001), and the hosted CI run for the evidence commit (recorded in the reply, not in this file).
+
+## B19 — Network loss recovery and automatic reconnection
+
+- commit: 39fd0e781b7411876309345a0bd2faab7d598430
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/network-recovery.ts` (exported from `packages/core/src/index.ts`)
+- tests: `packages/core/src/network-recovery.test.ts` (12 tests covering acceptance criteria 1–11 in ACCEPTANCE.md; deterministic fake scheduler, injected random)
+- commands run after the commit: `jest packages/core` → 12 suites / 127 tests passed; eslint and tsc clean on the changed files; `pnpm check:tracking` OK.
+- audit: no existing reconnect or network-state module (glasses-link.ts and broker-client.ts have no reconnection); see ACCEPTANCE.md.
+- unverified: real Wi-Fi or cellular behaviour, OS network-change events on phone or glasses, and broker integration. Hardware validation PENDING (BLK-001). Hosted CI for the evidence commit is recorded in the review request.
