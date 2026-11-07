@@ -56,10 +56,11 @@ export type SyncResult =
   | { readonly status: "APPLIED" }
   | {
       readonly status: "REJECTED";
-      readonly reason: "OTHER_BOOT" | "OLDER_THAN_LAST_SYNC" | "BAD_VALUE";
+      readonly reason:
+        "NOT_AUTHENTICATED" | "BAD_VALUE" | "OTHER_BOOT" | "FUTURE_SAMPLE" | "OLDER_THAN_LAST_SYNC";
     };
 
-export type ClockErrorCode = "CLOCK_CORRUPT";
+export type ClockErrorCode = "CLOCK_CORRUPT" | "INVALID_READING";
 
 export class ClockError extends Error {
   constructor(
@@ -83,6 +84,19 @@ const DEFAULT_MAX_SYNC_AGE_MS = 24 * 60 * 60 * 1000;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+/** Live platform readings must be finite and well-formed. Invalid readings fail closed. */
+function checkReading(wallMs: unknown, monotonicMs: unknown, bootId: unknown): void {
+  if (
+    !isFiniteNumber(wallMs) ||
+    !isFiniteNumber(monotonicMs) ||
+    monotonicMs < 0 ||
+    typeof bootId !== "string" ||
+    bootId === ""
+  ) {
+    throw new ClockError("INVALID_READING", "clock reading from the platform is invalid");
+  }
 }
 
 function validState(value: unknown): value is ClockState {
@@ -126,10 +140,12 @@ export class LocalClock {
   static fresh(source: ClockSource, options: LocalClockOptions = {}): LocalClock {
     const monotonicMs = source.monotonicMs();
     const wallMs = source.wallMs();
+    const bootId = source.bootId();
+    checkReading(wallMs, monotonicMs, bootId);
     return new LocalClock(
       source,
       {
-        bootId: source.bootId(),
+        bootId,
         lastMonotonicMs: monotonicMs,
         lastWallMs: wallMs,
         seq: 0,
@@ -164,6 +180,9 @@ export class LocalClock {
     const wallMs = this.source.wallMs();
     const monotonicMs = this.source.monotonicMs();
     const bootId = this.source.bootId();
+    // Validate before touching state, so a bad reading does not advance the sequence or corrupt
+    // the last valid snapshot.
+    checkReading(wallMs, monotonicMs, bootId);
     const s = this.state;
 
     let uncertain = s.uncertain;
@@ -213,30 +232,47 @@ export class LocalClock {
   }
 
   /**
-   * Applies a trusted time sync. Rejected when it is from another boot, or older than the last
-   * applied sync. An applied sync clears UNCERTAIN, because it re-anchors the wall clock.
+   * Applies a trusted time sync. The caller must have authenticated the sample: a sample is only
+   * accepted when `authenticated` is exactly true at runtime. The sample is taken at
+   * `monotonicMs` on this boot, so its UTC value is advanced by the monotonic time elapsed since
+   * then before anchoring. Future, other-boot, and older-than-last-sync samples are rejected.
+   * An applied sync clears UNCERTAIN, because it re-anchors the wall clock.
    */
   applySync(sample: TrustedSync): SyncResult {
+    // Compile-time types are not a runtime check, so the flag is read as unknown.
+    const flag: unknown = sample.authenticated;
+    if (flag !== true) {
+      return { status: "REJECTED", reason: "NOT_AUTHENTICATED" };
+    }
     if (
       !isFiniteNumber(sample.utcMs) ||
       !isFiniteNumber(sample.monotonicMs) ||
       sample.monotonicMs < 0 ||
+      typeof sample.bootId !== "string" ||
       sample.bootId === ""
     ) {
       return { status: "REJECTED", reason: "BAD_VALUE" };
     }
-    if (sample.bootId !== this.state.bootId) {
+    const nowWall = this.source.wallMs();
+    const nowMono = this.source.monotonicMs();
+    const nowBoot = this.source.bootId();
+    checkReading(nowWall, nowMono, nowBoot);
+    if (sample.bootId !== this.state.bootId || sample.bootId !== nowBoot) {
       return { status: "REJECTED", reason: "OTHER_BOOT" };
+    }
+    if (sample.monotonicMs > nowMono) {
+      return { status: "REJECTED", reason: "FUTURE_SAMPLE" };
     }
     if (this.state.syncMonotonicMs !== null && sample.monotonicMs < this.state.syncMonotonicMs) {
       return { status: "REJECTED", reason: "OLDER_THAN_LAST_SYNC" };
     }
-    const wallNow = this.source.wallMs();
+    // UTC at the moment of application, given the sample was valid at sample.monotonicMs.
+    const utcNow = sample.utcMs + (nowMono - sample.monotonicMs);
     this.state = {
       ...this.state,
       syncBootId: sample.bootId,
       syncMonotonicMs: sample.monotonicMs,
-      syncOffsetMs: sample.utcMs - wallNow,
+      syncOffsetMs: utcNow - nowWall,
       uncertain: false,
     };
     return { status: "APPLIED" };

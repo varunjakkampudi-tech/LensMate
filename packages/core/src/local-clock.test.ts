@@ -226,4 +226,146 @@ describe("LocalClock", () => {
     clock.suspend(3_600_000);
     expect(local.stamp().provenance).toBe("UNCERTAIN");
   });
+  it("CR-16: a sample whose authenticated flag is not exactly true is rejected at runtime", () => {
+    const clock = new FakeClock();
+    const local = LocalClock.fresh(clock);
+    clock.tick(1000);
+    local.stamp();
+    clock.jumpWall(60_000);
+    clock.tick(1000);
+    expect(local.stamp().provenance).toBe("UNCERTAIN");
+    const base = { utcMs: clock.wall, monotonicMs: clock.mono, bootId: "boot-1" };
+    const unsafe: unknown[] = [false, undefined, "true", 1, null];
+    for (const flag of unsafe) {
+      const sample = { ...base, authenticated: flag } as unknown as Parameters<
+        LocalClock["applySync"]
+      >[0];
+      expect(local.applySync(sample)).toEqual({ status: "REJECTED", reason: "NOT_AUTHENTICATED" });
+    }
+    clock.tick(1000);
+    expect(local.stamp().provenance).toBe("UNCERTAIN");
+  });
+
+  it("CR-17: a delayed sample is advanced by the monotonic time elapsed since it was taken", () => {
+    const clock = new FakeClock();
+    const local = LocalClock.fresh(clock);
+    const sampleUtc = clock.wall;
+    const sampleMono = clock.mono;
+    clock.tick(5_000);
+    expect(
+      local.applySync({
+        utcMs: sampleUtc,
+        monotonicMs: sampleMono,
+        bootId: "boot-1",
+        authenticated: true,
+      }),
+    ).toEqual({ status: "APPLIED" });
+    expect(local.stamp().utcMs).toBe(sampleUtc + 5_000);
+  });
+
+  it("CR-17: a sample dated after the current monotonic time is rejected as future", () => {
+    const clock = new FakeClock();
+    const local = LocalClock.fresh(clock);
+    expect(
+      local.applySync({
+        utcMs: clock.wall,
+        monotonicMs: clock.mono + 1,
+        bootId: "boot-1",
+        authenticated: true,
+      }),
+    ).toEqual({ status: "REJECTED", reason: "FUTURE_SAMPLE" });
+  });
+
+  it("CR-17: reordered samples are rejected when older than the last applied sync", () => {
+    const clock = new FakeClock();
+    const local = LocalClock.fresh(clock);
+    clock.tick(4000);
+    local.applySync({
+      utcMs: clock.wall,
+      monotonicMs: 4000,
+      bootId: "boot-1",
+      authenticated: true,
+    });
+    expect(
+      local.applySync({
+        utcMs: clock.wall,
+        monotonicMs: 3000,
+        bootId: "boot-1",
+        authenticated: true,
+      }),
+    ).toEqual({ status: "REJECTED", reason: "OLDER_THAN_LAST_SYNC" });
+  });
+
+  it("CR-17: a wall-clock adjustment after sync is flagged UNCERTAIN until the next sync", () => {
+    const clock = new FakeClock();
+    const local = LocalClock.fresh(clock);
+    clock.tick(1000);
+    local.applySync({
+      utcMs: clock.wall,
+      monotonicMs: clock.mono,
+      bootId: "boot-1",
+      authenticated: true,
+    });
+    clock.tick(1000);
+    expect(local.stamp().provenance).toBe("SYNCED");
+    clock.jumpWall(10_000);
+    clock.tick(1000);
+    expect(local.stamp().provenance).toBe("UNCERTAIN");
+    clock.tick(1000);
+    local.applySync({
+      utcMs: clock.wall,
+      monotonicMs: clock.mono,
+      bootId: "boot-1",
+      authenticated: true,
+    });
+    clock.tick(1000);
+    expect(local.stamp().provenance).toBe("SYNCED");
+  });
+
+  it("CR-18: invalid live readings fail closed and never advance the sequence or corrupt state", () => {
+    const clock = new FakeClock();
+    const local = LocalClock.fresh(clock);
+    clock.tick(1000);
+    const good = local.stamp();
+    const before = local.snapshot();
+
+    const bad: Array<() => void> = [
+      () => {
+        clock.wall = Number.NaN;
+      },
+      () => {
+        clock.wall = Number.POSITIVE_INFINITY;
+      },
+      () => {
+        clock.mono = -1;
+      },
+      () => {
+        clock.mono = Number.NaN;
+      },
+      () => {
+        clock.boot = "";
+      },
+    ];
+    for (const corrupt of bad) {
+      clock.wall = 1_700_000_001_000;
+      clock.mono = good.monotonicMs + 1000;
+      clock.boot = "boot-1";
+      corrupt();
+      expect(() => local.stamp()).toThrow(ClockError);
+      expect(local.snapshot()).toEqual(before);
+    }
+    clock.wall = 1_700_000_005_000;
+    clock.mono = good.monotonicMs + 5000;
+    clock.boot = "boot-1";
+    expect(local.stamp().seq).toBe(good.seq + 1);
+  });
+
+  it("CR-18: invalid readings are rejected when creating a clock", () => {
+    const clock = new FakeClock();
+    clock.wall = Number.NaN;
+    expect(() => LocalClock.fresh(clock)).toThrow(ClockError);
+    clock.wall = 1_700_000_000_000;
+    clock.boot = "";
+    expect(() => LocalClock.fresh(clock)).toThrow(ClockError);
+  });
 });
