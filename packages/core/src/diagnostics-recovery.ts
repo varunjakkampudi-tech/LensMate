@@ -46,7 +46,7 @@ export type ExitResult =
   | { readonly status: "EXITED" }
   | {
       readonly status: "REFUSED";
-      readonly reason: "NOT_CONFIRMED" | "NOT_IN_SAFE_MODE" | "NOT_VERIFIED";
+      readonly reason: "NOT_CONFIRMED" | "NOT_IN_SAFE_MODE" | "NOT_VERIFIED" | "STALE_VERIFICATION";
     };
 
 export type CrashResult = {
@@ -70,7 +70,8 @@ const DEFAULT_THRESHOLD = 3;
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_MAX_LOG = 200;
 const MAX_CRASH_HISTORY = 64;
-const MAX_THRESHOLD = 100;
+// A threshold above the retained history could never be reached, so the two limits are the same.
+const MAX_THRESHOLD = MAX_CRASH_HISTORY;
 const MAX_LOG_LIMIT = 10_000;
 const MAX_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -155,6 +156,8 @@ function copy(state: DiagnosticsState): DiagnosticsState {
 export class DiagnosticsRecovery {
   private state: DiagnosticsState;
   private readonly limits: Limits;
+  /** Bumped on every crash, so a verification that started earlier cannot apply to newer failures. */
+  private generation = 0;
 
   private constructor(state: DiagnosticsState, limits: Limits) {
     this.state = copy(state);
@@ -219,6 +222,7 @@ export class DiagnosticsRecovery {
    * timestamps cannot hide a crash loop.
    */
   recordCrash(kind: string, atMs: number): CrashResult {
+    this.generation += 1;
     const known = Object.prototype.hasOwnProperty.call(CATEGORY_BY_KIND, kind);
     const category: CrashCategory = known ? CATEGORY_BY_KIND[kind as CrashKind] : "UNKNOWN";
     const time = this.effectiveTime(atMs);
@@ -265,6 +269,7 @@ export class DiagnosticsRecovery {
   ): Promise<ExitResult> {
     if (confirmed !== true) return { status: "REFUSED", reason: "NOT_CONFIRMED" };
     if (this.state.mode !== "SAFE_MODE") return { status: "REFUSED", reason: "NOT_IN_SAFE_MODE" };
+    const startedAt = this.generation;
     let verified: unknown;
     try {
       verified = await verify();
@@ -272,6 +277,10 @@ export class DiagnosticsRecovery {
       verified = false;
     }
     if (verified !== true) return { status: "REFUSED", reason: "NOT_VERIFIED" };
+    // A crash while verification was pending means the verification no longer describes the device.
+    if (this.generation !== startedAt) {
+      return { status: "REFUSED", reason: "STALE_VERIFICATION" };
+    }
     const time = this.effectiveTime(atMs);
     this.state = {
       mode: "NORMAL",

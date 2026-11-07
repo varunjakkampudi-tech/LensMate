@@ -238,4 +238,47 @@ describe("DiagnosticsRecovery", () => {
     expect(fresh.log).toHaveLength(1);
     expect(fresh.mode).toBe("NORMAL");
   });
+  it("CR-30: the largest accepted threshold is reachable, and more than 100 crashes in one window still trigger safe mode", () => {
+    const max = 64;
+    const d = DiagnosticsRecovery.fresh({ crashThreshold: max, crashWindowMs: 1_000_000 });
+    let last = { mode: "NORMAL" as string };
+    for (let i = 0; i < 100; i += 1) {
+      last = d.recordCrash("NATIVE", 1_000 + i);
+      if (i + 1 < max) expect(last.mode).toBe("NORMAL");
+    }
+    expect(last.mode).toBe("SAFE_MODE");
+    expect(d.snapshot().crashTimesMs.length).toBeLessThanOrEqual(64);
+  });
+
+  it("CR-30: thresholds above the retained history are refused with INVALID_CONFIG", () => {
+    expect(() => DiagnosticsRecovery.fresh({ crashThreshold: 65 })).toThrow(DiagnosticsError);
+    expect(() => DiagnosticsRecovery.fresh({ crashThreshold: 64 })).not.toThrow();
+  });
+
+  it("CR-31: a crash during pending verification prevents the stale verification from clearing safe mode", async () => {
+    const d = DiagnosticsRecovery.fresh({ crashThreshold: 1, crashWindowMs: 60_000 });
+    d.recordCrash("NATIVE", 1_000);
+    let resolveVerify: (value: unknown) => void = () => undefined;
+    const pending = new Promise<unknown>((resolve) => {
+      resolveVerify = resolve;
+    });
+    const exit = d.exitSafeMode(true, 2_000, () => pending);
+    d.recordCrash("NATIVE", 3_000);
+    const eventsBefore = d.snapshot().log.length;
+    resolveVerify(true);
+    expect(await exit).toEqual({ status: "REFUSED", reason: "STALE_VERIFICATION" });
+    expect(d.mode).toBe("SAFE_MODE");
+    expect(d.snapshot().crashTimesMs).toEqual([1_000, 3_000]);
+    expect(d.snapshot().log.length).toBe(eventsBefore);
+    expect(d.snapshot().log.some((e) => e.event === "safe_mode_exited")).toBe(false);
+    expect(await d.exitSafeMode(true, 4_000, passVerify)).toEqual({ status: "EXITED" });
+  });
+
+  it("CR-31: a fresh verification after a crash can recover successfully", async () => {
+    const d = DiagnosticsRecovery.fresh({ crashThreshold: 1, crashWindowMs: 60_000 });
+    d.recordCrash("NATIVE", 1_000);
+    d.recordCrash("NATIVE", 2_000);
+    expect(await d.exitSafeMode(true, 3_000, passVerify)).toEqual({ status: "EXITED" });
+    expect(d.mode).toBe("NORMAL");
+  });
 });
