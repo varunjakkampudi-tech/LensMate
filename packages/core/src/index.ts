@@ -172,3 +172,12 @@ export type {
   CaptureResult,
   PlatformCheck,
 } from "./camera-capture.js";
+export { FrameAnalysisSession, FrameAnalysisError } from "./frame-analysis.js";
+export type {
+  FrameAnalysisOptions,
+  FrameAnalysisRefusal,
+  FrameAnalysisResult,
+  FrameProvider,
+  FrameProviderResult,
+  FramePlatformCheck,
+} from "./frame-analysis.js";
