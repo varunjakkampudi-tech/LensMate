@@ -85,7 +85,7 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: 3b2f2c096d2c9c6e9814ddd62d4516949fe64e1b
 - previous code commit: c1676bb345974ab37dcfd00113a2951ce8cb5497 (ChatGPT review: CHANGES_REQUIRED, CR-24, CR-25, CR-26)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/factory-reset.ts` (exported from `packages/core/src/index.ts`)
 - tests: `packages/core/src/factory-reset.test.ts` (16 tests covering acceptance criteria 1–13 in ACCEPTANCE.md; in-memory store, scripted step runner, trusted authorization stub)
 - local checks after the fix: `jest packages/core` → 13 suites / 189 tests passed; eslint, tsc and prettier clean.
