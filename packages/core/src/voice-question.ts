@@ -38,14 +38,23 @@ export interface QuestionAnalysis {
 
 export interface VoiceQuestionOptions {
   readonly camera: QuestionCamera;
-  /** Creates one analysis session per question, so cancelling one question does not block the next. */
-  readonly createAnalysis: () => QuestionAnalysis;
+  /**
+   * Creates one analysis session per question, given the validated question, so the question reaches the
+   * provider and cancelling one question does not block the next.
+   */
+  readonly createAnalysis: (question: string) => QuestionAnalysis;
   /** Verified wearer utterance for this question (exact true). */
   readonly utteranceVerified: PlatformCheck;
 }
 
 export type QuestionRefusal =
-  "NO_WEARER_INTENT" | "BUSY" | "BAD_INPUT" | "CANCELLED" | CaptureRefusal | FrameAnalysisRefusal;
+  | "NO_WEARER_INTENT"
+  | "BUSY"
+  | "BAD_INPUT"
+  | "CANCELLED"
+  | "STAGE_FAILED"
+  | CaptureRefusal
+  | FrameAnalysisRefusal;
 
 export type QuestionResult =
   | { readonly status: "OK"; readonly answer: string; readonly askedAtMs: number }
@@ -78,7 +87,7 @@ async function verified(check: PlatformCheck): Promise<boolean> {
 
 export class VoiceQuestion {
   private readonly camera: QuestionCamera;
-  private readonly createAnalysis: () => QuestionAnalysis;
+  private readonly createAnalysis: (question: string) => QuestionAnalysis;
   private currentAnalysis: QuestionAnalysis | null = null;
   private readonly utteranceVerified: PlatformCheck;
   /** True from the start of a question until it settles, including during the utterance check. */
@@ -143,13 +152,29 @@ export class VoiceQuestion {
       }
       if (this.cancelPending()) return this.refuse("CANCELLED");
 
-      const photo = await this.camera.capturePhoto(atMs);
+      // Unexpected stage exceptions become STAGE_FAILED. Cancellation takes precedence over any failure.
+      let photo: Awaited<ReturnType<QuestionCamera["capturePhoto"]>>;
+      try {
+        photo = await this.camera.capturePhoto(atMs);
+      } catch {
+        return this.refuse(this.cancelPending() ? "CANCELLED" : "STAGE_FAILED");
+      }
       if (this.cancelPending()) return this.refuse("CANCELLED");
       if (photo.status === "REFUSED") return this.refuse(photo.reason);
 
-      const analysis = this.createAnalysis();
+      let analysis: QuestionAnalysis;
+      try {
+        analysis = this.createAnalysis(question);
+      } catch {
+        return this.refuse(this.cancelPending() ? "CANCELLED" : "STAGE_FAILED");
+      }
       this.currentAnalysis = analysis;
-      const result = await analysis.analyze(photo.frame, atMs);
+      let result: Awaited<ReturnType<QuestionAnalysis["analyze"]>>;
+      try {
+        result = await analysis.analyze(photo.frame, atMs);
+      } catch {
+        return this.refuse(this.cancelPending() ? "CANCELLED" : "STAGE_FAILED");
+      }
       if (this.cancelPending()) return this.refuse("CANCELLED");
       if (result.status === "REFUSED") return this.refuse(result.reason);
       return { status: "OK", answer: result.value, askedAtMs: atMs };

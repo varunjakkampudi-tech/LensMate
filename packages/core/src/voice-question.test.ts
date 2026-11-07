@@ -277,3 +277,112 @@ describe("voice-triggered visual question answering (C03)", () => {
     }
   });
 });
+
+describe("voice question routing and stage failures (C03 CR-46, CR-47)", () => {
+  it("C03 CR-46: distinct questions reach the analysis unchanged and each answer matches its question", async () => {
+    const cam = fakeCamera();
+    const seen: string[] = [];
+    const vq = new VoiceQuestion({
+      camera: cam.camera,
+      createAnalysis: (question) => {
+        seen.push(question);
+        return {
+          analyze: () =>
+            Promise.resolve({ status: "OK", value: `answer to ${question}`, analyzedAtMs: T0 }),
+          cancel: () => {},
+        };
+      },
+      utteranceVerified: yes,
+    });
+    expect(await vq.ask("What color is this?", T0)).toEqual({
+      status: "OK",
+      answer: "answer to What color is this?",
+      askedAtMs: T0,
+    });
+    expect(await vq.ask("How many objects are here?", T0 + 1)).toEqual({
+      status: "OK",
+      answer: "answer to How many objects are here?",
+      askedAtMs: T0 + 1,
+    });
+    expect(seen).toEqual(["What color is this?", "How many objects are here?"]);
+  });
+
+  it("C03 CR-47: an unexpected camera exception returns STAGE_FAILED and the next question succeeds", async () => {
+    let fail = true;
+    const cam = fakeCamera(() =>
+      fail
+        ? Promise.reject(new Error("driver crashed"))
+        : Promise.resolve({ status: "OK", frame: FRAME, capturedAtMs: T0 }),
+    );
+    const analysis = fakeAnalysisFactory();
+    const vq = new VoiceQuestion({
+      camera: cam.camera,
+      createAnalysis: analysis.createAnalysis,
+      utteranceVerified: yes,
+    });
+    expect(await vq.ask("what is this?", T0)).toEqual({
+      status: "REFUSED",
+      reason: "STAGE_FAILED",
+    });
+    expect(vq.asking).toBe(false);
+    fail = false;
+    expect((await vq.ask("what is this?", T0 + 1)).status).toBe("OK");
+  });
+
+  it("C03 CR-47: an unexpected analysis-factory exception returns STAGE_FAILED and the next question succeeds", async () => {
+    let fail = true;
+    const cam = fakeCamera();
+    const analysis = fakeAnalysisFactory();
+    const vq = new VoiceQuestion({
+      camera: cam.camera,
+      createAnalysis: () => {
+        if (fail) throw new Error("factory broke");
+        return analysis.createAnalysis();
+      },
+      utteranceVerified: yes,
+    });
+    expect(await vq.ask("what is this?", T0)).toEqual({
+      status: "REFUSED",
+      reason: "STAGE_FAILED",
+    });
+    fail = false;
+    expect((await vq.ask("what is this?", T0 + 1)).status).toBe("OK");
+  });
+
+  it("C03 CR-47: an unexpected analysis exception returns STAGE_FAILED and the next question succeeds", async () => {
+    let fail = true;
+    const cam = fakeCamera();
+    const analysis = fakeAnalysisFactory(() =>
+      fail
+        ? Promise.reject(new Error("provider crashed"))
+        : Promise.resolve({ status: "OK", value: "fine", analyzedAtMs: T0 }),
+    );
+    const vq = new VoiceQuestion({
+      camera: cam.camera,
+      createAnalysis: analysis.createAnalysis,
+      utteranceVerified: yes,
+    });
+    expect(await vq.ask("what is this?", T0)).toEqual({
+      status: "REFUSED",
+      reason: "STAGE_FAILED",
+    });
+    fail = false;
+    expect((await vq.ask("what is this?", T0 + 1)).status).toBe("OK");
+  });
+
+  it("C03 CR-47: cancellation takes precedence over a failing stage", async () => {
+    const pending = deferred<CameraResult>();
+    const cam = fakeCamera(() => pending.promise);
+    const analysis = fakeAnalysisFactory();
+    const vq = new VoiceQuestion({
+      camera: cam.camera,
+      createAnalysis: analysis.createAnalysis,
+      utteranceVerified: yes,
+    });
+    const running = vq.ask("what is this?", T0);
+    await flush();
+    vq.cancel();
+    pending.resolve(undefined as unknown as CameraResult);
+    expect(await running).toEqual({ status: "REFUSED", reason: "CANCELLED" });
+  });
+});
