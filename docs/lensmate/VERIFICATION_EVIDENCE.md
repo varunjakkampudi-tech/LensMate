@@ -94,11 +94,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B23 — Diagnostics and crash recovery
 
-- commit: 4b344ce7d7379618a34ab7e76fa53081bc236854
+- commit: e4912f5317eb6a73e8cd45508cad63a72ecd840d
+- previous code commit: 4b344ce7d7379618a34ab7e76fa53081bc236854 (ChatGPT review: CHANGES_REQUIRED, CR-27, CR-28, CR-29)
+- test-source commit: edc8a17 (runtime-built redaction sample)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/diagnostics-recovery.ts` (exported from `packages/core/src/index.ts`)
-- tests: `packages/core/src/diagnostics-recovery.test.ts` (10 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; injected time, existing log allowlist)
-- local checks: `jest packages/core` → 13 suites / 199 tests passed; eslint and tsc clean on changed files; prettier clean.
+- tests: `packages/core/src/diagnostics-recovery.test.ts` (16 tests covering acceptance criteria 1–13 in ACCEPTANCE.md; injected time, existing log allowlist, trusted verifier stub)
+- local checks after the fix: `jest packages/core` → 13 suites / 205 tests passed; eslint and tsc clean on changed files; prettier clean.
 - audit: log-redaction.ts (allowlist and redaction) and mobile diagnostics checks exist; crash classification, crash-loop safe mode, bounded diagnostic retention and recovery verification were absent (see ACCEPTANCE.md).
 - unverified: native crash dumps and handlers on device, OS watchdog integration, remote diagnostics upload, and hardware-specific failure modes (BLK-001).
