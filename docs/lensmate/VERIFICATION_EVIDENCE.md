@@ -206,3 +206,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/document-explainer.test.ts` (16 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; CR-51 citation-versus-verification tests); `jest packages/core` → 360 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: real document, graph or diagram interpretation accuracy, mathematical or scientific correctness, vision-model choice, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
+
+## C08 — Understand product packaging and ingredients
+
+- commit: c9b7b4e
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/product-packaging.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per read through an injected factory; printed and interpreted content separated; interpretations never verified; allergy, safety and health statements never printed.
+- tests: `packages/core/src/product-packaging.test.ts` (13 tests covering acceptance criteria 1–11 in ACCEPTANCE.md); `jest packages/core` → 373 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: ingredient-recognition accuracy, multilingual labels, allergen detection, dietary or medical advice, nutritional analysis, product authenticity, physical glasses-camera capture, and hardware validation (BLK-001).

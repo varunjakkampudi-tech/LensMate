@@ -91,7 +91,7 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 | C05 | Understand scene layout and visual relationships                  | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | C06 | Read signs, books, receipts and labels                            | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | C07 | Read and explain documents, graphs and diagrams                   | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
-| C08 | Understand product packaging and ingredients                      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C08 | Understand product packaging and ingredients                      | IMPLEMENTED    | PASS         | NOT_REQUESTED | NONE    | PENDING             |
 | C09 | Visual product search and comparison                              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | C10 | Detect visual scene changes                                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | C11 | Track selected objects across frames                              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
