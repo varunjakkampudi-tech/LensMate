@@ -132,7 +132,8 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## C01 — Take images directly with glasses camera
 
-- commit: a1078c0 (fix for CR-42 and CR-43; reviewed at HEAD 8bffb77)
+- commit: a1078c0
+- reviewed HEAD: 8bffb77 (fix for CR-42 and CR-43)
 - previous code commit: 3828f6a (CR-42 and CR-43 found on ChatGPT review of 3828f6a at HEAD 5e6a242)
 - verification: PASS
 - review: APPROVED
