@@ -120,3 +120,14 @@ export type {
   LockStatus,
   RefusalReason,
 } from "./device-lock.js";
+
+export { FactoryReset, ResetError, RESET_STEPS } from "./factory-reset.js";
+export type {
+  ResetAuditEntry,
+  ResetState,
+  ResetStatus,
+  ResetStep,
+  ResetStore,
+  StepOutcome,
+  StepRunner,
+} from "./factory-reset.js";

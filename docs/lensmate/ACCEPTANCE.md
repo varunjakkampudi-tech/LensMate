@@ -136,3 +136,24 @@ Audit (before this item): `services/broker/src/devices.ts` already provides per-
 | 15  | CR-23: UNLOCK is refused unless clock provenance is exactly SYNCED; omitted, DEVICE_UNSYNCED, STALE, UNCERTAIN and malformed values are refused with CLOCK_UNTRUSTED and change no state, audit or replay history; LOCK and REVOKE remain permitted          | "CR-23: omitted, DEVICE_UNSYNCED, STALE, UNCERTAIN and invalid provenance", "CR-23: refused unlocks leave replay history unchanged" |
 
 Not covered by this item: the signature scheme and key distribution for owner commands (the platform adapter must verify them before setting authenticated), real delivery of lock commands to glasses or the phone, wiping secrets on the device after REVOKE, and server-side revocation audit storage (the broker `devices` table has no audit trail; recorded as a follow-up). Physical lock behaviour on hardware is BLK-001.
+
+## B22 — Factory reset and secure data erasure
+
+Audit (before this item): `apps/mobile/src/memory/vault.ts` has `deleteItem` and `deleteAll` (clears the item store and the key). `apps/mobile/src/memory/native-store.ts` enables `PRAGMA secure_delete` and its "delete everything" path removes the database file and the key. `apps/mobile/src/memory/backup.ts` has `deleteBackup`. The broker `devices.ts` revokes credentials (B21 audit). Missing: one ordered reset that persists progress, resumes after restart, verifies erasure before reporting completion, and avoids any false "complete" claim while offline. The new module is `packages/core/src/factory-reset.ts`. It is pure: each erasure step is an injected function supplied by the platform adapter.
+
+Ordered steps: (1) lock local credentials, (2) erase local data, (3) delete backups, (4) revoke remote credentials, (5) verify erasure. Remote revocation can be pending while offline.
+
+| #   | Criterion                                                                                                                                                                | Test                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| 1   | A reset starts only with confirmed exactly true and a reset id; otherwise it is refused and no step runs                                                                 | "reset refused without exact confirmation"           |
+| 2   | Steps run in the fixed order; a step never runs before its predecessor is done                                                                                           | "steps run in fixed order"                           |
+| 3   | A failed step stops the sequence; the reset is not COMPLETE and names the failed step                                                                                    | "failed step stops sequence and is not complete"     |
+| 4   | Progress is persisted after each step; after restart the reset resumes at the first unfinished step and does not re-run completed steps                                  | "resumes after restart without repeating done steps" |
+| 5   | COMPLETE is reached only after the verification step confirms erasure; a failed verification leaves the reset FAILED, never COMPLETE                                     | "complete only after verified erasure"               |
+| 6   | Remote revocation that fails while offline leaves the reset WAITING_FOR_NETWORK with local erasure already done; it is never reported COMPLETE until revocation succeeds | "offline reset is not reported complete"             |
+| 7   | A second reset with a different id is refused while one is in progress                                                                                                   | "second reset refused while one is in progress"      |
+| 8   | Corrupt persisted reset state fails closed with RESET_CORRUPT and never resets to IDLE                                                                                   | "corrupt state fails closed"                         |
+| 9   | Storage writes that fail leave the last saved progress unchanged and the step is retried, not assumed done                                                               | "failed progress save is retried, not assumed"       |
+| 10  | Each step's outcome and the final status are recorded in an audit list; refused requests are not recorded as performed                                                   | "audit records performed steps only"                 |
+
+Not covered by this item: the platform erasure implementations themselves (secure delete on flash, key destruction in the secure element), physical verification of erasure on hardware (BLK-001), the broker-side revocation endpoint, and forensic recovery resistance. Those remain pending.
