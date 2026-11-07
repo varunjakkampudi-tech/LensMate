@@ -82,29 +82,29 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 
 ## C. Vision and Real-World Perception
 
-| ID  | Requirement                                                       | Implementation | Verification | Review            | Blocker | Hardware validation |
-| --- | ----------------------------------------------------------------- | -------------- | ------------ | ----------------- | ------- | ------------------- |
-| C01 | Take images directly with glasses camera                          | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| C02 | Analyze live camera frames                                        | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| C03 | Voice-triggered visual question answering                         | IMPLEMENTED    | PASS         | APPROVED          | NONE    | PENDING             |
-| C04 | Recognize everyday objects and environmental features             | IMPLEMENTED    | PASS         | CHANGES_REQUESTED | NONE    | PENDING             |
-| C05 | Understand scene layout and visual relationships                  | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C06 | Read signs, books, receipts and labels                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C07 | Read and explain documents, graphs and diagrams                   | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C08 | Understand product packaging and ingredients                      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C09 | Visual product search and comparison                              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C10 | Detect visual scene changes                                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C11 | Track selected objects across frames                              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C12 | Identify apparent obstacles and hazards without safety guarantees | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C13 | Describe surrounding environment in natural language              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C14 | Support 'What is this?' and 'Look at that' commands               | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C15 | Follow user-directed visual attention                             | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C16 | Combine speech and camera context in one query                    | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C17 | Use frame sampling to control cost and bandwidth                  | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C18 | Apply uncertainty and confidence safeguards                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C19 | Optional spatial mapping / object localization                    | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C20 | Optional display-based visual overlays                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
-| C21 | Respect restricted environments and camera privacy                | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED     | NONE    | NOT_APPLICABLE      |
+| ID  | Requirement                                                       | Implementation | Verification | Review        | Blocker | Hardware validation |
+| --- | ----------------------------------------------------------------- | -------------- | ------------ | ------------- | ------- | ------------------- |
+| C01 | Take images directly with glasses camera                          | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| C02 | Analyze live camera frames                                        | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| C03 | Voice-triggered visual question answering                         | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| C04 | Recognize everyday objects and environmental features             | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
+| C05 | Understand scene layout and visual relationships                  | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C06 | Read signs, books, receipts and labels                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C07 | Read and explain documents, graphs and diagrams                   | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C08 | Understand product packaging and ingredients                      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C09 | Visual product search and comparison                              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C10 | Detect visual scene changes                                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C11 | Track selected objects across frames                              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C12 | Identify apparent obstacles and hazards without safety guarantees | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C13 | Describe surrounding environment in natural language              | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C14 | Support 'What is this?' and 'Look at that' commands               | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C15 | Follow user-directed visual attention                             | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C16 | Combine speech and camera context in one query                    | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C17 | Use frame sampling to control cost and bandwidth                  | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C18 | Apply uncertainty and confidence safeguards                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C19 | Optional spatial mapping / object localization                    | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C20 | Optional display-based visual overlays                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C21 | Respect restricted environments and camera privacy                | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 
 ## D. Continuous Video Understanding
 
