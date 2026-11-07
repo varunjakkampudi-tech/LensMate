@@ -132,10 +132,10 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## C01 — Take images directly with glasses camera
 
-- commit: a1078c0
+- commit: a1078c0 (fix for CR-42 and CR-43; reviewed at HEAD 8bffb77)
 - previous code commit: 3828f6a (CR-42 and CR-43 found on ChatGPT review of 3828f6a at HEAD 5e6a242)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
 - implementation: `packages/core/src/camera-capture.ts` (exported from `packages/core/src/index.ts`); `packages/core/src/capture-indicator.ts` now counts sessions per type so shared indicators stay on while any controller captures.
 - tests: `packages/core/src/camera-capture.test.ts` (23 tests covering acceptance criteria 1–12 in ACCEPTANCE.md); `packages/core/src/capture-indicator.test.ts`; `jest packages/core` → 268 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary, not the full requirement text, which the ChatGPT review checked against the repository's glasses hardware specification (CR-42).
