@@ -117,3 +117,14 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - local checks: `jest packages/core` → 13 suites / 227 tests passed; eslint and tsc clean on changed files; prettier clean.
 - audit: glasses-link.ts is transport only; broker and phone enrolment cover the broker, not peer pairing (see ACCEPTANCE.md).
 - unverified: Bluetooth or Wi-Fi pairing transport, code display and entry on glasses, cryptographic peer key exchange, PC and accessory protocols, and on-device behaviour (BLK-001). Peer authentication is the platform adapter responsibility.
+
+## B26 — Direct pairing with the cloud account independently of a phone
+
+- commit: ca7bcb15d6e7ea8429678993ab2cdab487af5f75
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/account-binding.ts` (exported from `packages/core/src/index.ts`)
+- tests: `packages/core/src/account-binding.test.ts` (12 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub)
+- local checks: `jest packages/core` → 13 suites / 239 tests passed; eslint, tsc and knip clean; prettier clean.
+- audit: broker devices.ts enrolment (single-use, expiring, hashed codes) and B25 pairing exist; no device-to-account binding state existed in core (see ACCEPTANCE.md).
+- unverified: the cloud account system and credentials, real network enrolment, the broker enrolment endpoint, account recovery by email or support, physical connectivity and hardware integration (BLK-001).
