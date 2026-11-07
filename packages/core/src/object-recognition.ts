@@ -55,6 +55,29 @@ const MAX_ITEMS = 10;
 const MAX_LABEL_CHARS = 80;
 const LOW_CONFIDENCE = 0.5;
 
+/** Every refusal code the C02 analysis session can return. Runtime-checked, so untrusted envelopes cannot inject codes. */
+const FRAME_ANALYSIS_REFUSALS: readonly FrameAnalysisRefusal[] = [
+  "BAD_INPUT",
+  "NOT_AUTHORIZED",
+  "OVERSIZE",
+  "BUSY",
+  "SAMPLED_OUT",
+  "LIMIT_REACHED",
+  "CANCELLED",
+  "DISCLOSURE_REQUIRED",
+  "CAP_REACHED",
+  "QUOTA_EXCEEDED",
+  "UNAUTHORIZED",
+  "INVALID_AMOUNT",
+  "CIRCUIT_OPEN",
+  "TIMEOUT",
+  "PROVIDER_ERROR",
+];
+
+function isFrameAnalysisRefusal(value: unknown): value is FrameAnalysisRefusal {
+  return typeof value === "string" && FRAME_ANALYSIS_REFUSALS.some((code) => code === value);
+}
+
 export class ObjectRecognizerError extends Error {
   constructor(
     readonly code: "INVALID_CONFIG",
@@ -178,10 +201,9 @@ export class ObjectRecognizer {
         return this.refuse("MALFORMED_RESPONSE");
       const record = envelope as { status?: unknown; reason?: unknown; value?: unknown };
       if (record.status === "REFUSED") {
+        // A refusal reason is kept only when it is a real C02 refusal code; anything else is malformed.
         return this.refuse(
-          typeof record.reason === "string"
-            ? (record.reason as FrameAnalysisRefusal)
-            : "MALFORMED_RESPONSE",
+          isFrameAnalysisRefusal(record.reason) ? record.reason : "MALFORMED_RESPONSE",
         );
       }
       if (record.status !== "OK") return this.refuse("MALFORMED_RESPONSE");

@@ -262,3 +262,32 @@ describe("untrusted provider values (C04 CR-48)", () => {
     expect((await r.recognize(FRAME, T0 + 1)).status).toBe("OK");
   });
 });
+
+describe("untrusted refusal reasons (C04 CR-49)", () => {
+  it("C04 CR-49: real C02 refusal codes pass through unchanged", async () => {
+    for (const reason of [
+      "NOT_AUTHORIZED",
+      "DISCLOSURE_REQUIRED",
+      "CAP_REACHED",
+      "TIMEOUT",
+      "SAMPLED_OUT",
+    ]) {
+      const f = factory(() => Promise.resolve({ status: "REFUSED", reason } as AnalysisResult));
+      const r = new ObjectRecognizer({ createAnalysis: f.createAnalysis });
+      expect(await r.recognize(FRAME, T0)).toEqual({ status: "REFUSED", reason });
+    }
+  });
+
+  it("C04 CR-49: unknown, empty or non-string refusal reasons are refused as MALFORMED_RESPONSE", async () => {
+    for (const reason of ["UNKNOWN_PROVIDER_STATUS", "", 5, null, undefined, { code: "BUSY" }]) {
+      const f = factory(() =>
+        Promise.resolve({ status: "REFUSED", reason } as unknown as AnalysisResult),
+      );
+      const r = new ObjectRecognizer({ createAnalysis: f.createAnalysis });
+      expect(await r.recognize(FRAME, T0)).toEqual({
+        status: "REFUSED",
+        reason: "MALFORMED_RESPONSE",
+      });
+    }
+  });
+});
