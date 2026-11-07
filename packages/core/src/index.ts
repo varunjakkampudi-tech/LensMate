@@ -131,3 +131,14 @@ export type {
   StepOutcome,
   StepRunner,
 } from "./factory-reset.js";
+
+export { DiagnosticsRecovery } from "./diagnostics-recovery.js";
+export type {
+  CrashCategory,
+  CrashKind,
+  CrashResult,
+  DiagnosticsOptions,
+  DiagnosticsState,
+  Mode,
+  SafeModeReason,
+} from "./diagnostics-recovery.js";

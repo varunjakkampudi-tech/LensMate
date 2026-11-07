@@ -160,3 +160,22 @@ Ordered steps: (1) lock local credentials, (2) erase local data, (3) delete back
 | 13  | CR-26: any step result that is not DONE, FAILED or OFFLINE (including objects, numbers, undefined, null, and unknown strings) is recorded as FAILED; the saved state stays valid and recoverable                                                                       | "CR-26: an unknown step result", "CR-26: object, number, undefined and null results"                            |
 
 Not covered by this item: the platform erasure implementations themselves (secure delete on flash, key destruction in the secure element), physical verification of erasure on hardware (BLK-001), the broker-side revocation endpoint, and forensic recovery resistance. Those remain pending.
+
+## B23 — Diagnostics and crash recovery
+
+Audit (before this item): `packages/core/src/log-redaction.ts` already provides an allowlist of log fields (`toSafeLogEntry`) and secret and personal-text scrubbing (`redactText`). `apps/mobile/src/diagnostics/checks.ts` reports device health statuses (battery, connectivity and similar). Missing: crash classification, a persisted crash-loop guard, a safe mode that survives restart, bounded diagnostic retention in core, and verification of recovered state. The new module is `packages/core/src/diagnostics-recovery.ts`. It reuses the existing redaction helpers rather than adding a second log path. It is pure: time is injected and storage is a saved value.
+
+| #   | Criterion                                                                                                                      | Test                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| 1   | Known crash kinds map to categories; an unrecognized kind is classified UNKNOWN and still recorded, never dropped              | "crash kinds are classified; unknown kinds are kept as UNKNOWN" |
+| 2   | Three crashes inside the crash window put the device in SAFE_MODE with reason CRASH_LOOP                                       | "three crashes in the window enter safe mode"                   |
+| 3   | Crashes spread outside the window do not count toward the loop; the device stays NORMAL                                        | "spread-out crashes do not trigger safe mode"                   |
+| 4   | Safe mode survives a restart: a restored state is still SAFE_MODE with the same reason                                         | "safe mode survives restart"                                    |
+| 5   | Leaving safe mode requires confirmed exactly true; otherwise the request is refused and the mode is unchanged                  | "exiting safe mode requires exact confirmation"                 |
+| 6   | The diagnostic log is bounded: beyond maxLogEntries the oldest entries are removed, and the newest are kept                    | "diagnostic log is bounded"                                     |
+| 7   | Every log entry passes the existing allowlist and redaction: unknown fields are dropped and secret-looking values are replaced | "log entries are allowlisted and redacted"                      |
+| 8   | Corrupt saved state fails closed: restore enters SAFE_MODE with reason STATE_UNREADABLE and clears nothing silently            | "corrupt state enters safe mode, never normal"                  |
+| 9   | Recovery verification: a saved state restores to an equal snapshot, and crash history stays within the window and the bound    | "round trip restores an equal, bounded snapshot"                |
+| 10  | snapshot() is a deep copy; changing it does not change the controller                                                          | "snapshot is a deep copy"                                       |
+
+Not covered by this item: real crash dumps and native crash handlers on device, OS watchdog integration, remote upload of diagnostics, and hardware-specific failure modes (BLK-001). Those remain pending.
