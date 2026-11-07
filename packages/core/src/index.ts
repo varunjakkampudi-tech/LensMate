@@ -181,3 +181,11 @@ export type {
   FrameProviderResult,
   FramePlatformCheck,
 } from "./frame-analysis.js";
+export { VoiceQuestion, VoiceQuestionError } from "./voice-question.js";
+export type {
+  QuestionAnalysis,
+  QuestionCamera,
+  QuestionRefusal,
+  QuestionResult,
+  VoiceQuestionOptions,
+} from "./voice-question.js";
