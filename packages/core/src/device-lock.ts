@@ -190,9 +190,9 @@ export class DeviceLock {
 
   /**
    * Applies one owner command at local time `nowMs`. `provenance` is the B20 status of the local
-   * clock. Refused commands change nothing.
+   * clock. It has no default: omitting it is treated as untrusted. Refused commands change nothing.
    */
-  apply(command: LockCommand, nowMs: number, provenance: ClockProvenance = "SYNCED"): LockResult {
+  apply(command: LockCommand, nowMs: number, provenance?: ClockProvenance): LockResult {
     const flag: unknown = command.authenticated;
     if (flag !== true) return refuse("NOT_AUTHENTICATED");
     const action: unknown = command.action;
@@ -226,7 +226,9 @@ export class DeviceLock {
       to = "LOCKED";
     } else if (kind === "UNLOCK") {
       if (from !== "LOCKED") return refuse("NOT_ALLOWED");
-      if (provenance === "UNCERTAIN" || provenance === "STALE") return refuse("CLOCK_UNTRUSTED");
+      // Only a verified, synchronized clock may unlock. Omitted, DEVICE_UNSYNCED, STALE, UNCERTAIN and
+      // malformed values are all refused.
+      if (provenance !== "SYNCED") return refuse("CLOCK_UNTRUSTED");
       to = "ACTIVE";
     } else if (kind === "REVOKE") {
       to = "REVOKED";

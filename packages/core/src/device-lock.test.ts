@@ -38,7 +38,7 @@ describe("DeviceLock", () => {
       reason: "NOT_ALLOWED",
     });
     lock.apply(cmd("LOCK", { issuedAtMs: 2_000 }), 2_100);
-    expect(lock.apply(cmd("UNLOCK", { issuedAtMs: 3_000 }), 3_100)).toEqual({
+    expect(lock.apply(cmd("UNLOCK", { issuedAtMs: 3_000 }), 3_100, "SYNCED")).toEqual({
       status: "APPLIED",
       next: "ACTIVE",
     });
@@ -108,7 +108,7 @@ describe("DeviceLock", () => {
     const lock = DeviceLock.firstEnrollment(DEVICE);
     lock.apply(cmd("LOCK", { issuedAtMs: 1_000, commandId: "a" }), 1_100);
     lock.apply(cmd("LOCK", { issuedAtMs: 2_000, commandId: "b" }), 2_100);
-    lock.apply(cmd("UNLOCK", { issuedAtMs: 3_000, commandId: "c" }), 3_100);
+    lock.apply(cmd("UNLOCK", { issuedAtMs: 3_000, commandId: "c" }), 3_100, "SYNCED");
     expect(lock.snapshot().audit).toEqual([
       { commandId: "a", action: "LOCK", from: "ACTIVE", to: "LOCKED", atMs: 1_100 },
       { commandId: "c", action: "UNLOCK", from: "LOCKED", to: "ACTIVE", atMs: 3_100 },
@@ -253,5 +253,49 @@ describe("DeviceLock", () => {
       status: "REFUSED",
       reason: "REVOKED_TERMINAL",
     });
+  });
+  it("CR-23: omitted, DEVICE_UNSYNCED, STALE, UNCERTAIN and invalid provenance cannot unlock; only SYNCED can", () => {
+    const lock = DeviceLock.firstEnrollment(DEVICE);
+    lock.apply(cmd("LOCK", { issuedAtMs: 1_000 }), 1_100);
+    const before = lock.snapshot();
+    const refusals: unknown[] = [
+      undefined,
+      "DEVICE_UNSYNCED",
+      "STALE",
+      "UNCERTAIN",
+      "synced",
+      "",
+      1,
+      null,
+    ];
+    let issued = 2_000;
+    for (const provenance of refusals) {
+      issued += 1_000;
+      const result = lock.apply(
+        cmd("UNLOCK", { issuedAtMs: issued }),
+        issued + 100,
+        provenance as Parameters<DeviceLock["apply"]>[2],
+      );
+      expect(result).toEqual({ status: "REFUSED", reason: "CLOCK_UNTRUSTED" });
+    }
+    expect(lock.snapshot()).toEqual(before);
+    expect(lock.check()).toEqual({ allowed: false, status: "LOCKED" });
+    expect(lock.apply(cmd("UNLOCK", { issuedAtMs: 9_000 }), 9_100, "SYNCED")).toEqual({
+      status: "APPLIED",
+      next: "ACTIVE",
+    });
+  });
+
+  it("CR-23: refused unlocks leave replay history unchanged, so the same command id can still be used once trusted", () => {
+    const lock = DeviceLock.firstEnrollment(DEVICE);
+    lock.apply(cmd("LOCK", { issuedAtMs: 1_000 }), 1_100);
+    const unlock = cmd("UNLOCK", { issuedAtMs: 2_000, commandId: "u-1" });
+    expect(lock.apply(unlock, 2_100, "DEVICE_UNSYNCED")).toEqual({
+      status: "REFUSED",
+      reason: "CLOCK_UNTRUSTED",
+    });
+    expect(lock.snapshot().seenCommandIds).not.toContain("u-1");
+    expect(lock.snapshot().lastIssuedAtMs).toBe(1_000);
+    expect(lock.apply(unlock, 2_100, "SYNCED").status).toBe("APPLIED");
   });
 });
