@@ -120,11 +120,12 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B26 — Direct pairing with the cloud account independently of a phone
 
-- commit: ca7bcb15d6e7ea8429678993ab2cdab487af5f75
+- commit: bb3cf6a7badffc3bba9fd43e391cbb9cd1c42b37
+- previous code commit: ca7bcb15d6e7ea8429678993ab2cdab487af5f75 (ChatGPT review: CHANGES_REQUIRED, CR-35, CR-36, CR-37)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/account-binding.ts` (exported from `packages/core/src/index.ts`)
-- tests: `packages/core/src/account-binding.test.ts` (12 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub)
-- local checks: `jest packages/core` → 13 suites / 239 tests passed; eslint, tsc and knip clean; prettier clean.
+- tests: `packages/core/src/account-binding.test.ts` (18 tests covering acceptance criteria 1–13 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub)
+- local checks: `jest packages/core` → 13 suites / 245 tests passed; eslint, tsc and knip clean; prettier clean.
 - audit: broker devices.ts enrolment (single-use, expiring, hashed codes) and B25 pairing exist; no device-to-account binding state existed in core (see ACCEPTANCE.md).
 - unverified: the cloud account system and credentials, real network enrolment, the broker enrolment endpoint, account recovery by email or support, physical connectivity and hardware integration (BLK-001).
