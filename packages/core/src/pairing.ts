@@ -16,7 +16,7 @@ export type Capability = "VIEW_STATUS" | "RECEIVE_AUDIO" | "SYNC_DATA";
 const KINDS: readonly PeerKind[] = ["PHONE", "PC", "ACCESSORY"];
 const CAPABILITIES: readonly Capability[] = ["VIEW_STATUS", "RECEIVE_AUDIO", "SYNC_DATA"];
 
-export interface PendingPairing {
+interface PendingPairing {
   readonly peerId: string;
   readonly kind: PeerKind;
   readonly code: string;
