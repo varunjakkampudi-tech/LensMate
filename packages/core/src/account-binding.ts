@@ -2,20 +2,26 @@
  * Direct cloud account pairing without a mandatory phone (checklist B26).
  *
  * The glasses bind to a cloud account on their own. Issuing a challenge, binding, revoking and
- * re-enrolling each need trusted authorization from the platform. A challenge is short-lived, can be
- * used once, and is kept only as a platform-supplied commitment. Binding also needs explicit ownership
- * confirmation. An existing binding is never transferred silently. Revocation is immediate, and
- * re-enrolment after revocation needs owner approval and a new challenge. Corrupt saved state binds
- * nothing.
+ * re-enrolling each need trusted authorization from the platform. A challenge is short-lived and kept
+ * only as a platform-supplied commitment. Binding also needs explicit ownership confirmation. An
+ * existing binding is never transferred silently. Revocation is immediate. Re-enrolment after
+ * revocation needs two separate approvals: the previous owner's release, and the target account's
+ * binding. Single use is permanent: consumed challenges are never evicted, and when the history is
+ * full, new enrolment is refused. Corrupt saved state does not become a fresh device. It enters a
+ * recovery-required state that denies everything until trusted recovery.
  *
  * Pure logic: time, authorization and commitments come from the platform. The cloud account system and
  * the broker enrolment endpoint live outside this module.
  */
 
-export type AccountAction = "CHALLENGE" | "BIND" | "REVOKE" | "REENROLL";
-export type Status = "UNBOUND" | "BOUND" | "REVOKED";
+export type AccountAction = "CHALLENGE" | "BIND" | "REVOKE" | "RELEASE" | "REENROLL" | "RECOVER";
+export type Status = "UNBOUND" | "BOUND" | "REVOKED" | "RECOVERY_REQUIRED";
 
-/** Trusted account authorization. Returns exactly true only when proven for this action and account. */
+/**
+ * Trusted account authorization. Returns exactly true only when proven for this action and account.
+ * For RECOVER no account is known, so accountId is the empty string and the policy must prove device
+ * identity itself.
+ */
 export type AccountAuthorizer = (
   action: AccountAction,
   accountId: string,
@@ -44,8 +50,17 @@ interface PendingChallenge {
   readonly locked: boolean;
 }
 
+export type AccountAuditAction =
+  | "CHALLENGE_ISSUED"
+  | "BOUND"
+  | "REVOKED"
+  | "RELEASED"
+  | "WRONG_CHALLENGE"
+  | "LOCKED"
+  | "RECOVERED";
+
 export interface AccountAuditEntry {
-  readonly action: "CHALLENGE_ISSUED" | "BOUND" | "REVOKED" | "WRONG_CHALLENGE" | "LOCKED";
+  readonly action: AccountAuditAction;
   readonly accountId: string;
   readonly atMs: number;
 }
@@ -54,6 +69,7 @@ export interface AccountState {
   readonly deviceId: string;
   readonly binding: Binding | null;
   readonly challenge: PendingChallenge | null;
+  readonly recoveryRequired: boolean;
   readonly usedChallenges: readonly string[];
   readonly audit: readonly AccountAuditEntry[];
 }
@@ -68,7 +84,7 @@ export interface AccountOptions {
   readonly maxAttempts?: number;
   /** Most recent audit entries kept. Integer 1 to 1000. */
   readonly maxAuditEntries?: number;
-  /** Most recent used-challenge commitments kept for replay refusal. Integer 1 to 10000. */
+  /** Maximum consumed challenges kept permanently. When full, new enrolment is refused. Integer 1 to 10000. */
   readonly maxUsedChallenges?: number;
 }
 
@@ -89,7 +105,10 @@ export type AccountResult =
         | "LOCKED"
         | "REPLAY"
         | "WRONG_CHALLENGE"
-        | "NOT_BOUND";
+        | "NOT_BOUND"
+        | "RECOVERY_REQUIRED"
+        | "HISTORY_FULL"
+        | "NOT_RECOVERY_REQUIRED";
     };
 
 export type AccountErrorCode = "INVALID_CONFIG";
@@ -111,12 +130,14 @@ const DEFAULT_AUDIT = 200;
 const MAX_AUDIT = 1000;
 const DEFAULT_USED = 1000;
 const MAX_USED = 10_000;
-const AUDIT_ACTIONS: readonly AccountAuditEntry["action"][] = [
+const AUDIT_ACTIONS: readonly AccountAuditAction[] = [
   "CHALLENGE_ISSUED",
   "BOUND",
   "REVOKED",
+  "RELEASED",
   "WRONG_CHALLENGE",
   "LOCKED",
+  "RECOVERED",
 ];
 
 interface Resolved {
@@ -166,14 +187,16 @@ function resolveOptions(options: AccountOptions): Resolved {
   return { ttl, attempts, audit, used };
 }
 
-/** Consistency check of saved state: one device, a coherent binding, and a challenge that matches its attempts. */
-function validState(value: unknown, deviceId: string, maxAttempts: number): value is AccountState {
+/** Consistency check of saved state, including the consumed-challenge capacity. */
+function validState(value: unknown, resolved: Resolved, deviceId: string): value is AccountState {
   if (typeof value !== "object" || value === null) return false;
   const s = value as Record<string, unknown>;
   if (s["deviceId"] !== deviceId) return false;
+  if (typeof s["recoveryRequired"] !== "boolean") return false;
   if (!Array.isArray(s["usedChallenges"]) || !Array.isArray(s["audit"])) return false;
-  if (!(s["usedChallenges"] as unknown[]).every((c) => typeof c === "string" && c !== ""))
-    return false;
+  const used = s["usedChallenges"] as unknown[];
+  if (used.length > resolved.used) return false;
+  if (!used.every((c) => typeof c === "string" && c !== "")) return false;
   const auditOk = (s["audit"] as unknown[]).every((a) => {
     if (typeof a !== "object" || a === null) return false;
     const e = a as Record<string, unknown>;
@@ -210,9 +233,9 @@ function validState(value: unknown, deviceId: string, maxAttempts: number): valu
       r["expiresAtMs"] > r["issuedAtMs"] &&
       Number.isInteger(attempts) &&
       (attempts as number) >= 0 &&
-      (attempts as number) <= maxAttempts &&
+      (attempts as number) <= resolved.attempts &&
       typeof r["locked"] === "boolean" &&
-      r["locked"] === (attempts as number) >= maxAttempts;
+      r["locked"] === (attempts as number) >= resolved.attempts;
   }
   return bindingOk && challengeOk;
 }
@@ -222,8 +245,20 @@ function copyState(state: AccountState): AccountState {
     deviceId: state.deviceId,
     binding: state.binding === null ? null : { ...state.binding },
     challenge: state.challenge === null ? null : { ...state.challenge },
+    recoveryRequired: state.recoveryRequired,
     usedChallenges: [...state.usedChallenges],
     audit: state.audit.map((a) => ({ ...a })),
+  };
+}
+
+function recoveryState(deviceId: string): AccountState {
+  return {
+    deviceId,
+    binding: null,
+    challenge: null,
+    recoveryRequired: true,
+    usedChallenges: [],
+    audit: [],
   };
 }
 
@@ -242,20 +277,30 @@ export class AccountBinding {
     this.state = copyState(state);
   }
 
-  /** A device with no account. Local functions work from this state. */
+  /** A device that has never been enrolled. Only this path starts an unbound device. */
   static fresh(options: AccountOptions): AccountBinding {
     resolveOptions(options);
     return new AccountBinding(
-      { deviceId: options.deviceId, binding: null, challenge: null, usedChallenges: [], audit: [] },
+      {
+        deviceId: options.deviceId,
+        binding: null,
+        challenge: null,
+        recoveryRequired: false,
+        usedChallenges: [],
+        audit: [],
+      },
       options,
     );
   }
 
-  /** Inconsistent or corrupt saved state binds nothing: the device restarts unbound. */
+  /**
+   * Restores saved state. Corrupt or inconsistent state never becomes a fresh device: it enters
+   * RECOVERY_REQUIRED, which denies enrolment and account use until trusted recovery.
+   */
   static restore(saved: unknown, options: AccountOptions): AccountBinding {
     const resolved = resolveOptions(options);
-    if (!validState(saved, options.deviceId, resolved.attempts)) {
-      return AccountBinding.fresh(options);
+    if (!validState(saved, resolved, options.deviceId)) {
+      return new AccountBinding(recoveryState(options.deviceId), options);
     }
     return new AccountBinding(saved, options);
   }
@@ -270,6 +315,7 @@ export class AccountBinding {
   }
 
   status(): Status {
+    if (this.state.recoveryRequired) return "RECOVERY_REQUIRED";
     if (this.state.binding === null) return "UNBOUND";
     return this.state.binding.status === "BOUND" ? "BOUND" : "REVOKED";
   }
@@ -277,13 +323,19 @@ export class AccountBinding {
   /** Account-gated capability check. Denies by default: only a bound, unrevoked device for its own account. */
   canUseAccount(accountId: string): boolean {
     const b = this.state.binding;
-    return b !== null && b.status === "BOUND" && b.accountId === accountId;
+    return (
+      !this.state.recoveryRequired &&
+      b !== null &&
+      b.status === "BOUND" &&
+      b.accountId === accountId
+    );
   }
 
   /**
-   * Issues a challenge for an account. A first binding needs trusted CHALLENGE authorization; after a
-   * revocation, issuing needs REENROLL authorization, which is the owner's approval. An already bound
-   * device is refused, so ownership cannot move through this path.
+   * Issues a challenge for an account. A first binding needs CHALLENGE authorization. After a
+   * revocation, the request must carry two approvals: RELEASE from the previous owner, and REENROLL for
+   * the target account. The authorization for that case is an object with release and target fields.
+   * A bound device is refused, and a recovery-required device is refused until trusted recovery.
    */
   issueChallenge(
     request: {
@@ -303,11 +355,27 @@ export class AccountBinding {
       ) {
         return { status: "REFUSED", reason: "BAD_INPUT" };
       }
+      if (this.state.recoveryRequired) return { status: "REFUSED", reason: "RECOVERY_REQUIRED" };
       const accountId = request.accountId;
       const current = this.status();
       if (current === "BOUND") return { status: "REFUSED", reason: "ALREADY_BOUND" };
-      const action: AccountAction = current === "REVOKED" ? "REENROLL" : "CHALLENGE";
-      if (!(await this.isAuthorized(action, accountId, request.authorization))) {
+      if (this.state.usedChallenges.length >= this.resolved.used) {
+        return { status: "REFUSED", reason: "HISTORY_FULL" };
+      }
+      if (current === "REVOKED") {
+        const previous = this.state.binding?.accountId ?? "";
+        const approvals = request.authorization as { release?: unknown; target?: unknown } | null;
+        const release =
+          typeof approvals === "object" && approvals !== null ? approvals.release : undefined;
+        const target =
+          typeof approvals === "object" && approvals !== null ? approvals.target : undefined;
+        if (
+          !(await this.isAuthorized("RELEASE", previous, release)) ||
+          !(await this.isAuthorized("REENROLL", accountId, target))
+        ) {
+          return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
+        }
+      } else if (!(await this.isAuthorized("CHALLENGE", accountId, request.authorization))) {
         return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
       }
       this.state = {
@@ -329,7 +397,7 @@ export class AccountBinding {
   /**
    * Binds the device to the account. Needs trusted BIND authorization, exact-true ownership
    * confirmation, an unexpired and unlocked challenge for this account, and a challenge that has not
-   * been used. A replayed challenge is refused as REPLAY before anything else is checked.
+   * been consumed. A consumed challenge is refused as REPLAY before anything else is checked.
    */
   bind(
     request: {
@@ -349,10 +417,12 @@ export class AccountBinding {
       ) {
         return { status: "REFUSED", reason: "BAD_INPUT" };
       }
+      if (this.state.recoveryRequired) return { status: "REFUSED", reason: "RECOVERY_REQUIRED" };
       const accountId = request.accountId;
       const commitment = this.commit(request.challenge, this.state.deviceId, accountId);
-      if (this.state.usedChallenges.includes(commitment))
+      if (this.state.usedChallenges.includes(commitment)) {
         return { status: "REFUSED", reason: "REPLAY" };
+      }
       if (!(await this.isAuthorized("BIND", accountId, request.authorization))) {
         return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
       }
@@ -380,11 +450,15 @@ export class AccountBinding {
         };
         return { status: "REFUSED", reason: "WRONG_CHALLENGE" };
       }
+      if (this.state.usedChallenges.length >= this.resolved.used) {
+        return { status: "REFUSED", reason: "HISTORY_FULL" };
+      }
       this.state = {
         deviceId: this.state.deviceId,
         binding: { accountId, status: "BOUND", boundAtMs: atMs },
         challenge: null,
-        usedChallenges: [...this.state.usedChallenges, commitment].slice(-this.resolved.used),
+        recoveryRequired: false,
+        usedChallenges: [...this.state.usedChallenges, commitment],
         audit: this.appendAudit("BOUND", accountId, atMs),
       };
       return { status: "OK" };
@@ -399,6 +473,7 @@ export class AccountBinding {
     return this.serialize(async () => {
       if (request.confirmed !== true) return { status: "REFUSED", reason: "NOT_CONFIRMED" };
       if (!isValidTime(atMs)) return { status: "REFUSED", reason: "BAD_INPUT" };
+      if (this.state.recoveryRequired) return { status: "REFUSED", reason: "RECOVERY_REQUIRED" };
       const binding = this.state.binding;
       if (binding === null || binding.status !== "BOUND")
         return { status: "REFUSED", reason: "NOT_BOUND" };
@@ -409,6 +484,32 @@ export class AccountBinding {
         ...this.state,
         binding: { ...binding, status: "REVOKED" },
         audit: this.appendAudit("REVOKED", binding.accountId, atMs),
+      };
+      return { status: "OK" };
+    });
+  }
+
+  /**
+   * Trusted recovery from RECOVERY_REQUIRED. Needs RECOVER authorization that proves device-level
+   * identity, plus exact-true confirmation. Recovery restores the device to UNBOUND only; it does not
+   * restore any previous binding, so the next enrolment still needs its own challenge.
+   */
+  recover(
+    request: { readonly confirmed: unknown; readonly authorization: unknown },
+    atMs: number,
+  ): Promise<AccountResult> {
+    return this.serialize(async () => {
+      if (request.confirmed !== true) return { status: "REFUSED", reason: "NOT_CONFIRMED" };
+      if (!isValidTime(atMs)) return { status: "REFUSED", reason: "BAD_INPUT" };
+      if (!this.state.recoveryRequired)
+        return { status: "REFUSED", reason: "NOT_RECOVERY_REQUIRED" };
+      if (!(await this.isAuthorized("RECOVER", "", request.authorization))) {
+        return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
+      }
+      this.state = {
+        ...this.state,
+        recoveryRequired: false,
+        audit: this.appendAudit("RECOVERED", "", atMs),
       };
       return { status: "OK" };
     });
@@ -435,7 +536,7 @@ export class AccountBinding {
   }
 
   private appendAudit(
-    action: AccountAuditEntry["action"],
+    action: AccountAuditAction,
     accountId: string,
     atMs: number,
   ): AccountAuditEntry[] {
