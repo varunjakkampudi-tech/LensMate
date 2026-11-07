@@ -155,10 +155,11 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## C03 — Voice-triggered visual question answering
 
-- commit: a893cde
+- commit: dd36eed
+- previous code commit: a893cde (CR-46 and CR-47 found on ChatGPT review at HEAD eae5e31)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/voice-question.ts` (exported from `packages/core/src/index.ts`); reuses C01 `camera-capture.ts` and C02 `frame-analysis.ts` through structural interfaces, with one analysis session per question.
-- tests: `packages/core/src/voice-question.test.ts` (10 tests covering acceptance criteria 1–8 in ACCEPTANCE.md); `jest packages/core` → 294 tests passed; eslint, tsc, knip and prettier clean.
+- tests: `packages/core/src/voice-question.test.ts` (15 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; CR-46 routing and CR-47 STAGE_FAILED tests); `jest packages/core` → 299 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: the microphone, speech recognition, answer speech output, glasses wake word, real vision providers, on-device latency, and hardware validation (BLK-001).
