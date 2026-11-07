@@ -41,11 +41,12 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B19 — Network loss recovery and automatic reconnection
 
-- commit: 39fd0e781b7411876309345a0bd2faab7d598430
+- commit: 6b03111fa945aec0edd029c636385cf9a85e6d06
+- previous code commit: 39fd0e781b7411876309345a0bd2faab7d598430 (ChatGPT review: CHANGES_REQUIRED, CR-13, CR-14, CR-15)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/network-recovery.ts` (exported from `packages/core/src/index.ts`)
-- tests: `packages/core/src/network-recovery.test.ts` (12 tests covering acceptance criteria 1–11 in ACCEPTANCE.md; deterministic fake scheduler, injected random)
+- tests: `packages/core/src/network-recovery.test.ts` (19 tests covering acceptance criteria 1–14 in ACCEPTANCE.md; deterministic fake scheduler, injected random)
 - commands run after the commit: `jest packages/core` → 12 suites / 127 tests passed; eslint and tsc clean on the changed files; `pnpm check:tracking` OK.
 - audit: no existing reconnect or network-state module (glasses-link.ts and broker-client.ts have no reconnection); see ACCEPTANCE.md.
 - unverified: real Wi-Fi or cellular behaviour, OS network-change events on phone or glasses, and broker integration. Hardware validation PENDING (BLK-001). Hosted CI for the evidence commit is recorded in the review request.
