@@ -1,7 +1,7 @@
 import type { EnvelopeMessage } from "@lensmate/protocol";
 
 /**
- * The only way the app talks to glasses (Goal 10A.1; decision G46).
+ * The only way the app talks to glasses.
  * Implementations: the virtual glasses simulator, the real Bluetooth link, and a test fake.
  */
 export type LinkStatus = "disconnected" | "connected";

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index, follow" />
+    <title>LensMate</title>
+    <meta
+      name="description"
+      content="LensMate is an AI assistant for smart glasses, in development."
+    />
+    <style>
+      :root {
+        --bg: #f4f7fc;
+        --text: #0b1b3f;
+        --muted: #4a5878;
+        --accent: #1e5be0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1b3f;
+          --text: #f4f7fc;
+          --muted: #aab6d3;
+          --accent: #7aa7ff;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 560px;
+      }
+      h1 {
+        font-size: 2.5rem;
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+      .tag {
+        display: inline-block;
+        margin-bottom: 16px;
+        padding: 4px 10px;
+        border: 1px solid var(--accent);
+        border-radius: 999px;
+        color: var(--accent);
+        font-size: 0.875rem;
+      }
+      footer {
+        margin-top: 32px;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="tag">In development</span>
+      <h1>LensMate</h1>
+      <p>
+        LensMate is an AI assistant for smart glasses. It is being built to help you see, hear,
+        capture what matters, ask questions, and remember what you choose, with your data kept on
+        your own phone.
+      </p>
+      <p>The app is not yet publicly available. Check back for updates.</p>
+      <footer>&copy; 2026 LensMate</footer>
+    </main>
+  </body>
+</html>

@@ -6,3 +6,9 @@ packages:
 allowBuilds:
   "@parcel/watcher": false
   unrs-resolver: false
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv
+overrides:
+  # Patches GHSA advisory for zod < 4.6.6 (memory exhaustion); the advisory is reachable through Expo tooling.
+  zod: ">=4.6.6"

@@ -39,7 +39,7 @@ describe("ProtocolCodec", () => {
       {
         protocolVersion: PROTOCOL_VERSION,
         sequence: 4,
-        session: { type: "SESSION_TYPE_TRANSLATION", phase: "SESSION_PHASE_ACTIVE" },
+        session: { type: "SESSION_TYPE_PHOTO_QUESTION", phase: "SESSION_PHASE_ACTIVE" },
       },
       {
         protocolVersion: PROTOCOL_VERSION,

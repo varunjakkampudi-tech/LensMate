@@ -29,6 +29,8 @@ recordings/
 *.jpeg
 *.png
 !docs/**/*.png
+!apps/mobile/assets/*.png
+!apps/mobile/public/icons/*.png
 
 # AI-tool and agent material (keep out of the repository and artifacts)
 .claude/
@@ -46,3 +48,13 @@ scratchpad/
 Thumbs.db
 .idea/
 .vscode/
+
+# Broker deployment secrets and local env (never commit)
+services/broker/deploy/secrets/
+services/broker/deploy/.env
+
+# Simulator dry-run output written by pnpm measure:dry-run (never evidence of a phone run)
+measurement-output/
+
+# Expo generated local cache
+.expo/

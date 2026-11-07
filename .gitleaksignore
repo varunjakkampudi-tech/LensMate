@@ -1,0 +1,7 @@
+# Exact fingerprints of three generic-api-key findings on synthetic test placeholders (named not-a-real-...).
+# They sit in fixed historical commits, so each fingerprint is stable. Any new finding is still reported.
+3089624c41c72ca47b800e606049b0be143f51a2:packages/core/src/broker-client.test.ts:generic-api-key:235
+3089624c41c72ca47b800e606049b0be143f51a2:packages/core/src/broker-client.test.ts:generic-api-key:239
+d4341f90a52b9a7b68ab4d91311b82250ff57ccc:services/broker/src/test-config.ts:generic-api-key:5
+# False positive: a localStorage key name, not a credential (rule generic-api-key matched the string literal). Exact fingerprint; new findings are still reported.
+45e229eab11334f76d004a5a86ec3d34db47e620:apps/mobile/src/ui/prefs.tsx:generic-api-key:63

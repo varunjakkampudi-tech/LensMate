@@ -1,0 +1,18 @@
+# Flow: capture and ask shows the description and text-reading actions plus the last saved photo.
+# Authored Maestro flow. Run against the matching local Android development build.
+# Run: maestro test e2e/maestro/capture-quick-chips.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "Capture and ask"
+- assertVisible:
+    id: "last-photo-button"
+- scrollUntilVisible:
+    element:
+      id: "quick-describe"
+    direction: DOWN
+- assertVisible:
+    id: "quick-describe"
+- assertVisible:
+    id: "quick-read"

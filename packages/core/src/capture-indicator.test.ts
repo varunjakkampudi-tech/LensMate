@@ -8,11 +8,11 @@ describe("CaptureIndicator", () => {
   it("is on while any capture session is active and off after the last one ends", () => {
     const indicator = new CaptureIndicator();
     indicator.startSession("PUSH_TO_TALK");
-    indicator.startSession("TRANSLATION");
+    indicator.startSession("PHOTO_QUESTION");
     expect(indicator.isOn).toBe(true);
     indicator.endSession("PUSH_TO_TALK");
     expect(indicator.isOn).toBe(true);
-    indicator.endSession("TRANSLATION");
+    indicator.endSession("PHOTO_QUESTION");
     expect(indicator.isOn).toBe(false);
   });
 
@@ -30,7 +30,7 @@ describe("CaptureIndicator", () => {
 
   it("ignores ending a session that never started", () => {
     const indicator = new CaptureIndicator();
-    indicator.endSession("CAPTION");
+    indicator.endSession("PHOTO_QUESTION");
     expect(indicator.isOn).toBe(false);
   });
 });
