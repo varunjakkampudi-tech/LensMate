@@ -97,3 +97,14 @@ export type {
   ReconnectPolicy,
   Scheduler,
 } from "./network-recovery.js";
+
+export { LocalClock, ClockError } from "./local-clock.js";
+export type {
+  ClockSource,
+  ClockReading,
+  ClockState,
+  LocalClockOptions,
+  Provenance,
+  SyncResult,
+  TrustedSync,
+} from "./local-clock.js";
