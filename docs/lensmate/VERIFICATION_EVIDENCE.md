@@ -152,3 +152,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/frame-analysis.test.ts` (12 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; 16 frame-analysis tests incl. CR-44 and CR-45); `jest packages/core` → 284 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary, not the full requirement text; confirm against the full text before review.
 - unverified: real live camera streams from the glasses, real vision providers, on-device latency and performance, network transport, and hardware validation (BLK-001).
+
+## C03 — Voice-triggered visual question answering
+
+- commit: a893cde
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/voice-question.ts` (exported from `packages/core/src/index.ts`); reuses C01 `camera-capture.ts` and C02 `frame-analysis.ts` through structural interfaces, with one analysis session per question.
+- tests: `packages/core/src/voice-question.test.ts` (10 tests covering acceptance criteria 1–8 in ACCEPTANCE.md); `jest packages/core` → 294 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: the microphone, speech recognition, answer speech output, glasses wake word, real vision providers, on-device latency, and hardware validation (BLK-001).
