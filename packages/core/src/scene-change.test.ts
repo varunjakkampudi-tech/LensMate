@@ -199,3 +199,55 @@ describe("visual scene changes (C10)", () => {
     ).toThrow(SceneChangeError);
   });
 });
+
+describe("empty summaries are missing evidence, never a definite change (C10 CR-53)", () => {
+  const confident = (label: string) => [{ label, confidence: 0.95, certainty: "HIGH" as const }];
+
+  it("C10 CR-53: empty previous to a confident populated current is INSUFFICIENT, not CHANGED", () => {
+    expect(compareLabels([], confident("mug")).state).toBe("INSUFFICIENT");
+  });
+
+  it("C10 CR-53: empty previous to an empty current is INSUFFICIENT", () => {
+    expect(compareLabels([], [])).toEqual({ state: "INSUFFICIENT", added: [], removed: [] });
+  });
+
+  it("C10 CR-53: populated previous to an empty current is INSUFFICIENT", () => {
+    expect(compareLabels(confident("mug"), []).state).toBe("INSUFFICIENT");
+  });
+
+  it("C10 CR-53: populated previous to a disjoint confident current is CHANGED; to an overlapping one is not", () => {
+    expect(compareLabels(confident("mug"), confident("desk")).state).toBe("CHANGED");
+    const overlapping = [
+      { label: "mug", confidence: 0.9, certainty: "HIGH" as const },
+      { label: "lamp", confidence: 0.9, certainty: "HIGH" as const },
+    ];
+    expect(compareLabels(confident("mug"), overlapping).state).toBe("AMBIGUOUS");
+  });
+
+  it("C10 CR-53: after an insufficient comparison the detector recovers on the next frame", async () => {
+    let call = 0;
+    const script = () => {
+      call += 1;
+      return Promise.resolve(
+        okValue(
+          call === 1
+            ? "[]"
+            : call === 2
+              ? JSON.stringify([{ label: "mug", confidence: 0.95 }])
+              : JSON.stringify([{ label: "mug", confidence: 0.95 }]),
+        ),
+      );
+    };
+    const f = factory(script);
+    const d = new SceneChangeDetector({ createAnalysis: f.createAnalysis });
+    expect(await d.detect(FRAME, 1)).toMatchObject({ status: "OK", change: { state: "BASELINE" } });
+    expect(await d.detect(FRAME, 2)).toMatchObject({
+      status: "OK",
+      change: { state: "INSUFFICIENT" },
+    });
+    expect(await d.detect(FRAME, 3)).toMatchObject({
+      status: "OK",
+      change: { state: "UNCHANGED" },
+    });
+  });
+});

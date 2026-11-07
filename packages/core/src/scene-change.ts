@@ -151,7 +151,9 @@ export function compareLabels(
   previous: readonly SceneLabel[],
   current: readonly SceneLabel[],
 ): SceneChange {
-  if (current.length === 0) return { state: "INSUFFICIENT", added: [], removed: [] };
+  // An empty summary on either side is missing evidence, never confirmed absence, so no definite change follows.
+  if (previous.length === 0 || current.length === 0)
+    return { state: "INSUFFICIENT", added: [], removed: [] };
   const previousSet = new Set(previous.map((l) => l.label));
   const currentSet = new Set(current.map((l) => l.label));
   const added = current.filter((l) => !previousSet.has(l.label)).map((l) => l.label);
