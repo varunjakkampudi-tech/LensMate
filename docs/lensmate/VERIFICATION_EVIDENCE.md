@@ -120,12 +120,12 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B26 — Direct pairing with the cloud account independently of a phone
 
-- commit: 43c23000f878251849aba972b57b7f0b62441204
-- previous code commits: ca7bcb15d6e7ea8429678993ab2cdab487af5f75 (CR-35, CR-36, CR-37); bb3cf6a7badffc3bba9fd43e391cbb9cd1c42b37 (CR-38, CR-39 on re-review HEAD 421875b)
+- commit: 9469093
+- previous code commits: ca7bcb1 (CR-35, CR-36, CR-37); bb3cf6a (CR-35, CR-36, CR-37 fixes); 43c2300 (CR-38, CR-39 fixes; re-review found CR-40 and CR-41)
 - verification: PASS
 - review: CHANGES_REQUESTED
 - implementation: `packages/core/src/account-binding.ts` (exported from `packages/core/src/index.ts`)
-- tests: `packages/core/src/account-binding.test.ts` (21 tests covering acceptance criteria 1–15 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub; CR-38 and CR-39 recovery-invariant and epoch-scoping tests)
-- local checks: `jest packages/core` → 248 tests passed; eslint, tsc and knip exit 0; prettier clean.
+- tests: `packages/core/src/account-binding.test.ts` (23 tests covering acceptance criteria 1–16 in ACCEPTANCE.md; injected time, HMAC commitment stub, owner authorizer stub; CR-40 per-epoch single use and CR-41 epoch freshness tests)
+- local checks: `jest packages/core` → 250 tests passed; eslint, tsc, knip and prettier clean; `check:tracking` OK.
 - audit: broker devices.ts enrolment (single-use, expiring, hashed codes) and B25 pairing exist; no device-to-account binding state existed in core (see ACCEPTANCE.md).
-- unverified: the cloud account system and credentials, real network enrolment, the broker enrolment endpoint, account recovery by email or support, physical connectivity and hardware integration (BLK-001).
+- unverified: the cloud account system and credentials, real network enrolment, the broker enrolment endpoint, the RECOVER policy epoch-freshness registry (platform), account recovery by email or support, physical connectivity and hardware integration (BLK-001).
