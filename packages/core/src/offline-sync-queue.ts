@@ -7,6 +7,10 @@
  *
  * Storage: the whole snapshot is saved through an injected `QueueStorage` with an atomic `save`.
  * Every operation is serialized, and in-memory state changes only after a save succeeds.
+ *
+ * Scope: the single-drainer guard applies to one queue instance. Several processes that open the
+ * same storage are not coordinated by this module and must be kept apart by the caller (for
+ * example, one owner process per storage location). Otherwise two processes could send one entry.
  */
 
 export type EntryState = "PENDING" | "IN_FLIGHT" | "DONE" | "DEAD" | "CANCELLED";
@@ -85,7 +89,7 @@ export type EnqueueResult =
   | { readonly status: "DUPLICATE"; readonly id: string }
   | {
       readonly status: "REJECTED";
-      readonly reason: "ENTRY_LIMIT" | "CHAR_QUOTA" | "PAYLOAD_TOO_LARGE";
+      readonly reason: "ENTRY_LIMIT" | "CHAR_QUOTA" | "PAYLOAD_TOO_LARGE" | "ID_CONFLICT";
     };
 
 export interface DeliveredEntry {
@@ -249,11 +253,18 @@ export class OfflineSyncQueue {
   async enqueue(input: EnqueueInput, nowMs: number): Promise<EnqueueResult> {
     return this.run(async () => {
       const cipher = this.options.cipher;
-      const duplicate = this.records.find(
-        (r) => r.idempotencyKey === input.idempotencyKey && r.state !== "CANCELLED",
-      );
-      if (duplicate) {
-        return { status: "DUPLICATE", id: duplicate.id };
+      // Uniqueness applies to every stored record, in every state, because open() enforces it
+      // on the whole snapshot. A canceled or finished record keeps its id and key until it is
+      // removed by sweep or deletePermanently.
+      const sameId = this.records.find((r) => r.id === input.id);
+      if (sameId) {
+        return sameId.idempotencyKey === input.idempotencyKey
+          ? { status: "DUPLICATE", id: sameId.id }
+          : { status: "REJECTED", reason: "ID_CONFLICT" };
+      }
+      const sameKey = this.records.find((r) => r.idempotencyKey === input.idempotencyKey);
+      if (sameKey) {
+        return { status: "DUPLICATE", id: sameKey.id };
       }
       if (input.payload.length > this.limits.maxPayloadChars) {
         return { status: "REJECTED", reason: "PAYLOAD_TOO_LARGE" };
@@ -372,11 +383,23 @@ export class OfflineSyncQueue {
           continue;
         }
 
+        // Decryption is awaited, so cancellation may have arrived meanwhile. Re-check before any
+        // sender call: the entry returns to PENDING and no attempt is counted.
+        if (isAborted(signal)) {
+          await this.update(current.id, { state: "PENDING" });
+          stoppedByCancel = true;
+          break;
+        }
+
+        // No await between this check and the listener, so no abort can slip in between.
         const controller = new AbortController();
         const forward = (): void => {
           controller.abort();
         };
         signal?.addEventListener("abort", forward, { once: true });
+        if (isAborted(signal)) {
+          controller.abort();
+        }
         let result: SendResult;
         try {
           result = await send(

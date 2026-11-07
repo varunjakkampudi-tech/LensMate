@@ -363,6 +363,117 @@ describe("OfflineSyncQueue", () => {
     ]);
   });
 
+  it("CR-10: rejects a second record with an existing id and a different key, without mutating storage", async () => {
+    await Promise.resolve();
+    const storage = new MemoryStorage();
+    const { queue } = await openQueue(storage);
+    await queue.enqueue(
+      { id: "note-1", idempotencyKey: "key-A", kind: "note", payload: "First", sensitive: false },
+      0,
+    );
+    const before = storage.saves;
+    expect(
+      await queue.enqueue(
+        {
+          id: "note-1",
+          idempotencyKey: "key-B",
+          kind: "note",
+          payload: "Second",
+          sensitive: false,
+        },
+        0,
+      ),
+    ).toEqual({ status: "REJECTED", reason: "ID_CONFLICT" });
+    expect(storage.saves).toBe(before);
+    expect(queue.snapshot().map((r) => [r.id, r.payload])).toEqual([["note-1", "First"]]);
+    const reopened = await openQueue(storage);
+    expect(reopened.queue.snapshot()).toHaveLength(1);
+  });
+
+  it("CR-11: a canceled key is not reusable while its record is stored, and reopening still succeeds", async () => {
+    await Promise.resolve();
+    const storage = new MemoryStorage();
+    const { queue } = await openQueue(storage);
+    await queue.enqueue(
+      { id: "r1", idempotencyKey: "same-key", kind: "n", payload: "a", sensitive: false },
+      0,
+    );
+    expect(await queue.cancel("r1", 1)).toBe("CANCELLED");
+    expect(
+      await queue.enqueue(
+        { id: "r2", idempotencyKey: "same-key", kind: "n", payload: "b", sensitive: false },
+        2,
+      ),
+    ).toEqual({ status: "DUPLICATE", id: "r1" });
+    expect(queue.snapshot().map((r) => r.id)).toEqual(["r1"]);
+
+    const reopened = await openQueue(storage);
+    expect(reopened.queue.snapshot().map((r) => [r.id, r.state])).toEqual([["r1", "CANCELLED"]]);
+  });
+
+  it("CR-11: after a canceled record is removed, its id and key can be reused and the snapshot reopens", async () => {
+    await Promise.resolve();
+    const storage = new MemoryStorage();
+    const { queue } = await openQueue(storage);
+    await queue.enqueue(
+      { id: "r1", idempotencyKey: "k", kind: "n", payload: "a", sensitive: false },
+      0,
+    );
+    await queue.cancel("r1", 1);
+    expect(await queue.deletePermanently("r1")).toBe("DELETED");
+    expect(
+      await queue.enqueue(
+        { id: "r1", idempotencyKey: "k", kind: "n", payload: "b", sensitive: false },
+        2,
+      ),
+    ).toEqual({ status: "ENQUEUED", id: "r1" });
+    const reopened = await openQueue(storage);
+    expect(reopened.queue.snapshot()).toHaveLength(1);
+  });
+
+  it("CR-12: cancellation during a delayed decrypt means the sender is never called", async () => {
+    await Promise.resolve();
+    const storage = new MemoryStorage();
+    const real = aesCipher();
+    const waiting: (() => void)[] = [];
+    const delayed: PayloadCipher = {
+      seal: (plaintext, aad) => real.seal(plaintext, aad),
+      async open(ciphertext, aad) {
+        await new Promise<void>((resolve) => {
+          waiting.push(resolve);
+        });
+        return real.open(ciphertext, aad);
+      },
+    };
+    const { queue } = await openQueue(storage, { cipher: delayed });
+    await queue.enqueue(
+      { id: "s1", idempotencyKey: "s1", kind: "n", payload: "secret", sensitive: true },
+      0,
+    );
+    const controller = new AbortController();
+    let sent = 0;
+    const drained = queue.drain(
+      () => {
+        sent += 1;
+        return Promise.resolve(ok);
+      },
+      0,
+      controller.signal,
+    );
+    // Wait until the drain is inside the delayed decrypt, then cancel, then let decrypt finish.
+    while (waiting.length === 0) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    }
+    controller.abort();
+    waiting.shift()?.();
+    const summary = await drained;
+    expect(sent).toBe(0);
+    expect(summary.stoppedByCancel).toBe(true);
+    expect(queue.snapshot()[0]).toMatchObject({ id: "s1", state: "PENDING", attempts: 0 });
+  });
+
   it("cancelling a pending entry erases its payload; cancelling an in-flight entry is refused", async () => {
     await Promise.resolve();
     const storage = new MemoryStorage();
