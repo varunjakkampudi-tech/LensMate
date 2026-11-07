@@ -174,3 +174,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - tests: `packages/core/src/object-recognition.test.ts` (15 tests covering acceptance criteria 1–11 in ACCEPTANCE.md; CR-48 and CR-49 untrusted-value tests); `jest packages/core` → 314 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: real-world recognition accuracy, the choice of vision model, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
+
+## C05 — Understand scene layout and visual relationships
+
+- commit: 268b03d
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/scene-layout.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per description through an injected factory; relations validated at runtime.
+- tests: `packages/core/src/scene-layout.test.ts` (12 tests covering acceptance criteria 1–11 in ACCEPTANCE.md); `jest packages/core` → 326 tests passed; eslint, tsc, knip and prettier clean.
+- scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
+- unverified: real-world spatial accuracy, metric distances, depth or geometry, vision-model choice, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).

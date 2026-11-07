@@ -88,7 +88,7 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 | C02 | Analyze live camera frames                                        | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | C03 | Voice-triggered visual question answering                         | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | C04 | Recognize everyday objects and environmental features             | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
-| C05 | Understand scene layout and visual relationships                  | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| C05 | Understand scene layout and visual relationships                  | IMPLEMENTED    | PASS         | NOT_REQUESTED | NONE    | PENDING             |
 | C06 | Read signs, books, receipts and labels                            | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | C07 | Read and explain documents, graphs and diagrams                   | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | C08 | Understand product packaging and ingredients                      | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
