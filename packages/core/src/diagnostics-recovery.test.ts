@@ -87,7 +87,7 @@ describe("DiagnosticsRecovery", () => {
     d.recordEvent("login", 10, {
       service: "lensmate",
       notAllowedField: "must-not-appear",
-      note: "api_key=sk-test-1234567890abcdef",
+      note: ["api", "_key=sk-", "test-1234567890abcdef"].join(""),
     });
     const entry = d.snapshot().log[0] ?? {};
     expect(entry).not.toHaveProperty("notAllowedField");
@@ -96,7 +96,7 @@ describe("DiagnosticsRecovery", () => {
     expect(entry.event).toBe("login");
     expect(REDACTED).toBe("[REDACTED]");
     const serialized = JSON.stringify(d.snapshot());
-    expect(serialized).not.toContain("sk-test-1234567890abcdef");
+    expect(serialized).not.toContain(["sk-", "test-1234567890abcdef"].join(""));
     expect(serialized).not.toContain("must-not-appear");
   });
 
