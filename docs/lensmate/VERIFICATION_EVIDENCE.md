@@ -51,3 +51,15 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commands run after the commit: `jest packages/core` → 12 suites / 127 tests passed; eslint and tsc clean on the changed files; `pnpm check:tracking` OK.
 - audit: no existing reconnect or network-state module (glasses-link.ts and broker-client.ts have no reconnection); see ACCEPTANCE.md.
 - unverified: real Wi-Fi or cellular behaviour, OS network-change events on phone or glasses, and broker integration. Hardware validation PENDING (BLK-001). Hosted CI for the evidence commit is recorded in the review request.
+
+## B20 — Local clock and timestamp continuity
+
+- commit: 2c7ff200efd76de314fb4ea1358ab74f0fd48572
+- formatting follow-up: 4fc02e1 (Prettier only)
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/local-clock.ts` (exported from `packages/core/src/index.ts`)
+- tests: `packages/core/src/local-clock.test.ts` (13 tests covering acceptance criteria 1–11 in ACCEPTANCE.md; injected clock, no real time)
+- local checks after the code commit: `jest packages/core` → 13 suites / 147 tests passed; eslint and tsc clean on the changed files; `pnpm check:tracking` OK.
+- audit: no core clock abstraction existed; mobile and broker code call Date.now() directly (see ACCEPTANCE.md).
+- unverified: real hardware clocks and RTC drift, cryptographic authentication of time sources (caller responsibility), NTP/GNSS integration, power-loss behaviour, and detection of restored older snapshots (BLK-001 for on-device work).
