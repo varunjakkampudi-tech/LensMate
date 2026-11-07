@@ -231,10 +231,11 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## C10 — Detect visual scene changes
 
-- commit: e828575
+- commit: 0193a46
+- previous code commit: e828575 (CR-53 found on ChatGPT review at HEAD c29d3f0)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/scene-change.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per frame through an injected factory; only the last scene summary kept; out-of-order frames refused before analysis.
-- tests: `packages/core/src/scene-change.test.ts` (11 tests covering acceptance criteria 1–10 in ACCEPTANCE.md); `jest packages/core` → 399 tests passed; eslint, tsc, knip and prettier clean.
+- tests: `packages/core/src/scene-change.test.ts` (16 tests covering acceptance criteria 1–11 in ACCEPTANCE.md; CR-53 empty-summary tests); `jest packages/core` → 404 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: real motion or scene-change detection accuracy, frame-rate and latency behaviour, physical glasses-camera streams, and hardware validation (BLK-001). No background processing is started by this module.
