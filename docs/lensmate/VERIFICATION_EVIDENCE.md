@@ -79,3 +79,14 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - local checks after the CR-23 fix: `jest packages/core` → 13 suites / 173 tests passed; eslint and tsc clean; prettier clean on changed files.
 - audit: broker per-device credentials, revocation and enrolment exist in services/broker/src/devices.ts; the device lock and audit of lock events were absent (see ACCEPTANCE.md).
 - unverified: owner command signature scheme and key distribution (platform adapter), delivery of commands to glasses or phone, wiping secrets after REVOKE, server-side revocation audit storage (follow-up), and physical lock behaviour (BLK-001).
+
+## B22 — Factory reset and secure data erasure
+
+- commit: c1676bb345974ab37dcfd00113a2951ce8cb5497
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/factory-reset.ts` (exported from `packages/core/src/index.ts`)
+- tests: `packages/core/src/factory-reset.test.ts` (10 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; in-memory store, scripted step runner)
+- local checks: `jest packages/core` → 13 suites / 183 tests passed; eslint, tsc and prettier clean.
+- audit: mobile vault deleteAll, native-store "delete everything" with secure_delete, backup deleteBackup, and broker device revocation exist; none is ordered, persisted, resumable or verified (see ACCEPTANCE.md).
+- unverified: physical erasure on flash or secure element, key destruction in hardware, forensic recovery resistance, broker revocation endpoint, and on-device behaviour (BLK-001).
