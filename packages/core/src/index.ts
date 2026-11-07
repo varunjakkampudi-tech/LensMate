@@ -164,3 +164,10 @@ export type {
   Binding,
   Status,
 } from "./account-binding.js";
+export { CameraCapture, CameraCaptureError } from "./camera-capture.js";
+export type {
+  CameraAdapter,
+  CameraCaptureOptions,
+  CapturePermissionPolicy,
+  CaptureResult,
+} from "./camera-capture.js";
