@@ -198,10 +198,11 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## C07 — Read and explain documents, graphs and diagrams
 
-- commit: 827bdd7
+- commit: bec871a
+- previous code commit: 827bdd7 (CR-51 found on ChatGPT review at HEAD 23853de)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/document-explainer.ts` (exported from `packages/core/src/index.ts`); one C02 analysis session per explanation through an injected factory; citations validated against reported element ids; unsupported explanations marked.
-- tests: `packages/core/src/document-explainer.test.ts` (14 tests covering acceptance criteria 1–11 in ACCEPTANCE.md); `jest packages/core` → 358 tests passed; eslint, tsc, knip and prettier clean.
+- tests: `packages/core/src/document-explainer.test.ts` (16 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; CR-51 citation-versus-verification tests); `jest packages/core` → 360 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary; confirm against the full requirement text before review.
 - unverified: real document, graph or diagram interpretation accuracy, mathematical or scientific correctness, vision-model choice, on-device latency, physical glasses-camera capture, and hardware validation (BLK-001).
