@@ -189,3 +189,13 @@ export type {
   QuestionResult,
   VoiceQuestionOptions,
 } from "./voice-question.js";
+export { ObjectRecognizer, ObjectRecognizerError, parseRecognition } from "./object-recognition.js";
+export type {
+  Certainty,
+  RecognitionAnalysis,
+  RecognitionItem,
+  RecognitionKind,
+  RecognitionRefusal,
+  RecognitionResult,
+  RecognitionState,
+} from "./object-recognition.js";
