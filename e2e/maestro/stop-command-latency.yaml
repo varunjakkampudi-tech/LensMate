@@ -1,0 +1,32 @@
+# Flow: Stop command — start speaking on Assistant and check the Diagnostics "Last stop" row (testID stop-latency) exists.
+# Authored Maestro flow. Run against the matching local Android development build.
+# Run: maestro test e2e/maestro/stop-command-latency.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "Ask LensMate"
+- assertVisible: "Assistant"
+- tapOn: "What can you do?"
+- assertVisible:
+    id: "talk-interrupt-button"
+- tapOn:
+    id: "talk-interrupt-button"
+- tapOn:
+    id: "nav-profile"
+- assertVisible: "Profile & settings"
+- scrollUntilVisible:
+    element:
+      id: "profile-section-diagnostics"
+    direction: DOWN
+- tapOn:
+    id: "profile-section-diagnostics"
+- scrollUntilVisible:
+    element:
+      id: "open-diagnostics-button"
+    direction: DOWN
+- tapOn:
+    id: "open-diagnostics-button"
+- assertVisible: "Diagnostics"
+- assertVisible:
+    id: "stop-latency"

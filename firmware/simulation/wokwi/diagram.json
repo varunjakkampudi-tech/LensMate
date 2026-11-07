@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "author": "LensMate prototype",
+  "editor": "wokwi",
+  "parts": [
+    { "id": "esp", "type": "board-esp32-devkit-c-v4", "top": 0, "left": 0, "attrs": {} },
+    { "id": "ask", "type": "wokwi-pushbutton", "top": -90, "left": -160, "attrs": { "color": "green", "label": "Ask" } },
+    { "id": "capture", "type": "wokwi-pushbutton", "top": -90, "left": -60, "attrs": { "color": "red", "label": "Photo" } },
+    { "id": "mute", "type": "wokwi-slide-switch", "top": 30, "left": -160, "attrs": {} },
+    { "id": "privacy", "type": "wokwi-led", "top": 120, "left": -160, "attrs": { "color": "red", "label": "Active capture" } },
+    { "id": "r1", "type": "wokwi-resistor", "top": 170, "left": -160, "attrs": { "value": "220" } },
+    { "id": "speaker", "type": "wokwi-buzzer", "top": 230, "left": -160, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:18", "ask:1.l", "green", [] ],
+    [ "esp:GND.1", "ask:2.r", "black", [] ],
+    [ "esp:19", "capture:1.l", "red", [] ],
+    [ "esp:GND.1", "capture:2.r", "black", [] ],
+    [ "esp:4", "mute:2", "green", [] ],
+    [ "esp:GND.1", "mute:3", "black", [] ],
+    [ "esp:2", "privacy:A", "green", [] ],
+    [ "privacy:C", "r1:1", "green", [] ],
+    [ "r1:2", "esp:GND.1", "black", [] ],
+    [ "esp:5", "speaker:1", "green", [] ],
+    [ "esp:GND.1", "speaker:2", "black", [] ],
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ]
+  ]
+}

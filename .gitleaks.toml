@@ -1,0 +1,7 @@
+# Gitleaks configuration for LensMate. It extends the default rules and turns none of them off.
+# Known false positives are listed by exact fingerprint in .gitleaksignore, not by pattern.
+
+title = "LensMate gitleaks configuration"
+
+[extend]
+useDefault = true

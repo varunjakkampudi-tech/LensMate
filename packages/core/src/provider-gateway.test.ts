@@ -18,7 +18,7 @@ function gateway(
 ): { gateway: ProviderGateway; cap: SpendCap } {
   const options = { ...BASE_OPTIONS, ...overrides };
   const g = new ProviderGateway(cap, options);
-  g.acceptDisclosure("translation");
+  g.acceptDisclosure("assistant");
   return { gateway: g, cap };
 }
 
@@ -38,7 +38,7 @@ describe("ProviderGateway", () => {
   it("returns the value and records the actual cost on success", async () => {
     const cap = new SpendCap(500);
     const { gateway: g } = gateway(cap);
-    const result = await g.call("translation", 100, provider(["ok"], 120).run);
+    const result = await g.call("assistant", 100, provider(["ok"], 120).run);
     expect(result).toEqual({ ok: true, value: "SYNTHETIC-RESPONSE", costMinor: 120 });
     expect(cap.spent).toBe(120);
   });
@@ -47,7 +47,7 @@ describe("ProviderGateway", () => {
     const cap = new SpendCap(500, 450);
     const { gateway: g } = gateway(cap);
     const p = provider(["ok"]);
-    expect(await g.call("translation", 100, p.run)).toEqual({
+    expect(await g.call("assistant", 100, p.run)).toEqual({
       ok: false,
       errorCode: "CAP_REACHED",
     });
@@ -58,7 +58,7 @@ describe("ProviderGateway", () => {
   it("refuses an invalid estimated amount before the provider call", async () => {
     const { gateway: g } = gateway();
     const p = provider(["ok"]);
-    expect(await g.call("translation", -5, p.run)).toEqual({
+    expect(await g.call("assistant", -5, p.run)).toEqual({
       ok: false,
       errorCode: "INVALID_AMOUNT",
     });
@@ -68,7 +68,7 @@ describe("ProviderGateway", () => {
   it("retries a provider error once and succeeds on the second attempt", async () => {
     const { gateway: g } = gateway();
     const p = provider(["fail", "ok"]);
-    const result = await g.call("translation", 100, p.run);
+    const result = await g.call("assistant", 100, p.run);
     expect(result.ok).toBe(true);
     expect(p.attempts()).toBe(2);
   });
@@ -76,7 +76,7 @@ describe("ProviderGateway", () => {
   it("reports a provider error when every attempt fails", async () => {
     const { gateway: g } = gateway();
     const p = provider(["fail", "fail"]);
-    expect(await g.call("translation", 100, p.run)).toEqual({
+    expect(await g.call("assistant", 100, p.run)).toEqual({
       ok: false,
       errorCode: "PROVIDER_ERROR",
     });
@@ -86,7 +86,7 @@ describe("ProviderGateway", () => {
   it("times out a stalled attempt and does not retry a timeout", async () => {
     const { gateway: g } = gateway();
     const p = provider(["hang", "ok"]);
-    expect(await g.call("translation", 100, p.run)).toEqual({ ok: false, errorCode: "TIMEOUT" });
+    expect(await g.call("assistant", 100, p.run)).toEqual({ ok: false, errorCode: "TIMEOUT" });
     expect(p.attempts()).toBe(1);
   });
 
@@ -95,11 +95,11 @@ describe("ProviderGateway", () => {
     const { gateway: g } = gateway(cap, { maxAttempts: 3 });
     const p = provider(["fail", "ok"], 100);
     // First attempt fails and records nothing. The retry is still under the cap, so it succeeds.
-    expect((await g.call("translation", 100, p.run)).ok).toBe(true);
+    expect((await g.call("assistant", 100, p.run)).ok).toBe(true);
     expect(cap.spent).toBe(100);
     // A second call of the same estimate would exceed the cap and is refused without a provider call.
     const q = provider(["ok"], 100);
-    expect(await g.call("translation", 100, q.run)).toEqual({
+    expect(await g.call("assistant", 100, q.run)).toEqual({
       ok: false,
       errorCode: "CAP_REACHED",
     });
@@ -115,24 +115,24 @@ describe("ProviderGateway", () => {
       now: () => clock,
     });
     const failing = provider(["fail"]);
-    expect(await g.call("translation", 10, failing.run)).toEqual({
+    expect(await g.call("assistant", 10, failing.run)).toEqual({
       ok: false,
       errorCode: "PROVIDER_ERROR",
     });
-    expect(await g.call("translation", 10, failing.run)).toEqual({
+    expect(await g.call("assistant", 10, failing.run)).toEqual({
       ok: false,
       errorCode: "PROVIDER_ERROR",
     });
 
     const blocked = provider(["ok"]);
-    expect(await g.call("translation", 10, blocked.run)).toEqual({
+    expect(await g.call("assistant", 10, blocked.run)).toEqual({
       ok: false,
       errorCode: "CIRCUIT_OPEN",
     });
     expect(blocked.attempts()).toBe(0);
 
     clock = 1000;
-    expect((await g.call("translation", 10, blocked.run)).ok).toBe(true);
+    expect((await g.call("assistant", 10, blocked.run)).ok).toBe(true);
   });
 
   it("resets the failure count after a success", async () => {
@@ -140,10 +140,10 @@ describe("ProviderGateway", () => {
       maxAttempts: 1,
       circuitFailureThreshold: 2,
     });
-    await g.call("translation", 10, provider(["fail"]).run);
-    expect((await g.call("translation", 10, provider(["ok"]).run)).ok).toBe(true);
-    await g.call("translation", 10, provider(["fail"]).run);
-    expect((await g.call("translation", 10, provider(["ok"]).run)).ok).toBe(true);
+    await g.call("assistant", 10, provider(["fail"]).run);
+    expect((await g.call("assistant", 10, provider(["ok"]).run)).ok).toBe(true);
+    await g.call("assistant", 10, provider(["fail"]).run);
+    expect((await g.call("assistant", 10, provider(["ok"]).run)).ok).toBe(true);
   });
 
   it("stops retrying once the circuit opens during the call", async () => {
@@ -152,7 +152,7 @@ describe("ProviderGateway", () => {
       circuitFailureThreshold: 1,
     });
     const p = provider(["fail", "ok"]);
-    expect(await g.call("translation", 10, p.run)).toEqual({
+    expect(await g.call("assistant", 10, p.run)).toEqual({
       ok: false,
       errorCode: "PROVIDER_ERROR",
     });
@@ -164,7 +164,7 @@ describe("ProviderGateway", () => {
     // A provider may reject with a plain value. The gateway still reports it as a provider error.
     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
     const run = () => Promise.reject("plain-value");
-    expect(await g.call("translation", 10, run)).toEqual({
+    expect(await g.call("assistant", 10, run)).toEqual({
       ok: false,
       errorCode: "PROVIDER_ERROR",
     });

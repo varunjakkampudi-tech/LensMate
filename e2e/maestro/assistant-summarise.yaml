@@ -1,0 +1,14 @@
+# Flow: the summarise action appears after a message exists (testID talk-summarise-button).
+# Authored Maestro flow. Run against the matching local Android development build.
+# Run: maestro test e2e/maestro/assistant-summarise.yaml
+appId: com.viswatra.lensmate
+---
+- launchApp:
+    clearState: true
+- tapOn: "Ask LensMate"
+- assertVisible: "Assistant"
+- assertNotVisible:
+    id: "talk-summarise-button"
+- tapOn: "What can you do?"
+- assertVisible:
+    id: "talk-summarise-button"

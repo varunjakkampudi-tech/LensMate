@@ -1,0 +1,16 @@
+# Used only for the one-off migration run. It adds the owner connection string as a secret for that run, so the
+# normal broker containers never receive owner credentials.
+#   docker compose -p lensmate-broker -f docker-compose.yml -f docker-compose.migrate.yml run --rm broker node dist/migrate-cli.js
+name: lensmate-broker
+
+services:
+  broker:
+    environment:
+      BROKER_MIGRATOR_DATABASE_URL_FILE: /run/secrets/postgres_owner_database_url
+      BROKER_APP_ROLE: broker_app
+      BROKER_ADMIN_ROLE: broker_admin
+    secrets: !override [postgres_owner_database_url]
+
+secrets:
+  postgres_owner_database_url:
+    file: ./secrets/postgres_owner_database_url

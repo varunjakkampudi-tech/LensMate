@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/coverage
+.git
+.claude
+.codex
+**/*.env
+**/.env*
+services/broker/deploy/secrets
+**/*.pem
+**/*.key

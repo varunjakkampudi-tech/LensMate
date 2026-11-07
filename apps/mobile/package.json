@@ -4,29 +4,40 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start --dev-client",
+    "start": "node --env-file-if-exists=../../.env.development node_modules/expo/bin/cli start --dev-client",
+    "web": "node --env-file-if-exists=../../.env.development node_modules/expo/bin/cli start --web --port 8081",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest --runInBand"
   },
   "dependencies": {
     "@lensmate/core": "workspace:*",
     "@lensmate/protocol": "workspace:*",
     "@lensmate/simulator": "workspace:*",
-    "expo": "58.0.14",
-    "expo-constants": "~58.0.12",
+    "expo": "58.0.17",
+    "expo-camera": "~58.0.12",
+    "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.14",
-    "expo-linking": "~58.0.13",
-    "expo-router": "~58.0.23",
-    "expo-updates": "~58.0.17",
+    "expo-image-manipulator": "~58.0.15",
+    "expo-image-picker": "~58.0.10",
+    "expo-linking": "~58.0.14",
+    "expo-router": "~58.0.25",
+    "expo-secure-store": "~58.0.2",
+    "expo-speech": "~58.0.3",
+    "expo-speech-recognition": "58.0.0",
+    "expo-sqlite": "~58.0.13",
+    "expo-updates": "~58.0.18",
     "react": "19.3.0",
+    "react-dom": "19.3.0",
     "react-native": "0.88.0",
     "react-native-safe-area-context": "~5.10.1",
-    "react-native-screens": "~4.30.0"
+    "react-native-screens": "~4.30.0",
+    "react-native-svg": "15.16.0",
+    "react-native-web": "^0.21.4"
   },
   "devDependencies": {
     "@testing-library/react-native": "14.1.0",
     "@types/react": "^19.3.0",
     "jest": "30.5.2",
-    "jest-expo": "~58.0.11"
+    "jest-expo": "~58.0.12"
   }
 }
