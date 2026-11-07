@@ -67,6 +67,8 @@ export interface AccountAuditEntry {
 
 export interface AccountState {
   readonly deviceId: string;
+  /** Commitment epoch. Rotated by trusted recovery, so challenges committed under an old epoch can never match again. */
+  readonly epoch: string | null;
   readonly binding: Binding | null;
   readonly challenge: PendingChallenge | null;
   readonly recoveryRequired: boolean;
@@ -76,6 +78,8 @@ export interface AccountState {
 
 export interface AccountOptions {
   readonly deviceId: string;
+  /** Platform-generated, unique, at least 16 characters. Scopes every commitment. */
+  readonly epoch: string;
   readonly authorize: AccountAuthorizer;
   readonly commit: ChallengeCommitment;
   /** Challenge lifetime in milliseconds. Positive, at most 15 minutes. */
@@ -162,6 +166,12 @@ function resolveOptions(options: AccountOptions): Resolved {
   if (typeof options.deviceId !== "string" || options.deviceId === "") {
     throw new AccountError("INVALID_CONFIG", "deviceId is required");
   }
+  if (typeof options.epoch !== "string" || options.epoch.length < 16) {
+    throw new AccountError(
+      "INVALID_CONFIG",
+      "epoch must be a platform-generated string of at least 16 characters",
+    );
+  }
   const ttl = options.challengeTtlMs ?? DEFAULT_TTL_MS;
   const attempts = options.maxAttempts ?? DEFAULT_ATTEMPTS;
   const audit = options.maxAuditEntries ?? DEFAULT_AUDIT;
@@ -193,6 +203,14 @@ function validState(value: unknown, resolved: Resolved, deviceId: string): value
   const s = value as Record<string, unknown>;
   if (s["deviceId"] !== deviceId) return false;
   if (typeof s["recoveryRequired"] !== "boolean") return false;
+  const epoch = s["epoch"];
+  if (s["recoveryRequired"]) {
+    // Recovery-required state must hold no binding and no pending challenge; it cannot carry ownership.
+    if (s["binding"] !== null || s["challenge"] !== null) return false;
+    if (epoch !== null && (typeof epoch !== "string" || epoch.length < 16)) return false;
+  } else if (typeof epoch !== "string" || epoch.length < 16) {
+    return false;
+  }
   if (!Array.isArray(s["usedChallenges"]) || !Array.isArray(s["audit"])) return false;
   const used = s["usedChallenges"] as unknown[];
   if (used.length > resolved.used) return false;
@@ -243,6 +261,7 @@ function validState(value: unknown, resolved: Resolved, deviceId: string): value
 function copyState(state: AccountState): AccountState {
   return {
     deviceId: state.deviceId,
+    epoch: state.epoch,
     binding: state.binding === null ? null : { ...state.binding },
     challenge: state.challenge === null ? null : { ...state.challenge },
     recoveryRequired: state.recoveryRequired,
@@ -254,6 +273,7 @@ function copyState(state: AccountState): AccountState {
 function recoveryState(deviceId: string): AccountState {
   return {
     deviceId,
+    epoch: null,
     binding: null,
     challenge: null,
     recoveryRequired: true,
@@ -283,6 +303,7 @@ export class AccountBinding {
     return new AccountBinding(
       {
         deviceId: options.deviceId,
+        epoch: options.epoch,
         binding: null,
         challenge: null,
         recoveryRequired: false,
@@ -312,6 +333,11 @@ export class AccountBinding {
 
   snapshot(): AccountState {
     return copyState(this.state);
+  }
+
+  /** Identity every commitment is scoped to: the device together with its current epoch. */
+  private scope(): string {
+    return `${this.state.deviceId}#${this.state.epoch ?? ""}`;
   }
 
   status(): Status {
@@ -382,7 +408,7 @@ export class AccountBinding {
         ...this.state,
         challenge: {
           accountId,
-          commitment: this.commit(request.challenge, this.state.deviceId, accountId),
+          commitment: this.commit(request.challenge, this.scope(), accountId),
           issuedAtMs: atMs,
           expiresAtMs: atMs + this.resolved.ttl,
           attempts: 0,
@@ -419,7 +445,7 @@ export class AccountBinding {
       }
       if (this.state.recoveryRequired) return { status: "REFUSED", reason: "RECOVERY_REQUIRED" };
       const accountId = request.accountId;
-      const commitment = this.commit(request.challenge, this.state.deviceId, accountId);
+      const commitment = this.commit(request.challenge, this.scope(), accountId);
       if (this.state.usedChallenges.includes(commitment)) {
         return { status: "REFUSED", reason: "REPLAY" };
       }
@@ -455,6 +481,7 @@ export class AccountBinding {
       }
       this.state = {
         deviceId: this.state.deviceId,
+        epoch: this.state.epoch,
         binding: { accountId, status: "BOUND", boundAtMs: atMs },
         challenge: null,
         recoveryRequired: false,
@@ -503,12 +530,24 @@ export class AccountBinding {
       if (!isValidTime(atMs)) return { status: "REFUSED", reason: "BAD_INPUT" };
       if (!this.state.recoveryRequired)
         return { status: "REFUSED", reason: "NOT_RECOVERY_REQUIRED" };
-      if (!(await this.isAuthorized("RECOVER", "", request.authorization))) {
+      // The authorization carries the device-identity proof and a new, never-used epoch.
+      const parts = request.authorization as { proof?: unknown; epoch?: unknown } | null;
+      const proof = typeof parts === "object" && parts !== null ? parts.proof : undefined;
+      const epoch = typeof parts === "object" && parts !== null ? parts.epoch : undefined;
+      if (typeof epoch !== "string" || epoch.length < 16 || epoch === this.state.epoch) {
         return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
       }
+      if (!(await this.isAuthorized("RECOVER", "", proof))) {
+        return { status: "REFUSED", reason: "NOT_AUTHORIZED" };
+      }
+      // Recovery never restores a binding. Rotating the epoch makes every earlier commitment unreachable.
       this.state = {
-        ...this.state,
+        deviceId: this.state.deviceId,
+        epoch,
+        binding: null,
+        challenge: null,
         recoveryRequired: false,
+        usedChallenges: [...this.state.usedChallenges],
         audit: this.appendAudit("RECOVERED", "", atMs),
       };
       return { status: "OK" };

@@ -4,6 +4,8 @@ import type { AccountAuthorizer, AccountOptions } from "./account-binding.js";
 
 const T0 = 1_000_000;
 const DEVICE = "glasses-1";
+const EPOCH = "epoch-0000000000001";
+const NEW_EPOCH = "epoch-0000000000002";
 const ACCOUNT = "acct-owner";
 const OTHER = "acct-other";
 const CHALLENGE = "ABCDEF123456";
@@ -11,31 +13,31 @@ const KEY = "platform-held-test-key";
 const OWNER = { token: "owner-proof" };
 const PREVIOUS_OWNER = { token: "previous-owner-release" };
 
-/** Test commitment: keyed HMAC, as the platform would supply. */
-const commit = (challenge: string, deviceId: string, accountId: string): string =>
-  createHmac("sha256", KEY).update(`${deviceId}|${accountId}|${challenge}`).digest("hex");
+/** Test commitment: keyed HMAC over the scope (device and epoch) and the account. */
+const commit = (challenge: string, scope: string, accountId: string): string =>
+  createHmac("sha256", KEY).update(`${scope}|${accountId}|${challenge}`).digest("hex");
 
-/** Authorizer: accepts only the owner proof for CHALLENGE, BIND, REVOKE and RECOVER. */
-const ownerOnly: AccountAuthorizer = (_action, _account, authorization) =>
-  Promise.resolve(
-    typeof authorization === "object" &&
-      authorization !== null &&
-      (authorization as { token?: unknown }).token === OWNER.token,
-  );
+const scopeOf = (epoch: string): string => `${DEVICE}#${epoch}`;
 
-/**
- * Re-enrolment authorizer: RELEASE needs the previous owner's proof; REENROLL needs the owner proof
- * for the target account. Each approval is checked separately.
- */
-const twoApprovals: AccountAuthorizer = (action, _account, authorization) => {
+/** Authorizer: accepts the owner proof for CHALLENGE, BIND, REVOKE and RECOVER. */
+const ownerOnly: AccountAuthorizer = (action, _account, authorization) => {
+  const token =
+    action === "RECOVER"
+      ? (authorization as { token?: unknown } | null)?.token
+      : (authorization as { token?: unknown } | null)?.token;
+  return Promise.resolve(token === OWNER.token);
+};
+
+/** Re-enrolment: RELEASE needs the previous owner's proof; REENROLL needs the owner's proof. */
+const twoApprovals: AccountAuthorizer = (action, account, authorization) => {
   const token = (authorization as { token?: unknown } | null)?.token;
   if (action === "RELEASE") return Promise.resolve(token === PREVIOUS_OWNER.token);
   if (action === "REENROLL") return Promise.resolve(token === OWNER.token);
-  return ownerOnly(action, _account, authorization);
+  return ownerOnly(action, account, authorization);
 };
 
 function options(extra: Partial<AccountOptions> = {}): AccountOptions {
-  return { deviceId: DEVICE, authorize: twoApprovals, commit, ...extra };
+  return { deviceId: DEVICE, epoch: EPOCH, authorize: twoApprovals, commit, ...extra };
 }
 
 function issue(b: AccountBinding, challenge: unknown, at: number, accountId = ACCOUNT) {
@@ -61,6 +63,9 @@ function json(value: unknown): unknown {
   return JSON.parse(JSON.stringify(value)) as unknown;
 }
 
+const reenrol = { release: PREVIOUS_OWNER, target: OWNER };
+const recoveryAuth = { proof: OWNER, epoch: NEW_EPOCH };
+
 describe("AccountBinding", () => {
   it("standalone operation needs no account", () => {
     const b = AccountBinding.fresh(options());
@@ -69,7 +74,7 @@ describe("AccountBinding", () => {
     expect(b.canUseAccount(ACCOUNT)).toBe(false);
   });
 
-  it("issuing a challenge needs authorization; the snapshot holds only a commitment; the challenge expires", async () => {
+  it("issuing a challenge needs authorization; the snapshot holds only a scoped commitment; the challenge expires", async () => {
     const b = AccountBinding.fresh(options({ challengeTtlMs: 60_000 }));
     expect(
       await b.issueChallenge(
@@ -80,7 +85,7 @@ describe("AccountBinding", () => {
     expect(b.snapshot().challenge).toBeNull();
     await issue(b, CHALLENGE, T0);
     expect(JSON.stringify(b.snapshot())).not.toContain(CHALLENGE);
-    expect(b.snapshot().challenge?.commitment).toBe(commit(CHALLENGE, DEVICE, ACCOUNT));
+    expect(b.snapshot().challenge?.commitment).toBe(commit(CHALLENGE, scopeOf(EPOCH), ACCOUNT));
     expect(await bind(b, CHALLENGE, T0 + 60_001)).toEqual({ status: "REFUSED", reason: "EXPIRED" });
   });
 
@@ -88,7 +93,6 @@ describe("AccountBinding", () => {
     const b = AccountBinding.fresh(options());
     await bindDevice(b);
     await b.revoke({ confirmed: true, authorization: OWNER }, T0 + 5);
-    const reenrol = { release: PREVIOUS_OWNER, target: OWNER };
     expect(
       await b.issueChallenge(
         { accountId: ACCOUNT, challenge: CHALLENGE, authorization: reenrol },
@@ -163,10 +167,9 @@ describe("AccountBinding", () => {
       ).toEqual({ status: "REFUSED", reason: "NOT_AUTHORIZED" });
     }
     expect(b.snapshot().challenge).toBeNull();
-    const approved = { release: PREVIOUS_OWNER, target: OWNER };
     expect(
       await b.issueChallenge(
-        { accountId: OTHER, challenge: "NEWCHALLENGE1", authorization: approved },
+        { accountId: OTHER, challenge: "NEWCHALLENGE1", authorization: reenrol },
         T0 + 7,
       ),
     ).toEqual({ status: "OK" });
@@ -196,6 +199,7 @@ describe("AccountBinding", () => {
       "x",
       {
         deviceId: "other-device",
+        epoch: EPOCH,
         binding: null,
         challenge: null,
         recoveryRequired: false,
@@ -204,6 +208,7 @@ describe("AccountBinding", () => {
       },
       {
         deviceId: DEVICE,
+        epoch: EPOCH,
         binding: { accountId: ACCOUNT, status: "BOUND", boundAtMs: 1 },
         challenge: null,
         recoveryRequired: false,
@@ -212,6 +217,7 @@ describe("AccountBinding", () => {
       },
       {
         deviceId: DEVICE,
+        epoch: EPOCH,
         binding: { accountId: "", status: "BOUND", boundAtMs: 1 },
         challenge: null,
         recoveryRequired: false,
@@ -220,11 +226,21 @@ describe("AccountBinding", () => {
       },
       {
         deviceId: DEVICE,
+        epoch: EPOCH,
         binding: null,
         challenge: null,
         recoveryRequired: false,
         usedChallenges: [],
         audit: [{ action: "FORGED", accountId: "a", atMs: 1 }],
+      },
+      {
+        deviceId: DEVICE,
+        epoch: "short",
+        binding: null,
+        challenge: null,
+        recoveryRequired: false,
+        usedChallenges: [],
+        audit: [],
       },
     ];
     for (const saved of bad) {
@@ -245,42 +261,122 @@ describe("AccountBinding", () => {
   it("CR-35: a corrupt bound device cannot be re-enrolled to another account until trusted recovery", async () => {
     const b = AccountBinding.fresh(options());
     await bindDevice(b);
-    const saved = json(b.snapshot()) as Record<string, unknown>;
-    const tampered = { ...saved, usedChallenges: [1] };
+    const tampered = { ...(json(b.snapshot()) as Record<string, unknown>), usedChallenges: [1] };
     const corrupt = AccountBinding.restore(tampered, options());
     expect(corrupt.status()).toBe("RECOVERY_REQUIRED");
-    const approved = { release: PREVIOUS_OWNER, target: OWNER };
     expect(
       await corrupt.issueChallenge(
-        { accountId: OTHER, challenge: "NEWCHALLENGE1", authorization: approved },
+        { accountId: OTHER, challenge: "NEWCHALLENGE1", authorization: reenrol },
         T0 + 5,
       ),
     ).toEqual({ status: "REFUSED", reason: "RECOVERY_REQUIRED" });
-    expect(await corrupt.recover({ confirmed: true, authorization: OWNER }, T0 + 6)).toEqual({
-      status: "OK",
-    });
+    expect(await corrupt.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 6)).toEqual(
+      { status: "OK" },
+    );
     expect(corrupt.status()).toBe("UNBOUND");
     expect(corrupt.canUseAccount(ACCOUNT)).toBe(false);
   });
 
-  it("CR-35: recovery needs exact confirmation and RECOVER authorization", async () => {
+  it("CR-35: recovery needs exact confirmation, device-identity proof, and a new epoch", async () => {
     const corrupt = AccountBinding.restore("garbage", options());
-    expect(await corrupt.recover({ confirmed: false, authorization: OWNER }, T0)).toEqual({
+    expect(await corrupt.recover({ confirmed: false, authorization: recoveryAuth }, T0)).toEqual({
       status: "REFUSED",
       reason: "NOT_CONFIRMED",
     });
-    expect(await corrupt.recover({ confirmed: true, authorization: "nope" }, T0)).toEqual({
+    expect(
+      await corrupt.recover(
+        { confirmed: true, authorization: { proof: "nope", epoch: NEW_EPOCH } },
+        T0,
+      ),
+    ).toEqual({
+      status: "REFUSED",
+      reason: "NOT_AUTHORIZED",
+    });
+    expect(
+      await corrupt.recover(
+        { confirmed: true, authorization: { proof: OWNER, epoch: "short" } },
+        T0,
+      ),
+    ).toEqual({
       status: "REFUSED",
       reason: "NOT_AUTHORIZED",
     });
     expect(corrupt.status()).toBe("RECOVERY_REQUIRED");
-    expect(await corrupt.recover({ confirmed: true, authorization: OWNER }, T0 + 1)).toEqual({
+    expect(await corrupt.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 1)).toEqual(
+      { status: "OK" },
+    );
+    expect(await corrupt.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 2)).toEqual(
+      {
+        status: "REFUSED",
+        reason: "NOT_RECOVERY_REQUIRED",
+      },
+    );
+  });
+
+  it("CR-38: a recovery-required state carrying a binding is inconsistent; recovery cannot reactivate it", async () => {
+    const b = AccountBinding.fresh(options());
+    await bindDevice(b);
+    const inconsistent = {
+      ...(json(b.snapshot()) as Record<string, unknown>),
+      recoveryRequired: true,
+    };
+    const restored = AccountBinding.restore(inconsistent, options());
+    expect(restored.status()).toBe("RECOVERY_REQUIRED");
+    expect(restored.snapshot().binding).toBeNull();
+    expect(
+      await restored.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 5),
+    ).toEqual({ status: "OK" });
+    expect(restored.canUseAccount(ACCOUNT)).toBe(false);
+    expect(restored.status()).toBe("UNBOUND");
+  });
+
+  it("CR-39: after recovery the epoch rotates; a challenge consumed under the old epoch is refused as REPLAY even with an empty history", async () => {
+    const b = AccountBinding.fresh(options());
+    await bindDevice(b);
+    const oldHistory = b.snapshot().usedChallenges;
+    expect(oldHistory).toHaveLength(1);
+    const corrupt = AccountBinding.restore("garbage", options());
+    expect(await corrupt.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 5)).toEqual(
+      { status: "OK" },
+    );
+    expect(corrupt.snapshot().epoch).toBe(NEW_EPOCH);
+    expect(await issue(corrupt, CHALLENGE, T0 + 6)).toEqual({ status: "OK" });
+    expect(await bind(corrupt, CHALLENGE, T0 + 7)).toEqual({ status: "OK" });
+    expect(corrupt.snapshot().challenge).toBeNull();
+    expect(corrupt.snapshot().usedChallenges.every((c) => oldHistory.indexOf(c) === -1)).toBe(true);
+  });
+
+  it("CR-39: a challenge consumed before recovery cannot be reissued and bound after the epoch rotates", async () => {
+    const b = AccountBinding.fresh(options());
+    await bindDevice(b);
+    await b.revoke({ confirmed: true, authorization: OWNER }, T0 + 2);
+    const corrupt = AccountBinding.restore(json(b.snapshot()), options());
+    expect(corrupt.status()).toBe("REVOKED");
+    const tampered = {
+      ...(json(b.snapshot()) as Record<string, unknown>),
+      recoveryRequired: true,
+      binding: null,
+      challenge: null,
+    };
+    const recovering = AccountBinding.restore({ ...tampered, usedChallenges: [] }, options());
+    expect(recovering.status()).toBe("RECOVERY_REQUIRED");
+    expect(
+      await recovering.recover({ confirmed: true, authorization: recoveryAuth }, T0 + 3),
+    ).toEqual({ status: "OK" });
+    expect(
+      await recovering.issueChallenge(
+        { accountId: ACCOUNT, challenge: CHALLENGE, authorization: OWNER },
+        T0 + 4,
+      ),
+    ).toEqual({
       status: "OK",
     });
-    expect(await corrupt.recover({ confirmed: true, authorization: OWNER }, T0 + 2)).toEqual({
-      status: "REFUSED",
-      reason: "NOT_RECOVERY_REQUIRED",
-    });
+    expect(recovering.snapshot().challenge?.commitment).toBe(
+      commit(CHALLENGE, scopeOf(NEW_EPOCH), ACCOUNT),
+    );
+    expect(recovering.snapshot().challenge?.commitment).not.toBe(
+      commit(CHALLENGE, scopeOf(EPOCH), ACCOUNT),
+    );
   });
 
   it("CR-37: consumed challenges are never evicted; when the history is full, new enrolment is refused", async () => {
@@ -289,11 +385,7 @@ describe("AccountBinding", () => {
     await b.revoke({ confirmed: true, authorization: OWNER }, T0 + 5);
     expect(
       await b.issueChallenge(
-        {
-          accountId: ACCOUNT,
-          challenge: "NEWCHALLENGE1",
-          authorization: { release: PREVIOUS_OWNER, target: OWNER },
-        },
+        { accountId: ACCOUNT, challenge: "NEWCHALLENGE1", authorization: reenrol },
         T0 + 6,
       ),
     ).toEqual({ status: "REFUSED", reason: "HISTORY_FULL" });
@@ -308,11 +400,7 @@ describe("AccountBinding", () => {
     await restored.revoke({ confirmed: true, authorization: OWNER }, T0 + 5);
     expect(
       await restored.issueChallenge(
-        {
-          accountId: ACCOUNT,
-          challenge: CHALLENGE,
-          authorization: { release: PREVIOUS_OWNER, target: OWNER },
-        },
+        { accountId: ACCOUNT, challenge: CHALLENGE, authorization: reenrol },
         T0 + 6,
       ),
     ).toEqual({ status: "OK" });
@@ -356,8 +444,14 @@ describe("AccountBinding", () => {
     );
     expect(() => AccountBinding.fresh(options({ maxAttempts: 0 }))).toThrow(AccountError);
     expect(() => AccountBinding.fresh(options({ maxUsedChallenges: 0 }))).toThrow(AccountError);
-    expect(() => AccountBinding.fresh({ deviceId: "", authorize: ownerOnly, commit })).toThrow(
-      AccountError,
-    );
+    expect(() => AccountBinding.fresh(options({ epoch: "short" }))).toThrow(AccountError);
+    expect(() =>
+      AccountBinding.fresh({
+        deviceId: "",
+        epoch: EPOCH,
+        authorize: ownerOnly,
+        commit,
+      }),
+    ).toThrow(AccountError);
   });
 });
