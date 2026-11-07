@@ -144,10 +144,11 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## C02 — Analyze live camera frames
 
-- commit: 630c646
+- commit: 67144e8
+- previous code commit: 630c646 (CR-44 and CR-45 found on ChatGPT review at HEAD 465e57e)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/frame-analysis.ts` (exported from `packages/core/src/index.ts`); every provider call goes through the existing `provider-gateway.ts`.
-- tests: `packages/core/src/frame-analysis.test.ts` (12 tests covering acceptance criteria 1–10 in ACCEPTANCE.md); `jest packages/core` → 280 tests passed; eslint, tsc, knip and prettier clean.
+- tests: `packages/core/src/frame-analysis.test.ts` (12 tests covering acceptance criteria 1–12 in ACCEPTANCE.md; 16 frame-analysis tests incl. CR-44 and CR-45); `jest packages/core` → 284 tests passed; eslint, tsc, knip and prettier clean.
 - scope note: criteria were written from the one-line checklist summary, not the full requirement text; confirm against the full text before review.
 - unverified: real live camera streams from the glasses, real vision providers, on-device latency and performance, network transport, and hardware validation (BLK-001).
