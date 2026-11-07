@@ -54,12 +54,13 @@ Each item with verification PASS or review APPROVED must have a section headed `
 
 ## B20 — Local clock and timestamp continuity
 
-- commit: 2c7ff200efd76de314fb4ea1358ab74f0fd48572
+- commit: 661eb241e74ee7aea8e301d8c8396f427465b831
+- previous code commit: 2c7ff200efd76de314fb4ea1358ab74f0fd48572 (ChatGPT review: CHANGES_REQUIRED, CR-16, CR-17, CR-18)
 - formatting follow-up: 4fc02e1 (Prettier only)
 - verification: PASS
-- review: NOT_REQUESTED
+- review: CHANGES_REQUESTED
 - implementation: `packages/core/src/local-clock.ts` (exported from `packages/core/src/index.ts`)
-- tests: `packages/core/src/local-clock.test.ts` (13 tests covering acceptance criteria 1–11 in ACCEPTANCE.md; injected clock, no real time)
+- tests: `packages/core/src/local-clock.test.ts` (20 tests covering acceptance criteria 1–14 in ACCEPTANCE.md; injected clock, no real time)
 - local checks after the code commit: `jest packages/core` → 13 suites / 147 tests passed; eslint and tsc clean on the changed files; `pnpm check:tracking` OK.
 - audit: no core clock abstraction existed; mobile and broker code call Date.now() directly (see ACCEPTANCE.md).
 - unverified: real hardware clocks and RTC drift, cryptographic authentication of time sources (caller responsibility), NTP/GNSS integration, power-loss behaviour, and detection of restored older snapshots (BLK-001 for on-device work).
