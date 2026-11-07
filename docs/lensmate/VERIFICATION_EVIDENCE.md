@@ -44,7 +44,8 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - commit: 6b03111fa945aec0edd029c636385cf9a85e6d06
 - previous code commit: 39fd0e781b7411876309345a0bd2faab7d598430 (ChatGPT review: CHANGES_REQUIRED, CR-13, CR-14, CR-15)
 - verification: PASS
-- review: CHANGES_REQUESTED
+- review: APPROVED
+- non-blocking follow-up from review: make onCallbackError safe against its own exceptions (not yet changed; B19 approval is for the software controller only)
 - implementation: `packages/core/src/network-recovery.ts` (exported from `packages/core/src/index.ts`)
 - tests: `packages/core/src/network-recovery.test.ts` (19 tests covering acceptance criteria 1–14 in ACCEPTANCE.md; deterministic fake scheduler, injected random)
 - commands run after the commit: `jest packages/core` → 12 suites / 127 tests passed; eslint and tsc clean on the changed files; `pnpm check:tracking` OK.
