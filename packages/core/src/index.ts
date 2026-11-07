@@ -153,3 +153,14 @@ export type {
   PeerKind,
   PeerRecord,
 } from "./pairing.js";
+
+export { AccountBinding, AccountError } from "./account-binding.js";
+export type {
+  AccountAction,
+  AccountAuditEntry,
+  AccountOptions,
+  AccountResult,
+  AccountState,
+  Binding,
+  Status,
+} from "./account-binding.js";
