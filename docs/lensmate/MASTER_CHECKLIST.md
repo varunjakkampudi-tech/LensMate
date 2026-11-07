@@ -73,7 +73,7 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 | B18 | Power-saving sleep and wake states                             | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B19 | Network loss recovery and automatic reconnection               | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | B20 | Local clock and timestamp continuity                           | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
-| B21 | Remote device lock and credential revocation                   | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B21 | Remote device lock and credential revocation                   | IMPLEMENTED    | PASS         | NOT_REQUESTED | NONE    | PENDING             |
 | B22 | Factory reset and secure data erasure                          | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 | B23 | Diagnostics and crash recovery                                 | IN_PROGRESS    | PARTIAL      | NOT_REQUESTED | NONE    | PENDING             |
 | B24 | Optional eSIM provisioning and cellular data service           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
