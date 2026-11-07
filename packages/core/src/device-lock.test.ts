@@ -128,7 +128,7 @@ describe("DeviceLock", () => {
     for (const saved of bad) {
       expect(() => DeviceLock.restore(saved)).toThrow(LockError);
     }
-    expect.assertions(2);
+    expect.assertions(bad.length + 2);
     try {
       DeviceLock.restore(bad[1]);
     } catch (error: unknown) {
