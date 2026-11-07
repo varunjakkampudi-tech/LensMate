@@ -77,7 +77,7 @@ Acceptance criteria are defined per item in ACCEPTANCE.md before implementation 
 | B22 | Factory reset and secure data erasure                          | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | B23 | Diagnostics and crash recovery                                 | IMPLEMENTED    | PASS         | APPROVED      | NONE    | PENDING             |
 | B24 | Optional eSIM provisioning and cellular data service           | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
-| B25 | Optional phone, PC and accessory pairing                       | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
+| B25 | Optional phone, PC and accessory pairing                       | IMPLEMENTED    | PASS         | NOT_REQUESTED | NONE    | PENDING             |
 | B26 | Direct pairing with the cloud account independently of a phone | NOT_STARTED    | NOT_TESTED   | NOT_REQUESTED | NONE    | NOT_APPLICABLE      |
 
 ## C. Vision and Real-World Perception

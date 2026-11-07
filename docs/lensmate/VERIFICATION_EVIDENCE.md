@@ -105,3 +105,14 @@ Each item with verification PASS or review APPROVED must have a section headed `
 - local checks after the CR-30/CR-31 fix: `jest packages/core` → 13 suites / 209 tests passed; eslint and tsc clean on changed files; prettier clean.
 - audit: log-redaction.ts (allowlist and redaction) and mobile diagnostics checks exist; crash classification, crash-loop safe mode, bounded diagnostic retention and recovery verification were absent (see ACCEPTANCE.md).
 - unverified: native crash dumps and handlers on device, OS watchdog integration, remote diagnostics upload, and hardware-specific failure modes (BLK-001).
+
+## B25 — Optional phone, PC and accessory pairing
+
+- commit: 1f0671ded459b5f46ca6fe3208bdcd8f5207117b
+- verification: PASS
+- review: NOT_REQUESTED
+- implementation: `packages/core/src/pairing.ts` (exported from `packages/core/src/index.ts`)
+- tests: `packages/core/src/pairing.test.ts` (11 tests covering acceptance criteria 1–10 in ACCEPTANCE.md; injected time and codes)
+- local checks: `jest packages/core` → 13 suites / 220 tests passed; eslint and tsc clean on changed files; prettier clean.
+- audit: glasses-link.ts is transport only; broker and phone enrolment cover the broker, not peer pairing (see ACCEPTANCE.md).
+- unverified: Bluetooth or Wi-Fi pairing transport, code display and entry on glasses, cryptographic peer key exchange, PC and accessory protocols, and on-device behaviour (BLK-001). Peer authentication is the platform adapter responsibility.
